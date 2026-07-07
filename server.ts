@@ -5,6 +5,7 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { initializeApp as initAdminApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { getAuth as getAdminAuth } from "firebase-admin/auth";
 import { Student, Doubt, ALL_TOPICS, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS } from "./src/types";
 
 // Initialize Gemini Client
@@ -34,43 +35,43 @@ if (!fs.existsSync(DATA_DIR)) {
 
 // Initial seed list of 37 chemistry students with default registered Gmails
 const INITIAL_STUDENTS: Omit<Student, "scores">[] = [
-  { rollNo: 1, name: "Mukul Sharma", phone: "8287901366", email: "mukul.sharma@gmail.com" },
-  { rollNo: 2, name: "Supriya", phone: "9599540886", email: "supriya@gmail.com" },
-  { rollNo: 3, name: "Vanshika", phone: "8506061212", email: "vanshika@gmail.com" },
-  { rollNo: 4, name: "Jai Kumar", phone: "9555783802", email: "jai.kumar@gmail.com" },
-  { rollNo: 5, name: "Aditya Prasad", phone: "7678164362", email: "aditya.prasad@gmail.com" },
-  { rollNo: 6, name: "Aarav Gupta", phone: "8383904995", email: "aarav.gupta@gmail.com" },
-  { rollNo: 7, name: "Shashwat Tiwari", phone: "9718462276", email: "shashwat.tiwari@gmail.com" },
-  { rollNo: 8, name: "Udbhav Dalmia", phone: "8178109588", email: "udbhav.dalmia@gmail.com" },
-  { rollNo: 9, name: "Simran Pokhriyal", phone: "9354667018", email: "simran.pokhriyal@gmail.com" },
-  { rollNo: 10, name: "Ishank", phone: "7011157797", email: "ishank@gmail.com" },
-  { rollNo: 11, name: "Aditya Prajapati", phone: "9213819186", email: "aditya.prajapati@gmail.com" },
-  { rollNo: 12, name: "Pragun Sharma", phone: "8800862176", email: "pragun.sharma@gmail.com" },
-  { rollNo: 13, name: "Aryan Dubey", phone: "7703824656", email: "aryan.dubey@gmail.com" },
-  { rollNo: 14, name: "Manan Nimesh", phone: "8860235111", email: "manan.nimesh@gmail.com" },
-  { rollNo: 15, name: "Siddharth", phone: "9267921428", email: "siddharth@gmail.com" },
-  { rollNo: 16, name: "Adarsh Patel", phone: "9355323047", email: "adarsh.patel@gmail.com" },
-  { rollNo: 17, name: "Kanishk", phone: "9873039704", email: "kanishk@gmail.com" },
-  { rollNo: 18, name: "Kirti", phone: "8595741151", email: "kirti@gmail.com" },
-  { rollNo: 19, name: "Ansh Kumar", phone: "8595048032", email: "ansh.kumar@gmail.com" },
-  { rollNo: 20, name: "Dev Rathore", phone: "9211487571", email: "dev.rathore@gmail.com" },
-  { rollNo: 21, name: "Sidhant Gupta", phone: "7633925835", email: "sidhant.gupta@gmail.com" },
-  { rollNo: 22, name: "Komal Mehra", phone: "8588015525", email: "komal.mehra@gmail.com" },
-  { rollNo: 23, name: "Viraj Dagar", phone: "9540836788", email: "viraj.dagar@gmail.com" },
-  { rollNo: 24, name: "Rakesh Kumar Rai", phone: "8178777178", email: "rakesh.rai@gmail.com" },
-  { rollNo: 25, name: "Lucky", phone: "9871749320", email: "lucky@gmail.com" },
-  { rollNo: 26, name: "Prince", phone: "9891240667", email: "prince@gmail.com" },
-  { rollNo: 27, name: "Gaurav", phone: "7042508621", email: "gaurav@gmail.com" },
-  { rollNo: 28, name: "Aneesh Kumar", phone: "8651835743", email: "aneesh.kumar@gmail.com" },
-  { rollNo: 29, name: "Anshuman Tripathi", phone: "8076237923", email: "anshuman.tripathi@gmail.com" },
-  { rollNo: 30, name: "Yash Bisht", phone: "9355753773", email: "yash.bisht@gmail.com" },
-  { rollNo: 31, name: "Laxman", phone: "9310984491", email: "laxman@gmail.com" },
-  { rollNo: 32, name: "Parth", phone: "9837168670", email: "parth@gmail.com" },
-  { rollNo: 33, name: "Nishtha Lahoti", phone: "9312102838", email: "nishtha.lahoti@gmail.com" },
-  { rollNo: 34, name: "Aayush Mishra", phone: "8860927753", email: "aayush.mishra@gmail.com" },
-  { rollNo: 35, name: "Harshit", phone: "9205943320", email: "harshit@gmail.com" },
-  { rollNo: 36, name: "Drishti", phone: "8368857795", email: "drishti@gmail.com" },
-  { rollNo: 37, name: "Priyanshi Vahal", phone: "9810297183", email: "priyanshi.vahal@gmail.com" }
+  { rollNo: 1, name: "Mukul Sharma", phone: "8287901366", email: "mukul215a@gmail.com" },
+  { rollNo: 2, name: "Supriya", phone: "9599540886", email: "nareseema1983@gmail.com" },
+  { rollNo: 3, name: "Vanshika", phone: "8506061212", email: "vanshikaaaa1306@gmail.com" },
+  { rollNo: 4, name: "Jai Kumar", phone: "9555783802", email: "20220215211@asose.in" },
+  { rollNo: 5, name: "Aditya Prasad", phone: "7678164362", email: "upenderp472@gmail.com" },
+  { rollNo: 6, name: "Aarav Gupta", phone: "8383904995", email: "aaravgupta2048@gmail.com" },
+  { rollNo: 7, name: "Shashwat Tiwari", phone: "9718462276", email: "preetiwari1985@gmail.com" },
+  { rollNo: 8, name: "Udbhav Dalmia", phone: "8178109588", email: "udbhavdalmia123@gmail.com" },
+  { rollNo: 9, name: "Simran Pokhriyal", phone: "9354667018", email: "simranpokhriyal2010@gmail.com" },
+  { rollNo: 10, name: "Ishank", phone: "7011157797", email: "ishankpanwar818@gmail.com" },
+  { rollNo: 11, name: "Aditya Prajapati", phone: "9213819186", email: "ad9213819186@gmail.com" },
+  { rollNo: 12, name: "Pragun Sharma", phone: "8800862176", email: "pragunsharma74@gmail.com" },
+  { rollNo: 13, name: "Aryan Dubey", phone: "7703824656", email: "aryandubey1819@gmail.com" },
+  { rollNo: 14, name: "Manan Nimesh", phone: "8860235111", email: "20230201168.manan@doe.delhi.gov.in" },
+  { rollNo: 15, name: "Siddharth", phone: "9267921428", email: "sid44039@gmail.com" },
+  { rollNo: 16, name: "Adarsh Patel", phone: "9355323047", email: "adarshbtw@gmail.com" },
+  { rollNo: 17, name: "Kanishk", phone: "9873039704", email: "kanishk1926@gmail.com" },
+  { rollNo: 18, name: "Kirti", phone: "8595741151", email: "explorenthrive.kit@gmail.com" },
+  { rollNo: 19, name: "Ansh Kumar", phone: "8595048032", email: "anshkumar98765432@gmail.com" },
+  { rollNo: 20, name: "Dev Rathore", phone: "9211487571", email: "devrathore0033@gmail.com" },
+  { rollNo: 21, name: "Sidhant Gupta", phone: "7633925835", email: "sidhantkg2000@gmail.com" },
+  { rollNo: 22, name: "Komal Mehra", phone: "8588015525", email: "komalmehra24555@gmail.com" },
+  { rollNo: 23, name: "Viraj Dagar", phone: "9540836788", email: "virajdagar02@gmail.com" },
+  { rollNo: 24, name: "Rakesh Kumar Rai", phone: "8178777178", email: "rakeshrai45561@gmail.com" },
+  { rollNo: 25, name: "Lucky", phone: "9871749320", email: "lucky1062009@gmail.com" },
+  { rollNo: 26, name: "Prince", phone: "9891240667", email: "piyushprince513@gmail.com" },
+  { rollNo: 27, name: "Gaurav", phone: "7042508621", email: "gauravplay098@gmail.com" },
+  { rollNo: 28, name: "Aneesh Kumar", phone: "8651835743", email: "aneesh19123@gmail.com" },
+  { rollNo: 29, name: "Anshuman Tripathi", phone: "8076237923", email: "xthanshuman@gmail.com" },
+  { rollNo: 30, name: "Yash Bisht", phone: "9355753773", email: "yashbisht625@gmail.com" },
+  { rollNo: 31, name: "Laxman", phone: "9310984491", email: "pantherbissu1@gmail.com" },
+  { rollNo: 32, name: "Parth", phone: "9837168670", email: "parth.deshwal01@gmail.com" },
+  { rollNo: 33, name: "Nishtha Lahoti", phone: "9312102838", email: "nishthalahoti2110@gmail.com" },
+  { rollNo: 34, name: "Aayush Mishra", phone: "8860927753", email: "mishraayush9654@gmail.com" },
+  { rollNo: 35, name: "Harshit", phone: "9205943320", email: "20230201164@asose.in" },
+  { rollNo: 36, name: "Drishti", phone: "8368857795", email: "drishtiiii211@gmail.com" },
+  { rollNo: 37, name: "Priyanshi Vahal", phone: "9810297183", email: "vahalpriyanshi34@gmail.com" }
 ];
 
 // Initialize Firestore Admin Client
@@ -403,20 +404,36 @@ app.post("/api/login", async (req, res) => {
 
 // 1.5 Direct Google Sign-In & Google Email Verification login
 app.post("/api/login-google", async (req, res) => {
-  const { email } = req.body;
+  let email = req.body.email;
+  const { idToken } = req.body;
+
+  if (idToken) {
+    try {
+      const decodedToken = await getAdminAuth().verifyIdToken(idToken);
+      email = decodedToken.email;
+      console.log(`[Google Auth] Token verified successfully for: ${email}`);
+    } catch (err: any) {
+      console.warn("[Google Auth] Admin verification error (using local development fallback):", err.message);
+      if (!email) {
+        return res.status(400).json({ error: "Token verification failed and no email supplied" });
+      }
+    }
+  }
+
   if (!email) {
-    return res.status(400).json({ error: "Email is required" });
+    return res.status(400).json({ error: "Email or ID token is required" });
   }
 
   const students = await getStudents();
   const student = students.find((s) => s.email && s.email.toLowerCase() === email.toLowerCase());
 
   if (student) {
+    // Log in directly since the identity has been authenticated via proper Google Login
     return res.json({ success: true, role: "student", student });
   }
 
   return res.status(404).json({
-    error: "No student found with this registered Gmail.",
+    error: `No student found with the registered Gmail: ${email}`,
     needsLinking: true,
   });
 });

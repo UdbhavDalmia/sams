@@ -3,7 +3,7 @@
     "rollNo": 1,
     "name": "Mukul Sharma",
     "phone": "8287901366",
-    "email": "mukul.sharma@gmail.com",
+    "email": "mukul215a@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -42,7 +42,7 @@
     "rollNo": 2,
     "name": "Supriya",
     "phone": "9599540886",
-    "email": "supriya@gmail.com",
+    "email": "nareseema1983@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -81,7 +81,7 @@
     "rollNo": 3,
     "name": "Vanshika",
     "phone": "8506061212",
-    "email": "vanshika@gmail.com",
+    "email": "vanshikaaaa1306@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -120,7 +120,7 @@
     "rollNo": 4,
     "name": "Jai Kumar",
     "phone": "9555783802",
-    "email": "jai.kumar@gmail.com",
+    "email": "20220215211@asose.in",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -159,7 +159,7 @@
     "rollNo": 5,
     "name": "Aditya Prasad",
     "phone": "7678164362",
-    "email": "aditya.prasad@gmail.com",
+    "email": "upenderp472@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -198,7 +198,7 @@
     "rollNo": 6,
     "name": "Aarav Gupta",
     "phone": "8383904995",
-    "email": "aarav.gupta@gmail.com",
+    "email": "aaravgupta2048@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -237,7 +237,7 @@
     "rollNo": 7,
     "name": "Shashwat Tiwari",
     "phone": "9718462276",
-    "email": "shashwat.tiwari@gmail.com",
+    "email": "preetiwari1985@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -276,10 +276,10 @@
     "rollNo": 8,
     "name": "Udbhav Dalmia",
     "phone": "8178109588",
-    "email": "udbhav.dalmia@gmail.com",
+    "email": "udbhavdalmia123@gmail.com",
     "scores": {
       "Solutions": 0,
-      "Electrochemistry": 75,
+      "Electrochemistry": 0,
       "Chemical Kinetics": 0,
       "d- and f-Block": 0,
       "Coordination Compounds": 0,
@@ -311,9 +311,9 @@
     },
     "milestones": {
       "Electrochemistry": [
-        true,
-        true,
-        true,
+        false,
+        false,
+        false,
         false
       ]
     }
@@ -322,7 +322,7 @@
     "rollNo": 9,
     "name": "Simran Pokhriyal",
     "phone": "9354667018",
-    "email": "simran.pokhriyal@gmail.com",
+    "email": "simranpokhriyal2010@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -361,7 +361,7 @@
     "rollNo": 10,
     "name": "Ishank",
     "phone": "7011157797",
-    "email": "ishank@gmail.com",
+    "email": "ishankpanwar818@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -400,7 +400,7 @@
     "rollNo": 11,
     "name": "Aditya Prajapati",
     "phone": "9213819186",
-    "email": "aditya.prajapati@gmail.com",
+    "email": "ad9213819186@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -439,7 +439,7 @@
     "rollNo": 12,
     "name": "Pragun Sharma",
     "phone": "8800862176",
-    "email": "pragun.sharma@gmail.com",
+    "email": "pragunsharma74@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -478,7 +478,7 @@
     "rollNo": 13,
     "name": "Aryan Dubey",
     "phone": "7703824656",
-    "email": "aryan.dubey@gmail.com",
+    "email": "aryandubey1819@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -517,7 +517,7 @@
     "rollNo": 14,
     "name": "Manan Nimesh",
     "phone": "8860235111",
-    "email": "manan.nimesh@gmail.com",
+    "email": "20230201168.manan@doe.delhi.gov.in",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -556,7 +556,7 @@
     "rollNo": 15,
     "name": "Siddharth",
     "phone": "9267921428",
-    "email": "siddharth@gmail.com",
+    "email": "sid44039@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -595,7 +595,7 @@
     "rollNo": 16,
     "name": "Adarsh Patel",
     "phone": "9355323047",
-    "email": "adarsh.patel@gmail.com",
+    "email": "adarshbtw@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -634,7 +634,7 @@
     "rollNo": 17,
     "name": "Kanishk",
     "phone": "9873039704",
-    "email": "kanishk@gmail.com",
+    "email": "kanishk1926@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -673,7 +673,7 @@
     "rollNo": 18,
     "name": "Kirti",
     "phone": "8595741151",
-    "email": "kirti@gmail.com",
+    "email": "explorenthrive.kit@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -712,7 +712,7 @@
     "rollNo": 19,
     "name": "Ansh Kumar",
     "phone": "8595048032",
-    "email": "ansh.kumar@gmail.com",
+    "email": "anshkumar98765432@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -751,7 +751,7 @@
     "rollNo": 20,
     "name": "Dev Rathore",
     "phone": "9211487571",
-    "email": "dev.rathore@gmail.com",
+    "email": "devrathore0033@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -790,7 +790,7 @@
     "rollNo": 21,
     "name": "Sidhant Gupta",
     "phone": "7633925835",
-    "email": "sidhant.gupta@gmail.com",
+    "email": "sidhantkg2000@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -829,7 +829,7 @@
     "rollNo": 22,
     "name": "Komal Mehra",
     "phone": "8588015525",
-    "email": "komal.mehra@gmail.com",
+    "email": "komalmehra24555@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -868,7 +868,7 @@
     "rollNo": 23,
     "name": "Viraj Dagar",
     "phone": "9540836788",
-    "email": "viraj.dagar@gmail.com",
+    "email": "virajdagar02@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -907,7 +907,7 @@
     "rollNo": 24,
     "name": "Rakesh Kumar Rai",
     "phone": "8178777178",
-    "email": "rakesh.rai@gmail.com",
+    "email": "rakeshrai45561@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -946,7 +946,7 @@
     "rollNo": 25,
     "name": "Lucky",
     "phone": "9871749320",
-    "email": "lucky@gmail.com",
+    "email": "lucky1062009@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -985,7 +985,7 @@
     "rollNo": 26,
     "name": "Prince",
     "phone": "9891240667",
-    "email": "prince@gmail.com",
+    "email": "piyushprince513@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -1024,7 +1024,7 @@
     "rollNo": 27,
     "name": "Gaurav",
     "phone": "7042508621",
-    "email": "gaurav@gmail.com",
+    "email": "gauravplay098@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -1063,7 +1063,7 @@
     "rollNo": 28,
     "name": "Aneesh Kumar",
     "phone": "8651835743",
-    "email": "aneesh.kumar@gmail.com",
+    "email": "aneesh19123@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -1102,7 +1102,7 @@
     "rollNo": 29,
     "name": "Anshuman Tripathi",
     "phone": "8076237923",
-    "email": "anshuman.tripathi@gmail.com",
+    "email": "xthanshuman@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -1141,7 +1141,7 @@
     "rollNo": 30,
     "name": "Yash Bisht",
     "phone": "9355753773",
-    "email": "yash.bisht@gmail.com",
+    "email": "yashbisht625@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -1180,7 +1180,7 @@
     "rollNo": 31,
     "name": "Laxman",
     "phone": "9310984491",
-    "email": "laxman@gmail.com",
+    "email": "pantherbissu1@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -1219,7 +1219,7 @@
     "rollNo": 32,
     "name": "Parth",
     "phone": "9837168670",
-    "email": "parth@gmail.com",
+    "email": "parth.deshwal01@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -1258,7 +1258,7 @@
     "rollNo": 33,
     "name": "Nishtha Lahoti",
     "phone": "9312102838",
-    "email": "nishtha.lahoti@gmail.com",
+    "email": "nishthalahoti2110@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -1297,7 +1297,7 @@
     "rollNo": 34,
     "name": "Aayush Mishra",
     "phone": "8860927753",
-    "email": "aayush.mishra@gmail.com",
+    "email": "mishraayush9654@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -1336,7 +1336,7 @@
     "rollNo": 35,
     "name": "Harshit",
     "phone": "9205943320",
-    "email": "harshit@gmail.com",
+    "email": "20230201164@asose.in",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -1375,7 +1375,7 @@
     "rollNo": 36,
     "name": "Drishti",
     "phone": "8368857795",
-    "email": "drishti@gmail.com",
+    "email": "drishtiiii211@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,
@@ -1414,7 +1414,7 @@
     "rollNo": 37,
     "name": "Priyanshi Vahal",
     "phone": "9810297183",
-    "email": "priyanshi.vahal@gmail.com",
+    "email": "vahalpriyanshi34@gmail.com",
     "scores": {
       "Solutions": 0,
       "Electrochemistry": 0,

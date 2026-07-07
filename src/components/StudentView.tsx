@@ -143,7 +143,7 @@ const parseMarkdownAndMath = (text: string) => {
       const math = part.slice(2, -2).trim();
       return <MathRenderer key={index} math={math} block={true} />;
     }
-    
+
     const subParts = part.split(/(\$[\s\S]*?\$)/g);
     return subParts.map((subPart, subIndex) => {
       if (subPart.startsWith("$") && subPart.endsWith("$")) {
@@ -161,7 +161,7 @@ const renderSimpleMarkdown = (text: string, keyPrefix: string) => {
     <div key={keyPrefix} className="space-y-1.5">
       {lines.map((line, idx) => {
         const cleanLine = line;
-        
+
         if (cleanLine.startsWith("### ")) {
           return (
             <h4 key={idx} className="text-xs font-black mt-2.5 mb-1 flex items-center gap-1.5">
@@ -192,7 +192,7 @@ const renderSimpleMarkdown = (text: string, keyPrefix: string) => {
             </div>
           );
         }
-        
+
         const numberedMatch = cleanLine.match(/^(\d+)\.\s(.*)/);
         if (numberedMatch) {
           return (
@@ -204,7 +204,7 @@ const renderSimpleMarkdown = (text: string, keyPrefix: string) => {
         }
 
         if (!cleanLine.trim()) return <div key={idx} className="h-1" />;
-        
+
         return (
           <p key={idx} className="text-xs leading-relaxed font-medium">
             {parseBoldText(cleanLine)}
@@ -222,7 +222,7 @@ const parseBoldText = (text: string) => {
       const boldText = part.slice(2, -2);
       return <strong key={index} className="font-extrabold text-slate-900 dark:text-white">{boldText}</strong>;
     }
-    
+
     const subParts = part.split(/(`.*?`)/g);
     return subParts.map((subPart, subIndex) => {
       if (subPart.startsWith("`") && subPart.endsWith("`")) {
@@ -243,43 +243,8 @@ interface StudentViewProps {
   onLogout: () => void;
 }
 
-// Chime Sound Synthesizer via Web Audio API
-const playChime = (completed: boolean) => {
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    
-    if (completed) {
-      // Ascending pleasant chord
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-      osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.08); // E5
-      osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.16); // G5
-      osc.frequency.setValueAtTime(1046.50, ctx.currentTime + 0.24); // C6
-      
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.4);
-    } else {
-      // Standard descending soft tick
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(392.00, ctx.currentTime); // G4
-      osc.frequency.setValueAtTime(261.63, ctx.currentTime + 0.08); // C4
-      
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.25);
-    }
-  } catch (e) {
-    console.warn("Audio Context block or unsupported:", e);
-  }
-};
+// Chime Sound Synthesizer via Web Audio API (Disabled)
+const playChime = (completed: boolean) => {};
 
 // Canvas Particle Confetti Shower Trigger
 const triggerConfetti = () => {
@@ -366,13 +331,13 @@ const triggerConfetti = () => {
 export default function StudentView({ student: initialStudent, onLogout }: StudentViewProps) {
   const [student, setStudent] = useState<Student>(initialStudent);
   const [selectedTopic, setSelectedTopic] = useState<TopicName | null>(null);
-  
+
   // Subject Navigation Tab
   const [activeSubject, setActiveSubject] = useState<"Chemistry" | "Physics" | "Mathematics" | "All">("Chemistry");
 
   // Chapter Companion Tabs (No doubts / ask AI - only cheat and milestones)
   const [activeTab, setActiveTab] = useState<"cheat" | "milestones">("cheat");
-  
+
   // SAMS Dynamic AI Quiz States
   const [quizStarted, setQuizStarted] = useState(false);
   const [quizLoading, setQuizLoading] = useState(false);
@@ -448,11 +413,11 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   ];
 
   // Determine active topics based on chosen subject
-  const activeTopics = activeSubject === "Physics" 
-    ? PHYSICS_TOPICS 
-    : (activeSubject === "Mathematics" 
-        ? MATHS_TOPICS 
-        : (activeSubject === "Chemistry" ? CHEMISTRY_TOPICS : [...CHEMISTRY_TOPICS, ...PHYSICS_TOPICS, ...MATHS_TOPICS] as TopicName[]));
+  const activeTopics = activeSubject === "Physics"
+    ? PHYSICS_TOPICS
+    : (activeSubject === "Mathematics"
+      ? MATHS_TOPICS
+      : (activeSubject === "Chemistry" ? CHEMISTRY_TOPICS : [...CHEMISTRY_TOPICS, ...PHYSICS_TOPICS, ...MATHS_TOPICS] as TopicName[]));
 
   // Sync current student progress from database on mount
   const syncStudentData = async () => {
@@ -476,7 +441,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     if (selectedTopic) {
       const currentScore = student.scores[selectedTopic] || 0;
       setLocalScore(currentScore);
-      
+
       const concepts = TOPIC_RESOURCES[selectedTopic]?.concepts || [];
       const currentMilestones = student.milestones?.[selectedTopic] || new Array(concepts.length).fill(false);
       // Ensure local array matches the exact size of the active NCERT concepts list
@@ -495,7 +460,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
   // Calculate overall progress
   const topicKeys = Object.keys(student.scores);
-  
+
   // Calculate average for active subject
   const subjectScores = activeTopics.map(t => student.scores[t] || 0);
   const activeSubjectAvg = subjectScores.length > 0
@@ -540,7 +505,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     } else if (words[0]) {
       code = words[0].slice(0, 2).toUpperCase();
     }
-    
+
     const charCode = topic.charCodeAt(0) + topic.charCodeAt(topic.length - 1 || 0);
     const colors = [
       { colorClass: "bg-blue-100/80 text-blue-900 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-900/40", barColor: "bg-blue-600" },
@@ -617,7 +582,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     const nextMilestones = [...localMilestones];
     const toggledToChecked = !nextMilestones[index];
     nextMilestones[index] = toggledToChecked;
-    
+
     // Play sound chimes!
     playChime(toggledToChecked);
 
@@ -640,7 +605,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
   const handleSliderChange = (val: number) => {
     setLocalScore(val);
-    
+
     // Reverse-calculate milestones if slider manipulated
     const concepts = TOPIC_RESOURCES[selectedTopic!]?.concepts || [];
     const K = concepts.length || 4;
@@ -707,7 +672,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
     try {
       const activeMsgs = [...chatbotMessages, { role: "user" as const, text: userMsgText }];
-      
+
       const res = await fetchWithRetry("/api/gemini/chatbot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -734,7 +699,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
   return (
     <div id="student-view-container" className={`min-h-screen transition-all duration-300 font-sans flex flex-col ${darkMode ? "bg-slate-950 text-slate-100 dark" : "bg-slate-50 text-slate-900"}`}>
-      
+
       {/* Pristine Glass Header */}
       <header className={`px-6 py-4 flex justify-between items-center border-b shrink-0 z-10 transition-colors duration-300 ${darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"}`}>
         <div className="flex items-center gap-3">
@@ -753,9 +718,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
               setDarkMode(!darkMode);
               playChime(!darkMode);
             }}
-            className={`p-2.5 rounded-xl border transition-all ${
-              darkMode ? "bg-slate-800 border-slate-700 text-yellow-400" : "bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-800"
-            }`}
+            className={`p-2.5 rounded-xl border transition-all ${darkMode ? "bg-slate-800 border-slate-700 text-yellow-400" : "bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-800"
+              }`}
             title="Toggle Dark Canvas"
           >
             {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -772,9 +736,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
             </div>
             <button
               onClick={onLogout}
-              className={`p-2.5 rounded-xl border transition-all hover:text-rose-600 hover:bg-rose-50 ${
-                darkMode ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-slate-100 border-slate-200 text-slate-400"
-              }`}
+              className={`p-2.5 rounded-xl border transition-all hover:text-rose-600 hover:bg-rose-50 ${darkMode ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-slate-100 border-slate-200 text-slate-400"
+                }`}
               title="Close Portal"
             >
               <LogOut className="h-4 w-4" />
@@ -784,9 +747,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
       </header>
 
       {/* Formal Student Profile & Academic Contacts Bar */}
-      <div className={`px-6 py-3 border-b text-[11px] font-bold flex flex-wrap gap-x-8 gap-y-2 items-center justify-center transition-colors duration-300 ${
-        darkMode ? "bg-slate-900/40 border-slate-800/80 text-slate-300" : "bg-slate-100/50 border-slate-200 text-slate-800"
-      }`}>
+      <div className={`px-6 py-3 border-b text-[11px] font-bold flex flex-wrap gap-x-8 gap-y-2 items-center justify-center transition-colors duration-300 ${darkMode ? "bg-slate-900/40 border-slate-800/80 text-slate-300" : "bg-slate-100/50 border-slate-200 text-slate-800"
+        }`}>
         <div className="flex items-center gap-2">
           <span className="text-slate-900 dark:text-slate-400">Student Name:</span>
           <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{student.name}</span>
@@ -815,18 +777,17 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
       {/* Main Student Hub Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 space-y-8 overflow-y-auto">
-        
+
         {/* Top Highlight Welcome Grid */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Card 1: Curriculum Coverage Profile */}
-          <div className={`p-6 rounded-[2rem] border transition-all duration-300 ${
-            darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200/60 shadow-sm shadow-slate-100"
-          }`}>
+          <div className={`p-6 rounded-[2rem] border transition-all duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200/60 shadow-sm shadow-slate-100"
+            }`}>
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-800 dark:text-slate-400">Class XII Syllabus profile</span>
             <h3 className="text-xl font-extrabold mt-1 tracking-tight text-indigo-700 dark:text-indigo-400">Curriculum Coverage</h3>
-            
+
             <div className="mt-4 space-y-3">
-               <div className="flex justify-between items-center text-xs font-semibold">
+              <div className="flex justify-between items-center text-xs font-semibold">
                 <span className="text-slate-900 dark:text-slate-300">Studied Chapters</span>
                 <span className="font-black text-slate-900 dark:text-slate-100">{studiedTopicsCount} / {totalTopicsCount}</span>
               </div>
@@ -834,7 +795,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                 <span className="text-slate-900 dark:text-slate-300">Completed (≥75% prep)</span>
                 <span className="font-black text-slate-900 dark:text-slate-100">{completedTopicsCount} / {totalTopicsCount}</span>
               </div>
-              
+
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-1 text-[10px] text-center font-extrabold text-slate-900 dark:text-slate-400">
                 <div>
                   <span className="block text-slate-900 dark:text-slate-200 font-black text-xs">{chemAvg}%</span>
@@ -853,20 +814,19 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
           </div>
 
           {/* Card 2: Cumulative Syllabus Mastery */}
-          <div className={`p-6 rounded-[2rem] border transition-all duration-300 ${
-            darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200/60 shadow-sm shadow-slate-100"
-          }`}>
+          <div className={`p-6 rounded-[2rem] border transition-all duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200/60 shadow-sm shadow-slate-100"
+            }`}>
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-800 dark:text-slate-400">Cumulative preparation rating</span>
             <div className="flex items-baseline gap-2 mt-4">
               <span className="text-5xl font-black text-indigo-700 dark:text-indigo-400">{overallAvg}%</span>
               <span className="text-xs text-slate-900 dark:text-slate-300 font-bold uppercase">Overall Index</span>
             </div>
-            
+
             {/* Dynamic visual progress gauge */}
             <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full mt-4 overflow-hidden">
               <div className="h-full bg-indigo-600 transition-all duration-500 rounded-full" style={{ width: `${overallAvg}%` }} />
             </div>
-            
+
             <p className="text-[11px] text-slate-900 dark:text-slate-300 mt-4 leading-relaxed font-semibold">
               Average preparation level compiled across milestones, assessments, and revision lists.
             </p>
@@ -874,37 +834,34 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
         </section>
 
         {/* Dynamic Subject Nav tabs */}
-        <section className={`flex p-2 rounded-[2rem] border transition-colors duration-300 items-center justify-between gap-2 w-full ${
-          darkMode ? "bg-slate-900 border-slate-800" : "bg-[#f1f5f9] border-slate-200/80"
-        }`}>
+        <section className={`flex p-2 rounded-[2rem] border transition-colors duration-300 items-center justify-between gap-2 w-full ${darkMode ? "bg-slate-900 border-slate-800" : "bg-[#f1f5f9] border-slate-200/80"
+          }`}>
           {["Chemistry", "Physics", "Mathematics"].map((sub) => {
             const isSelected = activeSubject === sub;
             const unitCount = sub === "Chemistry" ? CHEMISTRY_TOPICS.length : sub === "Physics" ? PHYSICS_TOPICS.length : MATHS_TOPICS.length;
-            
+
             return (
               <button
                 key={sub}
                 onClick={() => setActiveSubject(sub as any)}
-                className={`flex-1 flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl font-black text-sm md:text-base transition-all duration-200 cursor-pointer ${
-                  isSelected
+                className={`flex-1 flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl font-black text-sm md:text-base transition-all duration-200 cursor-pointer ${isSelected
                     ? darkMode
                       ? "bg-slate-950 border-2 border-slate-200 text-white shadow-md"
                       : "bg-white border-[2.5px] border-black text-indigo-700 shadow-sm"
                     : darkMode
                       ? "bg-transparent border-[2.5px] border-transparent text-slate-400 hover:text-slate-200"
                       : "bg-transparent border-[2.5px] border-transparent text-slate-900 hover:text-black font-black"
-                }`}
+                  }`}
               >
                 <span className="tracking-tight">{sub}</span>
-                <span className={`text-[10px] md:text-xs font-mono font-bold px-2 py-0.5 rounded-full shrink-0 transition-colors ${
-                  isSelected
+                <span className={`text-[10px] md:text-xs font-mono font-bold px-2 py-0.5 rounded-full shrink-0 transition-colors ${isSelected
                     ? darkMode
                       ? "bg-indigo-950 text-indigo-300"
                       : "bg-indigo-100/60 text-indigo-700"
                     : darkMode
                       ? "bg-slate-800 text-slate-500"
                       : "bg-slate-200 text-slate-900 font-extrabold"
-                }`}>
+                  }`}>
                   {unitCount} Units
                 </span>
               </button>
@@ -923,9 +880,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                 Monitor evaluation benchmarks across core curricular units.
               </p>
             </div>
-            <div className={`px-4 py-2 rounded-2xl border flex items-center gap-2 shrink-0 ${
-              darkMode ? "bg-slate-900 border-slate-800 text-slate-300" : "bg-indigo-50/50 border-indigo-100/50 text-indigo-950"
-            }`}>
+            <div className={`px-4 py-2 rounded-2xl border flex items-center gap-2 shrink-0 ${darkMode ? "bg-slate-900 border-slate-800 text-slate-300" : "bg-indigo-50/50 border-indigo-100/50 text-indigo-950"
+              }`}>
               <Award className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
               <span className="text-xs font-extrabold">Subject Average Prep:</span>
               <span className="text-xs font-black font-mono text-indigo-600 dark:text-indigo-400">{activeSubjectAvg}%</span>
@@ -943,9 +899,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                     setSelectedTopic(topic);
                     setActiveTab("cheat");
                   }}
-                  className={`p-4 rounded-3xl border text-left transition-all hover:scale-[1.02] cursor-pointer hover:shadow-lg flex flex-col justify-between h-40 ${
-                    darkMode ? "bg-slate-900 border-slate-800 hover:border-slate-700" : "bg-white border-slate-200/60 hover:border-slate-300"
-                  }`}
+                  className={`p-4 rounded-3xl border text-left transition-all hover:scale-[1.02] cursor-pointer hover:shadow-lg flex flex-col justify-between h-40 ${darkMode ? "bg-slate-900 border-slate-800 hover:border-slate-700" : "bg-white border-slate-200/60 hover:border-slate-300"
+                    }`}
                 >
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
@@ -973,40 +928,35 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
         </section>
 
         {/* Refactored Interactive Gemini Academic Quiz Panel */}
-        <section className={`p-6 rounded-[2rem] border relative overflow-hidden transition-all duration-300 ${
-          darkMode 
-            ? "bg-slate-900/60 border-slate-800 text-white" 
+        <section className={`p-6 rounded-[2rem] border relative overflow-hidden transition-all duration-300 ${darkMode
+            ? "bg-slate-900/60 border-slate-800 text-white"
             : "bg-white border-slate-200/80 shadow-md shadow-slate-100 text-slate-900"
-        }`}>
+          }`}>
           {/* Animated Background Mesh */}
-          <div className={`absolute inset-0 pointer-events-none z-0 ${
-            darkMode 
-              ? "bg-gradient-to-br from-indigo-950/10 via-slate-950/30 to-cyan-950/10" 
+          <div className={`absolute inset-0 pointer-events-none z-0 ${darkMode
+              ? "bg-gradient-to-br from-indigo-950/10 via-slate-950/30 to-cyan-950/10"
               : "bg-gradient-to-br from-indigo-50/20 via-white to-sky-50/20"
-          }`} />
+            }`} />
 
           <div className="relative z-10 space-y-6">
             {!quizStarted ? (
               /* Step 1: Pre-Quiz Selection and Instructions */
               <div className="max-w-2xl space-y-4">
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${
-                    darkMode 
-                      ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/20" 
+                  <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${darkMode
+                      ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/20"
                       : "bg-indigo-50 text-indigo-600 border-indigo-100"
-                  }`}>
+                    }`}>
                     Interactive AI Quiz Desk
                   </span>
                 </div>
-                <h3 className={`text-2xl font-black font-display ${
-                  darkMode ? "text-white" : "text-slate-900"
-                }`}>
+                <h3 className={`text-2xl font-black font-display ${darkMode ? "text-white" : "text-slate-900"
+                  }`}>
                   Test Your Skills with On-Demand AI Assessments
                 </h3>
-                <p className={`text-xs leading-relaxed font-semibold ${
-                  darkMode ? "text-indigo-200" : "text-slate-900"
-                }`}>
-                  Select any Class XII textbook unit or exam topic. SAMS will instruct Gemini 3.5-flash to set five conceptually rigorous MCQ questions customized directly for your selected topic, matching CBSE and JEE Main patterns.
+                <p className={`text-xs leading-relaxed font-semibold ${darkMode ? "text-indigo-200" : "text-slate-900"
+                  }`}>
+                  Select any Class XII textbook unit or exam topic. SAMS will set five conceptually rigorous MCQ questions customized directly for your selected topic, matching CBSE and JEE Main patterns.
                 </p>
 
                 {quizError && (
@@ -1019,20 +969,18 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                 {/* Topic selection row */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-3 items-stretch sm:items-end">
                   <div className="flex-1 min-w-0 space-y-2">
-                    <label className={`block text-[10px] font-black uppercase tracking-wider ${
-                      darkMode ? "text-indigo-300" : "text-indigo-600"
-                    }`}>
+                    <label className={`block text-[10px] font-black uppercase tracking-wider ${darkMode ? "text-indigo-300" : "text-indigo-600"
+                      }`}>
                       Select Assessment Topic
                     </label>
                     <div className="relative">
                       <select
                         value={quizTopic}
                         onChange={(e) => setQuizTopic(e.target.value)}
-                        className={`w-full max-w-full border rounded-xl pl-4 pr-10 py-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer truncate appearance-none ${
-                          darkMode 
-                            ? "bg-slate-950 text-white border-slate-800" 
+                        className={`w-full max-w-full border rounded-xl pl-4 pr-10 py-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer truncate appearance-none ${darkMode
+                            ? "bg-slate-950 text-white border-slate-800"
                             : "bg-slate-50 text-slate-850 border-slate-200"
-                        }`}
+                          }`}
                       >
                         {standardChaptersList.map((chap) => (
                           <option key={chap} value={chap} className="bg-slate-950 text-white font-medium">
@@ -1047,11 +995,10 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                   <button
                     onClick={handleStartQuiz}
                     disabled={quizLoading}
-                    className={`font-extrabold text-xs px-6 py-3.5 rounded-xl transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2 ${
-                      darkMode 
-                        ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white shadow-indigo-600/10" 
+                    className={`font-extrabold text-xs px-6 py-3.5 rounded-xl transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2 ${darkMode
+                        ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white shadow-indigo-600/10"
                         : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white shadow-indigo-600/15"
-                    }`}
+                      }`}
                   >
                     {quizLoading ? (
                       <>
@@ -1070,23 +1017,19 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
             ) : (
               /* Step 2: Assessment Session Active */
               <div className="space-y-6">
-                <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b pb-4 ${
-                  darkMode ? "border-slate-800" : "border-slate-100"
-                }`}>
+                <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b pb-4 ${darkMode ? "border-slate-800" : "border-slate-100"
+                  }`}>
                   <div>
-                    <span className={`text-[10px] font-extrabold uppercase tracking-widest ${
-                      darkMode ? "text-indigo-300" : "text-indigo-600"
-                    }`}>
+                    <span className={`text-[10px] font-extrabold uppercase tracking-widest ${darkMode ? "text-indigo-300" : "text-indigo-600"
+                      }`}>
                       Active AI Assessment Unit
                     </span>
-                    <h4 className={`text-lg font-black mt-1 ${
-                      darkMode ? "text-white" : "text-slate-900"
-                    }`}>Topic: {quizTopic}</h4>
+                    <h4 className={`text-lg font-black mt-1 ${darkMode ? "text-white" : "text-slate-900"
+                      }`}>Topic: {quizTopic}</h4>
                   </div>
                   <div className="text-right">
-                    <span className={`text-xs font-semibold ${
-                      darkMode ? "text-indigo-300" : "text-slate-900"
-                    }`}>
+                    <span className={`text-xs font-semibold ${darkMode ? "text-indigo-300" : "text-slate-900"
+                      }`}>
                       Assessments are automatically graded with step-by-step rationales.
                     </span>
                   </div>
@@ -1094,20 +1037,17 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
                 <div className="space-y-6">
                   {quizQuestions.map((q, qIdx) => (
-                    <div key={q.id} className={`p-5 rounded-2xl border space-y-4 ${
-                      darkMode 
-                        ? "bg-slate-950/40 border-slate-900/40" 
+                    <div key={q.id} className={`p-5 rounded-2xl border space-y-4 ${darkMode
+                        ? "bg-slate-950/40 border-slate-900/40"
                         : "bg-slate-50 border-slate-100"
-                    }`}>
+                      }`}>
                       <div className="flex items-start gap-3">
-                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                          darkMode ? "bg-indigo-500/25 text-indigo-300" : "bg-indigo-100 text-indigo-600"
-                        }`}>
+                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${darkMode ? "bg-indigo-500/25 text-indigo-300" : "bg-indigo-100 text-indigo-600"
+                          }`}>
                           {qIdx + 1}
                         </span>
-                        <div className={`text-xs font-black leading-relaxed pt-0.5 select-text ${
-                          darkMode ? "text-white" : "text-black"
-                        }`}>
+                        <div className={`text-xs font-black leading-relaxed pt-0.5 select-text ${darkMode ? "text-white" : "text-black"
+                          }`}>
                           {q.question}
                         </div>
                       </div>
@@ -1117,7 +1057,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                         {q.options.map((opt: string, optIdx: number) => {
                           const isSelected = quizAnswers[q.id] === optIdx;
                           const isCorrect = q.answerIndex === optIdx;
-                          
+
                           let optStyle = "";
                           if (darkMode) {
                             optStyle = "bg-indigo-950/30 border-indigo-800/50 text-indigo-100 hover:bg-indigo-900/30";
@@ -1167,12 +1107,10 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
                       {/* Show Academic Rationale after submission */}
                       {quizSubmitted && (
-                        <div className={`pl-9 pt-2 border-t mt-2 space-y-1 ${
-                          darkMode ? "text-indigo-200 border-indigo-850" : "text-slate-900 border-slate-200"
-                        }`}>
-                          <p className={`font-extrabold uppercase tracking-widest text-[9px] ${
-                            darkMode ? "text-emerald-400" : "text-emerald-600"
+                        <div className={`pl-9 pt-2 border-t mt-2 space-y-1 ${darkMode ? "text-indigo-200 border-indigo-850" : "text-slate-900 border-slate-200"
                           }`}>
+                          <p className={`font-extrabold uppercase tracking-widest text-[9px] ${darkMode ? "text-emerald-400" : "text-emerald-600"
+                            }`}>
                             Academic Explanatory Rationale:
                           </p>
                           <p className="opacity-95 leading-relaxed font-bold">{q.explanation}</p>
@@ -1183,14 +1121,12 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                 </div>
 
                 {/* Submit / Reset Actions */}
-                <div className={`flex justify-between items-center border-t pt-4 ${
-                  darkMode ? "border-slate-800" : "border-slate-100"
-                }`}>
+                <div className={`flex justify-between items-center border-t pt-4 ${darkMode ? "border-slate-800" : "border-slate-100"
+                  }`}>
                   {quizSubmitted ? (
                     <div className="flex items-center gap-3">
-                      <span className={`text-lg font-black ${
-                        darkMode ? "text-indigo-300" : "text-indigo-650"
-                      }`}>
+                      <span className={`text-lg font-black ${darkMode ? "text-indigo-300" : "text-indigo-650"
+                        }`}>
                         Evaluated Score: {quizScore}/5
                       </span>
                       {quizScore === 5 && (
@@ -1200,9 +1136,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                       )}
                     </div>
                   ) : (
-                    <div className={`text-xs font-bold ${
-                      darkMode ? "text-indigo-300" : "text-slate-900"
-                    }`}>
+                    <div className={`text-xs font-bold ${darkMode ? "text-indigo-300" : "text-slate-900"
+                      }`}>
                       Please respond to all five questions to submit.
                     </div>
                   )}
@@ -1212,11 +1147,10 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                       <button
                         onClick={handleQuizSubmit}
                         disabled={Object.keys(quizAnswers).length < 5}
-                        className={`font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer ${
-                          darkMode
+                        className={`font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer ${darkMode
                             ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-950 disabled:text-indigo-700 text-white"
                             : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-indigo-600 font-extrabold"
-                        }`}
+                          }`}
                       >
                         Submit Assessment
                       </button>
@@ -1225,11 +1159,10 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                         onClick={() => {
                           setQuizStarted(false);
                         }}
-                        className={`font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer ${
-                          darkMode
+                        className={`font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer ${darkMode
                             ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-750"
                             : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
-                        }`}
+                          }`}
                       >
                         New Assessment
                       </button>
@@ -1261,34 +1194,28 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className={`relative w-full max-w-2xl shadow-2xl h-[100dvh] flex flex-col z-10 transition-colors duration-300 ${
-                darkMode ? "bg-slate-900 text-white" : "bg-white text-slate-900"
-              }`}
+              className={`relative w-full max-w-2xl shadow-2xl h-[100dvh] flex flex-col z-10 transition-colors duration-300 ${darkMode ? "bg-slate-900 text-white" : "bg-white text-slate-900"
+                }`}
             >
               {/* Drawer Header */}
-              <div className={`p-6 shrink-0 relative border-b ${
-                darkMode ? "bg-slate-950 text-white border-slate-850" : "bg-slate-50 text-slate-900 border-slate-200"
-              }`}>
-                <span className={`text-[10px] font-mono font-extrabold uppercase tracking-widest ${
-                  darkMode ? "text-indigo-400" : "text-indigo-600"
+              <div className={`p-6 shrink-0 relative border-b ${darkMode ? "bg-slate-950 text-white border-slate-850" : "bg-slate-50 text-slate-900 border-slate-200"
                 }`}>
+                <span className={`text-[10px] font-mono font-extrabold uppercase tracking-widest ${darkMode ? "text-indigo-400" : "text-indigo-600"
+                  }`}>
                   {activeSubject} Academic Companion
                 </span>
-                <h3 className={`text-xl font-extrabold leading-tight mt-1 pr-8 ${
-                  darkMode ? "text-white" : "text-slate-900"
-                }`}>
+                <h3 className={`text-xl font-extrabold leading-tight mt-1 pr-8 ${darkMode ? "text-white" : "text-slate-900"
+                  }`}>
                   {selectedTopic}
                 </h3>
-                <p className={`text-xs mt-1 ${
-                  darkMode ? "text-slate-400" : "text-slate-900"
-                }`}>
+                <p className={`text-xs mt-1 ${darkMode ? "text-slate-400" : "text-slate-900"
+                  }`}>
                   Current Completion Status: <span className="text-emerald-500 font-extrabold">{student.scores[selectedTopic] || 0}%</span>
                 </p>
                 <button
                   onClick={() => setSelectedTopic(null)}
-                  className={`absolute top-6 right-6 text-lg font-black cursor-pointer transition-all ${
-                    darkMode ? "text-slate-400 hover:text-white" : "text-slate-900 hover:text-black"
-                  }`}
+                  className={`absolute top-6 right-6 text-lg font-black cursor-pointer transition-all ${darkMode ? "text-slate-400 hover:text-white" : "text-slate-900 hover:text-black"
+                    }`}
                 >
                   ✕
                 </button>
@@ -1298,21 +1225,19 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
               <div className="flex border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 shrink-0 overflow-x-auto scrollbar-none touch-pan-y">
                 <button
                   onClick={() => setActiveTab("cheat")}
-                  className={`flex-1 min-w-[120px] shrink-0 flex items-center justify-center gap-2 py-3 text-xs font-black border-b-2 transition-all cursor-pointer ${
-                    activeTab === "cheat"
+                  className={`flex-1 min-w-[120px] shrink-0 flex items-center justify-center gap-2 py-3 text-xs font-black border-b-2 transition-all cursor-pointer ${activeTab === "cheat"
                       ? "border-indigo-600 text-indigo-700 bg-white dark:bg-slate-900"
                       : "border-transparent text-slate-900 hover:text-black dark:text-slate-400 dark:hover:text-slate-100"
-                  }`}
+                    }`}
                 >
                   <BookOpen className="h-4 w-4 text-indigo-500" /> Academic Resources
                 </button>
                 <button
                   onClick={() => setActiveTab("milestones")}
-                  className={`flex-1 min-w-[120px] shrink-0 flex items-center justify-center gap-2 py-3 text-xs font-black border-b-2 transition-all cursor-pointer ${
-                    activeTab === "milestones"
+                  className={`flex-1 min-w-[120px] shrink-0 flex items-center justify-center gap-2 py-3 text-xs font-black border-b-2 transition-all cursor-pointer ${activeTab === "milestones"
                       ? "border-indigo-600 text-indigo-700 bg-white dark:bg-slate-900"
                       : "border-transparent text-slate-900 hover:text-black dark:text-slate-400 dark:hover:text-slate-100"
-                  }`}
+                    }`}
                 >
                   <CheckSquare className="h-4 w-4 text-emerald-500" /> Prep Milestones
                 </button>
@@ -1320,7 +1245,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
               {/* Drawer Content */}
               <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 space-y-6">
-                
+
                 {/* 1. Academic Resources Tab */}
                 {activeTab === "cheat" && (
                   <div className="space-y-6 animate-fadeIn">
@@ -1334,9 +1259,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                           {TOPIC_RESOURCES[selectedTopic]?.formulas?.map((item) => (
                             <div
                               key={item.label}
-                              className={`p-4 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${
-                                darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-100"
-                              }`}
+                              className={`p-4 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-100"
+                                }`}
                             >
                               <div>
                                 <span className="text-[10px] font-extrabold text-indigo-700 dark:text-indigo-400 uppercase block mb-1">
@@ -1411,11 +1335,10 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                             <button
                               key={cIdx}
                               onClick={() => handleToggleMilestone(cIdx)}
-                              className={`w-full text-left p-4 rounded-2xl border transition-all flex items-start gap-3.5 cursor-pointer ${
-                                isChecked
+                              className={`w-full text-left p-4 rounded-2xl border transition-all flex items-start gap-3.5 cursor-pointer ${isChecked
                                   ? "bg-indigo-50/40 border-indigo-200 text-black dark:text-white dark:bg-indigo-950/20"
                                   : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 text-slate-900 dark:text-slate-300 font-extrabold"
-                              }`}
+                                }`}
                             >
                               <input
                                 type="checkbox"
@@ -1428,9 +1351,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                                   <span className="font-extrabold text-xs text-black dark:text-white leading-tight">
                                     {concept}
                                   </span>
-                                  <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                                    isChecked ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 dark:bg-slate-800 text-slate-900 font-extrabold"
-                                  }`}>
+                                  <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${isChecked ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 dark:bg-slate-800 text-slate-900 font-extrabold"
+                                    }`}>
                                     +{weight}%
                                   </span>
                                 </div>
@@ -1558,11 +1480,10 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed font-medium select-text ${
-                      msg.role === "user"
+                    className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed font-medium select-text ${msg.role === "user"
                         ? "bg-indigo-600 text-white rounded-tr-none"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-none border border-slate-200/50 dark:border-slate-700/50"
-                    }`}
+                      }`}
                   >
                     <div className="space-y-1.5">
                       {parseMarkdownAndMath(msg.text)}

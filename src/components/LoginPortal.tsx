@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { FlaskConical, Lock, User, ShieldAlert, Award, GraduationCap, X, Mail } from "lucide-react";
 import { fetchWithRetry } from "../lib/fetch";
+import { signInWithGoogle } from "../lib/firebase";
 
 interface LoginPortalProps {
   onLoginSuccess: (session: { role: "student" | "teacher"; student?: any; name?: string }) => void;
@@ -19,6 +20,8 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
   const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [googleEmailInput, setGoogleEmailInput] = useState("");
   const [isLinkingStep, setIsLinkingStep] = useState(false);
+  const [isVerificationStep, setIsVerificationStep] = useState(false);
+  const [verifyPhone, setVerifyPhone] = useState("");
   const [linkRollNo, setLinkRollNo] = useState("");
   const [linkPhone, setLinkPhone] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -55,23 +58,36 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
     }
   };
 
-  // Handle Simulated Google Login Select
-  const handleGoogleSelect = async (email: string) => {
+  // Handle Proper Real Google Login
+  const handleRealGoogleLogin = async () => {
     setGoogleError(null);
     setGoogleLoading(true);
     try {
+      // 1. Trigger Firebase Sign In popup
+      const result = await signInWithGoogle();
+      const user = result.user;
+      if (!user || !user.email) {
+        throw new Error("Failed to get Google account information.");
+      }
+
+      // 2. Get ID token from the user
+      const idToken = await user.getIdToken();
+
+      // 3. Send credentials to backend
       const res = await fetchWithRetry("/api/login-google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: user.email, idToken }),
       });
 
       const data = await res.json();
 
       if (res.status === 404 && data.needsLinking) {
-        // Switch to linking flow
-        setGoogleEmailInput(email);
+        // Switch to linking flow in modal
+        setGoogleEmailInput(user.email);
         setIsLinkingStep(true);
+        setIsVerificationStep(false);
+        setShowGoogleModal(true);
         return;
       }
 
@@ -82,7 +98,12 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
       onLoginSuccess(data);
       setShowGoogleModal(false);
     } catch (err: any) {
-      setGoogleError(err.message);
+      if (err.code === "auth/popup-closed-by-user") {
+        setGoogleError("Sign-in popup was closed before completion.");
+      } else {
+        setGoogleError(err.message);
+      }
+      setShowGoogleModal(true);
     } finally {
       setGoogleLoading(false);
     }
@@ -119,12 +140,6 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
       setGoogleLoading(false);
     }
   };
-
-  const sampleGoogleAccounts = [
-    { name: "Mukul Sharma", email: "mukul.sharma@gmail.com", avatar: "MS" },
-    { name: "Supriya", email: "supriya@gmail.com", avatar: "S" },
-    { name: "Vanshika", email: "vanshika@gmail.com", avatar: "V" },
-  ];
 
   return (
     <div id="login-portal-container" className="min-h-screen bg-gradient-to-tr from-slate-100 via-indigo-50/40 to-cyan-50/60 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
@@ -325,12 +340,8 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
 
               <button
                 type="button"
-                onClick={() => {
-                  setGoogleError(null);
-                  setIsLinkingStep(false);
-                  setGoogleEmailInput("");
-                  setShowGoogleModal(true);
-                }}
+                onClick={handleRealGoogleLogin}
+                disabled={googleLoading}
                 className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition-all cursor-pointer"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
@@ -422,79 +433,16 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                   <ShieldAlert className="h-4 w-4 shrink-0 text-rose-500" />
                   <span>{googleError}</span>
                 </div>
-              )}
-
-              {!isLinkingStep ? (
-                /* Account Chooser Step */
-                <div className="space-y-4">
-                  <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Choose an account</p>
-                  
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {sampleGoogleAccounts.map((account) => (
-                      <button
-                        key={account.email}
-                        onClick={() => handleGoogleSelect(account.email)}
-                        disabled={googleLoading}
-                        className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 border border-slate-100 transition-colors text-left"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center font-bold text-indigo-600 text-xs">
-                            {account.avatar}
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-slate-800 leading-none">{account.name}</p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">{account.email}</p>
-                          </div>
-                        </div>
-                        <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/50">
-                          Ready
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Manual custom email login option */}
-                  <div className="border-t border-slate-100 pt-3">
-                    <label className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">
-                      Use another Google account
-                    </label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                        <input
-                          type="email"
-                          placeholder="e.g. name@gmail.com"
-                          value={googleEmailInput}
-                          onChange={(e) => setGoogleEmailInput(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800"
-                        />
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (!googleEmailInput.trim() || !googleEmailInput.includes("@")) {
-                            setGoogleError("Please enter a valid Gmail address.");
-                            return;
-                          }
-                          handleGoogleSelect(googleEmailInput.trim().toLowerCase());
-                        }}
-                        disabled={googleLoading}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 text-white rounded-xl text-xs font-bold transition-all shrink-0"
-                      >
-                        Verify
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
+              )}              {isLinkingStep ? (
                 /* Dynamic Student SAMS Link Step */
                 <form onSubmit={handleGoogleLinkSubmit} className="space-y-4">
-                  <div className="p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-2xl text-slate-600 text-xs leading-relaxed">
+                  <div className="p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-2xl text-slate-655 text-xs leading-relaxed">
                     <p className="font-bold text-slate-800 mb-1">Link Google Email to SAMS</p>
                     <span className="font-mono text-indigo-700 font-extrabold">{googleEmailInput}</span> is not linked to standard student data. Enter your Roll and Phone to verify and link instantly.
                   </div>
 
                   <div>
-                    <label htmlFor="linkRollNo" className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    <label htmlFor="linkRollNo" className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">
                       Verify Roll Number
                     </label>
                     <input
@@ -504,12 +452,12 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                       placeholder="e.g. 5"
                       value={linkRollNo}
                       onChange={(e) => setLinkRollNo(e.target.value)}
-                      className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800"
+                      className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-850"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="linkPhone" className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                    <label htmlFor="linkPhone" className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">
                       Verify Phone (or last 4 digits)
                     </label>
                     <input
@@ -519,7 +467,7 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                       placeholder="e.g. 4362"
                       value={linkPhone}
                       onChange={(e) => setLinkPhone(e.target.value)}
-                      className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800"
+                      className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-850"
                     />
                   </div>
 
@@ -527,19 +475,37 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                     <button
                       type="button"
                       onClick={() => setIsLinkingStep(false)}
-                      className="flex-1 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                      className="flex-1 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-655 hover:bg-slate-100 transition-colors"
                     >
                       Back
                     </button>
                     <button
                       type="submit"
                       disabled={googleLoading}
-                      className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center"
+                      className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-505 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer"
                     >
                       {googleLoading ? "Linking..." : "Link & Sign In"}
                     </button>
                   </div>
                 </form>
+              ) : (
+                /* Google Authentication Status / Error View */
+                <div className="space-y-4 text-center py-2">
+                  <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto text-rose-500">
+                    <ShieldAlert className="h-6 w-6" />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-800">Google Sign-in Error</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    {googleError || "An unexpected error occurred during Google Sign-in."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowGoogleModal(false)}
+                    className="w-full mt-2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
               )}
             </motion.div>
           </div>
