@@ -1,4 +1,6 @@
 import express from "express";
+import dotenv from "dotenv";
+dotenv.config();
 import fs from "fs";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -150,7 +152,8 @@ async function ensureFirestoreSeeded() {
       console.log("[Firestore] Verification: Database is already seeded.");
     }
   } catch (err) {
-    console.error("[Firestore] Failed to seed database:", err);
+    console.error("[Firestore] Failed to seed database or query Firestore. Disabling cloud sync and falling back to stable local storage.", err);
+    db = null; // Disable Firestore so it doesn't try to use it on requests
   }
 }
 

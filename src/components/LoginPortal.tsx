@@ -142,7 +142,7 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
   };
 
   return (
-    <div id="login-portal-container" className="min-h-screen bg-gradient-to-tr from-slate-100 via-indigo-50/40 to-cyan-50/60 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
+    <div id="login-portal-container" className="min-h-screen bg-gradient-to-tr from-slate-100 via-indigo-50/40 to-cyan-50/60 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
       {/* Animated Glowing Ambient Orbs */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-200/30 rounded-full blur-[120px] animate-pulse" />
@@ -155,35 +155,35 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
           <div className="bg-indigo-600 p-2.5 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
             <FlaskConical className="h-6 w-6 text-white" />
           </div>
-          <span className="text-2xl font-black tracking-tight text-slate-900 font-display">
+          <span className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 font-display">
             SAMS <span className="text-indigo-600">Analytics</span>
           </span>
         </div>
-        <h2 className="mt-5 text-center text-2xl font-black text-slate-900 tracking-tight font-display px-2">
+        <h2 className="mt-4 text-center text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display px-2">
           Student Academic Monitoring System
         </h2>
-        <p className="mt-2 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest font-sans">
+        <p className="mt-2 text-center text-xs font-bold text-slate-400 uppercase tracking-widest font-sans">
           Class XII-A Academic Portal • DBRA CM Shri Gandhi Nagar
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10 px-4">
-        <div className="glass-panel py-8 px-6 shadow-2xl shadow-indigo-950/5 rounded-[2.5rem] sm:px-10">
+      <div className="mt-6 sm:mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10">
+        <div className="glass-panel py-6 px-5 sm:py-8 shadow-2xl shadow-indigo-950/5 rounded-[2rem] sm:rounded-[2.5rem] sm:px-10">
           {/* Role Tabs */}
-          <div className="flex bg-slate-50/80 p-1.5 rounded-[1.5rem] mb-8 border border-slate-200/50">
+          <div className="flex bg-slate-50/80 p-1.5 rounded-[1.5rem] mb-6 sm:mb-8 border border-slate-200/50">
             <button
               id="student-role-tab"
               onClick={() => {
                 setRole("student");
                 setError(null);
               }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all cursor-pointer ${
                 role === "student"
                   ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/15"
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              <GraduationCap className="h-4 w-4" />
+              <GraduationCap className="h-4 w-4 shrink-0" />
               Student Portal
             </button>
             <button
@@ -192,13 +192,13 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                 setRole("teacher");
                 setError(null);
               }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all cursor-pointer ${
                 role === "teacher"
                   ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/15"
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              <ShieldAlert className="h-4 w-4" />
+              <ShieldAlert className="h-4 w-4 shrink-0" />
               Faculty Portal
             </button>
           </div>
@@ -207,7 +207,7 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
             {role === "student" ? (
               <>
                 <div>
-                  <label htmlFor="rollNo" className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label htmlFor="rollNo" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
                     Your Roll Number
                   </label>
                   <div className="mt-2 relative rounded-xl shadow-none">
@@ -224,16 +224,16 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                       placeholder="e.g. 1"
                       value={rollNo}
                       onChange={(e) => setRollNo(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-xs font-medium transition-all"
+                      className="block w-full pl-10 pr-3 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-base font-medium transition-all"
                     />
                   </div>
-                  <p className="mt-1.5 text-[10px] text-slate-400 font-mono">
+                  <p className="mt-1.5 text-xs text-slate-400 font-mono">
                     Hint: Class supports rolls 1 through 37
                   </p>
                 </div>
 
                 <div>
-                  <label htmlFor="phone" className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <label htmlFor="phone" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
                     Registered Phone (or last 4 digits)
                   </label>
                   <div className="mt-2 relative rounded-xl shadow-none">
@@ -245,20 +245,20 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                       name="phone"
                       type="password"
                       required
-                      placeholder="e.g. 1366"
+                      placeholder="e.g. 1234"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-xs font-medium transition-all"
+                      className="block w-full pl-10 pr-3 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-base font-medium transition-all"
                     />
                   </div>
-                  <p className="mt-1.5 text-[10px] text-slate-400">
+                  <p className="mt-1.5 text-xs text-slate-400">
                     Secure Check: Enter the 10-digit phone or the last 4 digits listed in the registry.
                   </p>
                 </div>
               </>
             ) : (
               <div>
-                <label htmlFor="passcode" className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label htmlFor="passcode" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
                   Academic Faculty Passcode
                 </label>
                 <div className="mt-2 relative rounded-xl shadow-none">
@@ -273,23 +273,23 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                     placeholder="Enter Staff Passcode"
                     value={passcode}
                     onChange={(e) => setPasscode(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-xs font-medium transition-all"
+                    className="block w-full pl-10 pr-3 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-base font-medium transition-all"
                   />
                 </div>
-                <div className="mt-3 p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Staff Access Keys:</p>
-                  <div className="grid grid-cols-1 gap-1.5 text-[11px] text-slate-600 font-medium">
-                    <div className="flex justify-between items-center bg-white px-2 py-1.5 rounded border border-slate-100">
+                <div className="mt-3 p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Staff Access Keys:</p>
+                  <div className="grid grid-cols-1 gap-1.5 text-xs text-slate-600 font-medium">
+                    <div className="flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-slate-100">
                       <span>Chemistry Login:</span>
-                      <code className="text-indigo-600 font-mono font-bold">CHEM12A</code>
+                      <code className="text-indigo-600 font-mono font-bold text-sm">CHEM12A</code>
                     </div>
-                    <div className="flex justify-between items-center bg-white px-2 py-1.5 rounded border border-slate-100">
+                    <div className="flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-slate-100">
                       <span>Physics Login:</span>
-                      <code className="text-indigo-600 font-mono font-bold">PHYS12A</code>
+                      <code className="text-indigo-600 font-mono font-bold text-sm">PHYS12A</code>
                     </div>
-                    <div className="flex justify-between items-center bg-white px-2 py-1.5 rounded border border-slate-100">
+                    <div className="flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-slate-100">
                       <span>Mathematics Login:</span>
-                      <code className="text-indigo-600 font-mono font-bold">MATH12A</code>
+                      <code className="text-indigo-600 font-mono font-bold text-sm">MATH12A</code>
                     </div>
                   </div>
                 </div>
@@ -300,7 +300,7 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-2 text-rose-600 text-xs font-medium"
+                className="p-3.5 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-2 text-rose-600 text-sm font-medium"
               >
                 <ShieldAlert className="h-4 w-4 shrink-0 text-rose-500" />
                 <span>{error}</span>
@@ -311,7 +311,7 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
               id="login-submit-button"
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/15 transition-all cursor-pointer"
+              className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/15 transition-all cursor-pointer"
             >
               {loading ? (
                 <div className="flex items-center gap-2">
@@ -342,7 +342,7 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                 type="button"
                 onClick={handleRealGoogleLogin}
                 disabled={googleLoading}
-                className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition-all cursor-pointer"
+                className="w-full flex justify-center items-center gap-2.5 py-3.5 px-4 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition-all cursor-pointer"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path
@@ -368,7 +368,7 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
           )}
 
           {/* Core System Disclosures */}
-          <div className="mt-6 border-t border-slate-100 pt-4 flex justify-center items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          <div className="mt-5 border-t border-slate-100 pt-4 flex justify-center items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
             <span className="flex items-center gap-1">
               <Award className="h-3.5 w-3.5 text-indigo-500" /> SAMS Academic Monitor
             </span>

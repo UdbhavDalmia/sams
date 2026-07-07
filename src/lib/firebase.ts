@@ -2,12 +2,13 @@ import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBi7n9b7RjOOFv2OrUHxix5IKQmgFhvyh4",
+  apiKey: "AIzaSyBddt-iPvtiG9aTB2ay9MY7VOfaY2vQJKE",
   authDomain: "gen-lang-client-0844479508.firebaseapp.com",
   projectId: "gen-lang-client-0844479508",
   storageBucket: "gen-lang-client-0844479508.firebasestorage.app",
-  messagingSenderId: "1011520905225",
-  appId: "1:1011520905225:web:aafa46c7d4f139e81098d8"
+  messagingSenderId: "97371965956",
+  appId: "1:97371965956:web:56ab2ae458f65be309c351",
+  measurementId: "G-GSR0W5BNKE"
 };
 
 // Initialize Firebase Client

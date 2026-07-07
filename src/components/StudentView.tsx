@@ -244,7 +244,7 @@ interface StudentViewProps {
 }
 
 // Chime Sound Synthesizer via Web Audio API (Disabled)
-const playChime = (completed: boolean) => {};
+const playChime = (completed: boolean) => { };
 
 // Canvas Particle Confetti Shower Trigger
 const triggerConfetti = () => {
@@ -747,30 +747,42 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
       </header>
 
       {/* Formal Student Profile & Academic Contacts Bar */}
-      <div className={`px-6 py-3 border-b text-[11px] font-bold flex flex-wrap gap-x-8 gap-y-2 items-center justify-center transition-colors duration-300 ${darkMode ? "bg-slate-900/40 border-slate-800/80 text-slate-300" : "bg-slate-100/50 border-slate-200 text-slate-800"
+      <div className={`px-4 sm:px-6 py-3 border-b text-[11px] font-bold transition-colors duration-300 ${darkMode ? "bg-slate-900/40 border-slate-800/80 text-slate-300" : "bg-slate-100/50 border-slate-200 text-slate-800"
         }`}>
-        <div className="flex items-center gap-2">
-          <span className="text-slate-900 dark:text-slate-400">Student Name:</span>
-          <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{student.name}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-slate-900 dark:text-slate-400">Roll No:</span>
-          <span className="font-mono text-indigo-600 dark:text-indigo-400 font-black">{student.rollNo}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-slate-900 dark:text-slate-400">Mobile No:</span>
-          <span className="font-mono text-indigo-600 dark:text-indigo-400 font-extrabold">{student.phone}</span>
-        </div>
-        {student.email && (
+        {/* Top row: Name, Roll, Mobile, Email */}
+        <div className="flex flex-wrap gap-x-6 gap-y-1.5 items-center justify-center">
           <div className="flex items-center gap-2">
-            <span className="text-slate-900 dark:text-slate-400">Email:</span>
-            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">{student.email}</span>
+            <span className="text-slate-900 dark:text-slate-400">Student Name:</span>
+            <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{student.name}</span>
           </div>
-        )}
-        <div className="flex items-center gap-2 justify-center text-center">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-900 dark:text-slate-400">Roll No:</span>
+            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-black">{student.rollNo}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-900 dark:text-slate-400">Mobile No:</span>
+            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-extrabold">{student.phone}</span>
+          </div>
+          {student.email && (
+            <div className="flex items-center gap-2">
+              <span className="text-slate-900 dark:text-slate-400">Email:</span>
+              <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">{student.email}</span>
+            </div>
+          )}
+        </div>
+        {/* Second row: Faculty - always on its own line so it doesn't break awkwardly */}
+        <div className="flex flex-wrap items-center justify-center gap-1 mt-1.5 text-center">
           <span className="text-slate-900 dark:text-slate-400">Class Faculty:</span>
           <span className="text-indigo-600 dark:text-indigo-400 font-semibold">
-            Pradeep Gusain(Chem) • Narendra Kumar(Phy) • Tarun Makkar(Maths)
+            Pradeep Gusain (Chem)
+          </span>
+          <span className="text-slate-400 dark:text-slate-600 hidden sm:inline">•</span>
+          <span className="text-indigo-600 dark:text-indigo-400 font-semibold">
+            Narendra Kumar (Phy)
+          </span>
+          <span className="text-slate-400 dark:text-slate-600 hidden sm:inline">•</span>
+          <span className="text-indigo-600 dark:text-indigo-400 font-semibold">
+            Tarun Makkar (Maths)
           </span>
         </div>
       </div>
@@ -834,7 +846,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
         </section>
 
         {/* Dynamic Subject Nav tabs */}
-        <section className={`flex p-2 rounded-[2rem] border transition-colors duration-300 items-center justify-between gap-2 w-full ${darkMode ? "bg-slate-900 border-slate-800" : "bg-[#f1f5f9] border-slate-200/80"
+        <section className={`flex flex-col sm:flex-row p-2 rounded-[2rem] border transition-colors duration-300 items-stretch sm:items-center justify-between gap-2 w-full ${darkMode ? "bg-slate-900 border-slate-800" : "bg-[#f1f5f9] border-slate-200/80"
           }`}>
           {["Chemistry", "Physics", "Mathematics"].map((sub) => {
             const isSelected = activeSubject === sub;
@@ -844,23 +856,23 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
               <button
                 key={sub}
                 onClick={() => setActiveSubject(sub as any)}
-                className={`flex-1 flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl font-black text-sm md:text-base transition-all duration-200 cursor-pointer ${isSelected
-                    ? darkMode
-                      ? "bg-slate-950 border-2 border-slate-200 text-white shadow-md"
-                      : "bg-white border-[2.5px] border-black text-indigo-700 shadow-sm"
-                    : darkMode
-                      ? "bg-transparent border-[2.5px] border-transparent text-slate-400 hover:text-slate-200"
-                      : "bg-transparent border-[2.5px] border-transparent text-slate-900 hover:text-black font-black"
+                className={`flex-1 flex items-center justify-center gap-2.5 py-3 sm:py-4 px-4 sm:px-6 rounded-2xl font-black text-sm md:text-base transition-all duration-200 cursor-pointer ${isSelected
+                  ? darkMode
+                    ? "bg-slate-950 border-2 border-slate-200 text-white shadow-md"
+                    : "bg-white border-[2.5px] border-black text-indigo-700 shadow-sm"
+                  : darkMode
+                    ? "bg-transparent border-[2.5px] border-transparent text-slate-400 hover:text-slate-200"
+                    : "bg-transparent border-[2.5px] border-transparent text-slate-900 hover:text-black font-black"
                   }`}
               >
                 <span className="tracking-tight">{sub}</span>
                 <span className={`text-[10px] md:text-xs font-mono font-bold px-2 py-0.5 rounded-full shrink-0 transition-colors ${isSelected
-                    ? darkMode
-                      ? "bg-indigo-950 text-indigo-300"
-                      : "bg-indigo-100/60 text-indigo-700"
-                    : darkMode
-                      ? "bg-slate-800 text-slate-500"
-                      : "bg-slate-200 text-slate-900 font-extrabold"
+                  ? darkMode
+                    ? "bg-indigo-950 text-indigo-300"
+                    : "bg-indigo-100/60 text-indigo-700"
+                  : darkMode
+                    ? "bg-slate-800 text-slate-500"
+                    : "bg-slate-200 text-slate-900 font-extrabold"
                   }`}>
                   {unitCount} Units
                 </span>
@@ -929,13 +941,13 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
         {/* Refactored Interactive Gemini Academic Quiz Panel */}
         <section className={`p-6 rounded-[2rem] border relative overflow-hidden transition-all duration-300 ${darkMode
-            ? "bg-slate-900/60 border-slate-800 text-white"
-            : "bg-white border-slate-200/80 shadow-md shadow-slate-100 text-slate-900"
+          ? "bg-slate-900/60 border-slate-800 text-white"
+          : "bg-white border-slate-200/80 shadow-md shadow-slate-100 text-slate-900"
           }`}>
           {/* Animated Background Mesh */}
           <div className={`absolute inset-0 pointer-events-none z-0 ${darkMode
-              ? "bg-gradient-to-br from-indigo-950/10 via-slate-950/30 to-cyan-950/10"
-              : "bg-gradient-to-br from-indigo-50/20 via-white to-sky-50/20"
+            ? "bg-gradient-to-br from-indigo-950/10 via-slate-950/30 to-cyan-950/10"
+            : "bg-gradient-to-br from-indigo-50/20 via-white to-sky-50/20"
             }`} />
 
           <div className="relative z-10 space-y-6">
@@ -944,23 +956,23 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
               <div className="max-w-2xl space-y-4">
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${darkMode
-                      ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/20"
-                      : "bg-indigo-50 text-indigo-600 border-indigo-100"
+                    ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/20"
+                    : "bg-indigo-50 text-indigo-600 border-indigo-100"
                     }`}>
                     Interactive AI Quiz Desk
                   </span>
                 </div>
                 <h3 className={`text-2xl font-black font-display ${darkMode ? "text-white" : "text-slate-900"
                   }`}>
-                  Test Your Skills with On-Demand AI Assessments
+                  Test Your Skills with On-Demand Assessments
                 </h3>
-                <p className={`text-xs leading-relaxed font-semibold ${darkMode ? "text-indigo-200" : "text-slate-900"
+                <p className={`text-sm leading-relaxed font-semibold ${darkMode ? "text-indigo-200" : "text-slate-900"
                   }`}>
                   Select any Class XII textbook unit or exam topic. SAMS will set five conceptually rigorous MCQ questions customized directly for your selected topic, matching CBSE and JEE Main patterns.
                 </p>
 
                 {quizError && (
-                  <div className="p-3 bg-rose-950/60 border border-rose-900/40 text-rose-300 rounded-xl flex items-center gap-2 text-xs font-semibold">
+                  <div className="p-3 bg-rose-950/60 border border-rose-900/40 text-rose-300 rounded-xl flex items-center gap-2 text-sm font-semibold">
                     <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
                     <span>{quizError}</span>
                   </div>
@@ -969,7 +981,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                 {/* Topic selection row */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-3 items-stretch sm:items-end">
                   <div className="flex-1 min-w-0 space-y-2">
-                    <label className={`block text-[10px] font-black uppercase tracking-wider ${darkMode ? "text-indigo-300" : "text-indigo-600"
+                    <label className={`block text-xs font-black uppercase tracking-wider ${darkMode ? "text-indigo-300" : "text-indigo-600"
                       }`}>
                       Select Assessment Topic
                     </label>
@@ -977,9 +989,9 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                       <select
                         value={quizTopic}
                         onChange={(e) => setQuizTopic(e.target.value)}
-                        className={`w-full max-w-full border rounded-xl pl-4 pr-10 py-3 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer truncate appearance-none ${darkMode
-                            ? "bg-slate-950 text-white border-slate-800"
-                            : "bg-slate-50 text-slate-850 border-slate-200"
+                        className={`w-full max-w-full border rounded-xl pl-4 pr-10 py-3 text-base font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer truncate appearance-none ${darkMode
+                          ? "bg-slate-950 text-white border-slate-800"
+                          : "bg-slate-50 text-slate-850 border-slate-200"
                           }`}
                       >
                         {standardChaptersList.map((chap) => (
@@ -995,9 +1007,9 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                   <button
                     onClick={handleStartQuiz}
                     disabled={quizLoading}
-                    className={`font-extrabold text-xs px-6 py-3.5 rounded-xl transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2 ${darkMode
-                        ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white shadow-indigo-600/10"
-                        : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white shadow-indigo-600/15"
+                    className={`font-extrabold text-sm px-6 py-3.5 rounded-xl transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2 ${darkMode
+                      ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white shadow-indigo-600/10"
+                      : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white shadow-indigo-600/15"
                       }`}
                   >
                     {quizLoading ? (
@@ -1038,8 +1050,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                 <div className="space-y-6">
                   {quizQuestions.map((q, qIdx) => (
                     <div key={q.id} className={`p-5 rounded-2xl border space-y-4 ${darkMode
-                        ? "bg-slate-950/40 border-slate-900/40"
-                        : "bg-slate-50 border-slate-100"
+                      ? "bg-slate-950/40 border-slate-900/40"
+                      : "bg-slate-50 border-slate-100"
                       }`}>
                       <div className="flex items-start gap-3">
                         <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${darkMode ? "bg-indigo-500/25 text-indigo-300" : "bg-indigo-100 text-indigo-600"
@@ -1147,9 +1159,9 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                       <button
                         onClick={handleQuizSubmit}
                         disabled={Object.keys(quizAnswers).length < 5}
-                        className={`font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer ${darkMode
-                            ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-950 disabled:text-indigo-700 text-white"
-                            : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-indigo-600 font-extrabold"
+                        className={`font-extrabold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer ${darkMode
+                          ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-950 disabled:text-indigo-700 text-white"
+                          : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-indigo-600 font-extrabold"
                           }`}
                       >
                         Submit Assessment
@@ -1159,9 +1171,9 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                         onClick={() => {
                           setQuizStarted(false);
                         }}
-                        className={`font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer ${darkMode
-                            ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-750"
-                            : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
+                        className={`font-extrabold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer ${darkMode
+                          ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-750"
+                          : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
                           }`}
                       >
                         New Assessment
@@ -1225,18 +1237,18 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
               <div className="flex border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 shrink-0 overflow-x-auto scrollbar-none touch-pan-y">
                 <button
                   onClick={() => setActiveTab("cheat")}
-                  className={`flex-1 min-w-[120px] shrink-0 flex items-center justify-center gap-2 py-3 text-xs font-black border-b-2 transition-all cursor-pointer ${activeTab === "cheat"
-                      ? "border-indigo-600 text-indigo-700 bg-white dark:bg-slate-900"
-                      : "border-transparent text-slate-900 hover:text-black dark:text-slate-400 dark:hover:text-slate-100"
+                  className={`flex-1 min-w-[120px] shrink-0 flex items-center justify-center gap-2 py-3 text-sm font-black border-b-2 transition-all cursor-pointer ${activeTab === "cheat"
+                    ? "border-indigo-600 text-indigo-700 bg-white dark:bg-slate-900"
+                    : "border-transparent text-slate-900 hover:text-black dark:text-slate-400 dark:hover:text-slate-100"
                     }`}
                 >
                   <BookOpen className="h-4 w-4 text-indigo-500" /> Academic Resources
                 </button>
                 <button
                   onClick={() => setActiveTab("milestones")}
-                  className={`flex-1 min-w-[120px] shrink-0 flex items-center justify-center gap-2 py-3 text-xs font-black border-b-2 transition-all cursor-pointer ${activeTab === "milestones"
-                      ? "border-indigo-600 text-indigo-700 bg-white dark:bg-slate-900"
-                      : "border-transparent text-slate-900 hover:text-black dark:text-slate-400 dark:hover:text-slate-100"
+                  className={`flex-1 min-w-[120px] shrink-0 flex items-center justify-center gap-2 py-3 text-sm font-black border-b-2 transition-all cursor-pointer ${activeTab === "milestones"
+                    ? "border-indigo-600 text-indigo-700 bg-white dark:bg-slate-900"
+                    : "border-transparent text-slate-900 hover:text-black dark:text-slate-400 dark:hover:text-slate-100"
                     }`}
                 >
                   <CheckSquare className="h-4 w-4 text-emerald-500" /> Prep Milestones
@@ -1259,18 +1271,16 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                           {TOPIC_RESOURCES[selectedTopic]?.formulas?.map((item) => (
                             <div
                               key={item.label}
-                              className={`p-4 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-100"
+                              className={`p-4 rounded-2xl border flex flex-col gap-2 ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-100"
                                 }`}
                             >
-                              <div>
-                                <span className="text-[10px] font-extrabold text-indigo-700 dark:text-indigo-400 uppercase block mb-1">
-                                  {item.label}
-                                </span>
-                                <code className="text-xs font-mono font-black text-slate-950 dark:text-slate-300 tracking-tight block overflow-x-auto">
-                                  {item.formula}
-                                </code>
-                              </div>
-                              <div className="bg-indigo-600/5 dark:bg-indigo-50/50 px-3.5 py-3 rounded-xl flex items-center justify-center text-xs text-indigo-700 dark:text-indigo-600 select-all border border-indigo-100/50 dark:border-indigo-950">
+                              <span className="text-[10px] font-extrabold text-indigo-700 dark:text-indigo-400 uppercase block">
+                                {item.label}
+                              </span>
+                              <div className={`px-3.5 py-3 rounded-xl flex items-center justify-center select-all border overflow-x-auto ${darkMode
+                                  ? "bg-slate-800 border-slate-700 text-indigo-200"
+                                  : "bg-indigo-600/5 border-indigo-100/50 text-indigo-700"
+                                }`}>
                                 <MathRenderer math={item.formula} block={false} />
                               </div>
                             </div>
@@ -1335,27 +1345,44 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                             <button
                               key={cIdx}
                               onClick={() => handleToggleMilestone(cIdx)}
-                              className={`w-full text-left p-4 rounded-2xl border transition-all flex items-start gap-3.5 cursor-pointer ${isChecked
-                                  ? "bg-indigo-50/40 border-indigo-200 text-black dark:text-white dark:bg-indigo-950/20"
-                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 text-slate-900 dark:text-slate-300 font-extrabold"
+                              className={`w-full text-left rounded-xl border transition-all flex items-stretch cursor-pointer overflow-hidden ${isChecked
+                                  ? "border-indigo-200 dark:border-indigo-800/60"
+                                  : "border-slate-200 dark:border-slate-700/60 hover:border-indigo-200 dark:hover:border-indigo-800/40"
                                 }`}
                             >
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                readOnly
-                                className="w-4 h-4 mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 pointer-events-none shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-start gap-2">
-                                  <span className="font-extrabold text-xs text-black dark:text-white leading-tight">
-                                    {concept}
-                                  </span>
-                                  <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${isChecked ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 dark:bg-slate-800 text-slate-900 font-extrabold"
-                                    }`}>
-                                    +{weight}%
-                                  </span>
+                              {/* Left accent stripe */}
+                              <div className={`w-1 shrink-0 rounded-l-xl transition-colors ${isChecked ? "bg-indigo-500" : "bg-slate-200 dark:bg-slate-700"
+                                }`} />
+
+                              <div className={`flex items-center gap-3 px-3.5 py-3 flex-1 min-w-0 transition-colors ${isChecked
+                                  ? "bg-indigo-50/50 dark:bg-indigo-950/20"
+                                  : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                                }`}>
+                                {/* Custom checkbox circle */}
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${isChecked
+                                    ? "bg-indigo-500 border-indigo-500"
+                                    : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                                  }`}>
+                                  {isChecked && (
+                                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12">
+                                      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                  )}
                                 </div>
+
+                                <span className={`flex-1 text-xs leading-snug transition-colors ${isChecked
+                                    ? "font-bold text-indigo-900 dark:text-indigo-200 line-through decoration-indigo-300 dark:decoration-indigo-700 decoration-1"
+                                    : "font-semibold text-slate-700 dark:text-slate-300"
+                                  }`}>
+                                  {concept}
+                                </span>
+
+                                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${isChecked
+                                    ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                                  }`}>
+                                  +{weight}%
+                                </span>
                               </div>
                             </button>
                           );
@@ -1468,7 +1495,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
             </div>
 
             {/* Disclaimer bar */}
-            <div className="bg-indigo-50 dark:bg-slate-950 border-b border-indigo-100 dark:border-slate-850 px-3.5 py-2 text-[10px] text-slate-500 dark:text-slate-400 leading-tight font-medium shrink-0">
+            <div className="bg-indigo-50 dark:bg-slate-950 border-b border-indigo-100 dark:border-slate-850 px-3.5 py-2 text-xs text-slate-500 dark:text-slate-400 leading-tight font-medium shrink-0">
               💡 <strong>Academic Guard:</strong> Programmed exclusively to answer XII Syllabus & prep schedules. Coding/cooking questions are disabled.
             </div>
 
@@ -1480,9 +1507,9 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed font-medium select-text ${msg.role === "user"
-                        ? "bg-indigo-600 text-white rounded-tr-none"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-none border border-slate-200/50 dark:border-slate-700/50"
+                    className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed font-medium select-text ${msg.role === "user"
+                      ? "bg-indigo-600 text-white rounded-tr-none"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-none border border-slate-200/50 dark:border-slate-700/50"
                       }`}
                   >
                     <div className="space-y-1.5">
@@ -1494,7 +1521,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
               {chatbotLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-2xl rounded-tl-none border border-slate-200/50 dark:border-slate-700/50 text-xs font-extrabold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                  <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 rounded-2xl rounded-tl-none border border-slate-200/50 dark:border-slate-700/50 text-sm font-extrabold text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
                     <Loader className="h-4 w-4 animate-spin text-indigo-500" />
                     Consulting class syllabus guides...
                   </div>
@@ -1510,7 +1537,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                 value={chatbotInput}
                 onChange={(e) => setChatbotInput(e.target.value)}
                 disabled={chatbotLoading}
-                className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
+                className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-base text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
               />
               <button
                 type="submit"

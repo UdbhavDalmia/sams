@@ -21,7 +21,6 @@ import {
   BookOpen,
   Mail
 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Student, TopicName, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, ALL_TOPICS } from "../types";
 import { fetchWithRetry } from "../lib/fetch";
 
@@ -49,10 +48,11 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   const [sortBy, setSortBy] = useState<"rollNo" | "name" | "average">("rollNo");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [rollNoFilter, setRollNoFilter] = useState("");
 
   // Active Subject Selection State
   const [activeSubject, setActiveSubject] = useState<"Chemistry" | "Physics" | "Mathematics">(teacherDetails.subject);
-  
+
   // Score & Email editor states
   const [editScores, setEditScores] = useState<Record<string, number>>({});
   const [editEmail, setEditEmail] = useState("");
@@ -60,8 +60,8 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Determine active topics list based on selected subject
-  const activeTopics = activeSubject === "Physics" 
-    ? PHYSICS_TOPICS 
+  const activeTopics = activeSubject === "Physics"
+    ? PHYSICS_TOPICS
     : (activeSubject === "Mathematics" ? MATHS_TOPICS : CHEMISTRY_TOPICS);
 
   // Load class data on mount
@@ -144,7 +144,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
       setSaveSuccess(true);
       // Refresh class data
       await fetchClassData();
-      
+
       // Update selectedStudent with new values
       const updatedStudents = students.map((s) => {
         if (s.rollNo === selectedStudent.rollNo) {
@@ -169,7 +169,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
 
   // Calculations for charts and metrics
   const totalStudents = students.length;
-  
+
   const calculateStudentAvg = (s: Student) => {
     const scores = activeTopics.map(t => s.scores[t] || 0);
     if (scores.length === 0) return 0;
@@ -216,12 +216,14 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   const filteredStudents = students
     .filter((s) => {
       const q = searchQuery.toLowerCase();
-      return (
+      const rollMatch = rollNoFilter.trim() === "" || s.rollNo.toString() === rollNoFilter.trim();
+      const textMatch = (
         s.name.toLowerCase().includes(q) ||
         s.rollNo.toString().includes(q) ||
         s.phone.includes(q) ||
         (s.email && s.email.toLowerCase().includes(q))
       );
+      return rollMatch && textMatch;
     })
     .sort((a, b) => {
       let comparison = 0;
@@ -257,12 +259,12 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
           </div>
           <span className="font-bold text-xl tracking-tight text-slate-900">SAMS <span className="text-indigo-600">Analytics</span></span>
         </div>
-        
+
         <div className="flex flex-wrap items-center gap-4 md:gap-6 justify-center sm:justify-end">
           <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">
             <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">Teacher Terminal</span>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <div className="text-right">
               <p className="text-xs font-medium text-slate-500 uppercase leading-none mb-1">{teacherDetails.role}</p>
@@ -285,7 +287,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
 
       {/* Main Layout Grid */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 space-y-8 overflow-y-auto">
-        
+
         {/* Core Multi-Subject Switcher */}
         <div className="bg-slate-200/50 p-1.5 rounded-2xl border border-slate-300/30 flex gap-3">
           {[
@@ -318,7 +320,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                 Total Class Size
               </span>
               <span className="text-3xl font-black text-slate-900 block mt-1 font-display">{totalStudents}</span>
-              <span className="text-[11px] text-slate-500 font-medium mt-1 block">Class XII-A Directory</span>
+              <span className="text-[11px] text-slate-500 font-medium mt-1 block">Class XII-A Student List</span>
             </div>
             <div className="p-4 bg-indigo-50 text-indigo-500 rounded-2xl shrink-0">
               <Users className="h-6 w-6" />
@@ -343,7 +345,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
           <div className="glass-panel p-6 rounded-[1.5rem] shadow-xl shadow-slate-100/40 flex items-center justify-between bg-white border border-slate-200/50">
             <div>
               <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block font-display">
-                Perfect Crystals (100%)
+                Perfect Completions (100%)
               </span>
               <span className="text-3xl font-black text-emerald-600 block mt-1 font-display">{perfectChaptersCount}</span>
               <span className="text-[11px] text-slate-500 font-medium mt-1 block">Total Mastered Chapters</span>
@@ -370,58 +372,94 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
           </div>
         </div>
 
-        {/* Recharts Analytics Section */}
-        <section className="glass-panel p-6 rounded-[1.5rem] shadow-xl shadow-slate-100/40 space-y-4 bg-white border border-slate-200/50">
-          <div>
-            <h3 className="text-lg font-black text-slate-900 font-display">{activeSubject} Class Performance Analytics</h3>
-            <p className="text-xs text-slate-400 font-medium">Average student completion percentage across all {activeTopics.length} chapters</p>
+        {/* Performance Analytics Section - Chapter Progress Bars */}
+        <section className="glass-panel p-6 rounded-[1.5rem] shadow-xl shadow-slate-100/40 space-y-4 bg-white">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2">
+            <div>
+              <h3 className="text-lg font-black text-slate-900 font-display">{activeSubject} Class Performance Analytics</h3>
+              <p className="text-xs text-slate-400 font-medium">Average completion % per chapter · {activeTopics.length} chapters</p>
+            </div>
+            <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">
+              <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-indigo-500"/> Class Avg</span>
+            </div>
           </div>
-          <div className="h-72 w-full font-mono text-[10px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topicAverages} margin={{ top: 20, right: 10, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{ fill: "#64748b" }} axisLine={false} tickLine={false} />
-                <YAxis domain={[0, 100]} tick={{ fill: "#64748b" }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  cursor={{ fill: "#f8fafc" }}
-                  contentStyle={{ background: "#0f172a", borderRadius: "12px", border: "none", color: "#f8fafc" }}
-                  labelStyle={{ fontWeight: "bold", fontSize: "11px" }}
-                />
-                <Bar dataKey="avg" name="Class Average (%)" fill="#4f46e5" radius={[6, 6, 0, 0]} maxBarSize={45} />
-              </BarChart>
-            </ResponsiveContainer>
+
+          {/* Scrollable chapter rows */}
+          <div className="overflow-y-auto max-h-[360px] pr-1 space-y-2 scrollbar-none">
+            {topicAverages.map((t) => {
+              const pct = t.avg;
+              let barColor = "bg-rose-400";
+              if (pct >= 70) barColor = "bg-emerald-500";
+              else if (pct >= 40) barColor = "bg-amber-400";
+              return (
+                <div key={t.name} className="flex items-center gap-3 group">
+                  {/* Chapter name */}
+                  <span className="text-[11px] font-semibold text-slate-600 w-52 shrink-0 truncate" title={t.name}>
+                    {t.name}
+                  </span>
+                  {/* Progress bar */}
+                  <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  {/* Percentage label */}
+                  <span className={`text-[11px] font-black w-10 text-right shrink-0 ${
+                    pct >= 70 ? "text-emerald-600" : pct >= 40 ? "text-amber-600" : "text-rose-500"
+                  }`}>
+                    {pct}%
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </section>
 
-        {/* Master Student Class & Directory Table */}
+        {/* Master Student Class & List Table */}
         <section className="glass-panel p-6 rounded-[1.5rem] shadow-xl shadow-slate-100/40 space-y-4 bg-white border border-slate-200/50">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h3 className="text-lg font-black text-slate-900 font-display">Student Progress Directory</h3>
+              <h3 className="text-lg font-black text-slate-900 font-display">Student Progress List</h3>
               <p className="text-xs text-slate-400 font-medium">Class XII-A status reports for {activeSubject}</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-              {/* Search */}
-              <div className="relative flex-1 sm:w-64">
+              {/* Roll No Filter */}
+              <div className="relative w-28">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-slate-400 text-xs font-bold">#</span>
+                </div>
+                <input
+                  type="number"
+                  min="1"
+                  max="37"
+                  placeholder="Roll No"
+                  value={rollNoFilter}
+                  onChange={(e) => setRollNoFilter(e.target.value)}
+                  className="block w-full pl-7 pr-2 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-base font-medium"
+                />
+              </div>
+              {/* Name/Text Search */}
+              <div className="relative flex-1 sm:w-56">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
                   type="text"
-                  placeholder="Search name, roll, phone, email..."
+                  placeholder="Search name, phone, email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-xs font-medium"
+                  className="block w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-base font-medium"
                 />
               </div>
             </div>
           </div>
 
-          {/* Directory Table */}
-          <div className="overflow-x-auto touch-pan-y border border-slate-100 rounded-2xl">
+          {/* Student List Table */}
+          <div className="overflow-x-auto overflow-y-auto max-h-[520px] touch-auto border border-slate-100 rounded-2xl">
             <table className="min-w-full divide-y divide-slate-100 font-sans">
-              <thead className="bg-slate-50">
+              <thead className="bg-slate-50 sticky top-0 z-10">
                 <tr>
                   <th
                     onClick={() => toggleSort("rollNo")}
@@ -450,7 +488,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                       {activeSubject} Completion <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500 min-w-[160px]">
                     SAMS State
                   </th>
                   <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -461,8 +499,8 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
               <tbody className="divide-y divide-slate-100 bg-white">
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-xs text-slate-400 font-medium">
-                      No student records match this query in the Class XII-A directory.
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
+                      No student records match this query in the Class XII-A list.
                     </td>
                   </tr>
                 ) : (
@@ -490,26 +528,26 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
 
                     return (
                       <tr key={s.rollNo} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4 text-xs font-mono font-bold text-slate-500">
+                        <td className="px-6 py-4 text-sm font-mono font-bold text-slate-500">
                           {s.rollNo}
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-xs font-extrabold text-slate-800 block">{s.name}</span>
-                          <span className="text-[10px] font-mono text-slate-400">{s.email || "No Gmail Linked"}</span>
+                          <span className="text-sm font-extrabold text-slate-800 block">{s.name}</span>
+                          <span className="text-xs font-mono text-slate-400">{s.email || "No Gmail Linked"}</span>
                         </td>
-                        <td className="px-6 py-4 text-xs font-mono text-slate-500">
+                        <td className="px-6 py-4 text-sm font-mono text-slate-500">
                           {s.phone}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <span className="text-xs font-black text-slate-900">{avg}%</span>
+                            <span className="text-sm font-black text-slate-900">{avg}%</span>
                             <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0 hidden md:block">
                               <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${avg}%` }} />
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${badgeColor}`}>
+                        <td className="px-6 py-4">
+                          <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap ${badgeColor}`}>
                             {stateLabel}
                           </span>
                         </td>
@@ -557,13 +595,13 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
             >
               {/* Drawer Header */}
               <div className="bg-slate-900 text-white p-6 shrink-0 relative">
-                <span className="text-[10px] font-mono text-cyan-400 font-black uppercase tracking-wider">
+                <span className="text-xs font-mono text-cyan-400 font-black uppercase tracking-wider">
                   STUDENT PORTFOLIO MANAGER
                 </span>
                 <h3 className="text-xl font-extrabold text-white mt-1 pr-8">
                   {selectedStudent.name}
                 </h3>
-                <p className="text-slate-400 text-xs mt-1">
+                <p className="text-slate-400 text-sm mt-1">
                   Roll Number: {selectedStudent.rollNo} • Contact: {selectedStudent.phone}
                 </p>
                 <button
@@ -576,10 +614,10 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
 
               {/* Slider Grid */}
               <div className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-6">
-                
+
                 {/* Registered Google Gmail Input Box */}
                 <div className="space-y-2 bg-indigo-50/40 p-4 rounded-2xl border border-indigo-100">
-                  <label className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-indigo-900">
+                  <label className="flex items-center gap-1.5 text-sm font-black uppercase tracking-wider text-indigo-900">
                     <Mail className="h-4 w-4 text-indigo-500" /> Registered Student Gmail
                   </label>
                   <input
@@ -587,13 +625,13 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                     placeholder="e.g. mukul.sharma@gmail.com"
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white text-slate-800 font-medium"
+                    className="w-full border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white text-slate-800 font-medium"
                   />
-                  <p className="text-[10px] text-indigo-500 font-medium">Used for secure Google Sign-In verification.</p>
+                  <p className="text-xs text-indigo-500 font-medium">Used for secure Google Sign-In verification.</p>
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  <h4 className="text-sm font-black uppercase tracking-wider text-slate-400">
                     {activeSubject} Chapters Completion (%)
                   </h4>
 
@@ -602,7 +640,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                       const currentScore = editScores[topic] !== undefined ? editScores[topic] : (selectedStudent.scores[topic] || 0);
                       return (
                         <div key={topic} className="space-y-1 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-                          <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                          <div className="flex justify-between items-center text-sm font-bold text-slate-700">
                             <span className="truncate pr-4" title={topic}>{topic}</span>
                             <span className="font-mono text-indigo-600 text-sm">{currentScore}%</span>
                           </div>
@@ -627,7 +665,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                                 const val = Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0));
                                 setEditScores((prev) => ({ ...prev, [topic]: val }));
                               }}
-                              className="w-12 border border-slate-200 rounded-lg p-1 text-center font-mono text-[11px] font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                              className="w-14 border border-slate-200 rounded-lg p-1.5 text-center font-mono text-xs font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
                             />
                           </div>
                         </div>
@@ -643,7 +681,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                   <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-600 text-xs font-semibold"
+                    className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-600 text-sm font-semibold"
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     Portfolio changes synced successfully.
@@ -653,14 +691,14 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setSelectedStudent(null)}
-                    className="flex-1 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                    className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors"
                   >
                     Discard Changes
                   </button>
                   <button
                     onClick={handleSaveScores}
                     disabled={savingScores}
-                    className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-500 disabled:bg-slate-300 transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/15"
+                    className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 disabled:bg-slate-300 transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/15"
                   >
                     <Save className="h-4 w-4" />
                     {savingScores ? "Syncing..." : "Sync Portfolio"}
