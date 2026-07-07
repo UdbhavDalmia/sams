@@ -86,19 +86,31 @@ if (fs.existsSync(firebaseConfigPath)) {
       projectId: firebaseConfig.projectId,
     };
     
+    let databaseId = firebaseConfig.firestoreDatabaseId;
+    
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
       try {
         const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
         options.credential = cert(serviceAccount);
         console.log("[Firestore] Service account detected in environment variables. Using custom credentials.");
+        
+        if (serviceAccount && serviceAccount.project_id) {
+          options.projectId = serviceAccount.project_id;
+          console.log(`[Firestore] Overriding project ID from Service Account JSON: ${serviceAccount.project_id}`);
+          
+          if (serviceAccount.project_id !== firebaseConfig.projectId) {
+            databaseId = process.env.FIREBASE_DATABASE_ID || "(default)";
+            console.log(`[Firestore] Custom deployment detected. Overriding database ID to: ${databaseId}`);
+          }
+        }
       } catch (e) {
         console.error("[Firestore] Failed to parse FIREBASE_SERVICE_ACCOUNT env variable. Falling back to default credentials.", e);
       }
     }
 
     const adminApp = initAdminApp(options);
-    db = getFirestore(adminApp, firebaseConfig.firestoreDatabaseId);
-    console.log(`[Firestore] Initialized successfully with Database: ${firebaseConfig.firestoreDatabaseId}`);
+    db = getFirestore(adminApp, databaseId);
+    console.log(`[Firestore] Initialized successfully with Database: ${databaseId}`);
     
     // Asynchronously trigger seeding
     ensureFirestoreSeeded().catch((err) => {
@@ -192,7 +204,11 @@ async function getStudents(): Promise<Student[]> {
       });
       return { ...s, scores, milestones: {} };
     });
-    fs.writeFileSync(STUDENTS_FILE, JSON.stringify(students, null, 2), "utf8");
+    try {
+      fs.writeFileSync(STUDENTS_FILE, JSON.stringify(students, null, 2), "utf8");
+    } catch (writeErr) {
+      console.error("[Fallback] Failed to write students.json file on disk:", writeErr);
+    }
     return students;
   }
   try {
@@ -220,12 +236,23 @@ async function getStudents(): Promise<Student[]> {
     });
 
     if (migrated) {
-      fs.writeFileSync(STUDENTS_FILE, JSON.stringify(students, null, 2), "utf8");
+      try {
+        fs.writeFileSync(STUDENTS_FILE, JSON.stringify(students, null, 2), "utf8");
+      } catch (writeErr) {
+        console.error("[Fallback] Failed to write migrated students.json file on disk:", writeErr);
+      }
     }
     return students;
   } catch (err) {
     console.error("Error reading students local database file, resetting:", err);
-    return [];
+    // Safely return INITIAL_STUDENTS in-memory instead of an empty array if file reading fails
+    return INITIAL_STUDENTS.map((s) => {
+      const scores: Record<string, number> = {};
+      ALL_TOPICS.forEach((t) => {
+        scores[t] = 0;
+      });
+      return { ...s, scores, milestones: {} };
+    });
   }
 }
 
@@ -248,7 +275,11 @@ async function saveStudents(students: Student[]): Promise<void> {
       console.error("[Firestore] Error during bulk save. Saving locally.", err);
     }
   }
-  fs.writeFileSync(STUDENTS_FILE, JSON.stringify(students, null, 2), "utf8");
+  try {
+    fs.writeFileSync(STUDENTS_FILE, JSON.stringify(students, null, 2), "utf8");
+  } catch (writeErr) {
+    console.error("[Fallback] Failed to write students.json local database file:", writeErr);
+  }
 }
 
 async function getDoubts(): Promise<Doubt[]> {
@@ -267,7 +298,11 @@ async function getDoubts(): Promise<Doubt[]> {
 
   // Local File Fallback
   if (!fs.existsSync(DOUBTS_FILE)) {
-    fs.writeFileSync(DOUBTS_FILE, JSON.stringify([], null, 2), "utf8");
+    try {
+      fs.writeFileSync(DOUBTS_FILE, JSON.stringify([], null, 2), "utf8");
+    } catch (writeErr) {
+      console.error("[Fallback] Failed to write initial doubts.json local file:", writeErr);
+    }
     return [];
   }
   try {
@@ -297,7 +332,11 @@ async function saveDoubts(doubts: Doubt[]): Promise<void> {
       console.error("[Firestore] Error saving doubts. Saving locally.", err);
     }
   }
-  fs.writeFileSync(DOUBTS_FILE, JSON.stringify(doubts, null, 2), "utf8");
+  try {
+    fs.writeFileSync(DOUBTS_FILE, JSON.stringify(doubts, null, 2), "utf8");
+  } catch (writeErr) {
+    console.error("[Fallback] Failed to write doubts.json local file:", writeErr);
+  }
 }
 
 // Teacher & Subject Authorization Helpers
