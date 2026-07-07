@@ -1,0 +1,94 @@
+{
+  "entities": {
+    "student": {
+      "title": "Student Profile",
+      "description": "Represents a student's SAMS profile, including contact info, subject topic mastery scores, and milestones",
+      "type": "object",
+      "properties": {
+        "rollNo": {
+          "type": "integer",
+          "description": "Roll number of the student"
+        },
+        "name": {
+          "type": "string",
+          "description": "Student's full name"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Registered contact number"
+        },
+        "scores": {
+          "type": "object",
+          "description": "Object mapping topic name strings to mastery completion percentages (0-100)"
+        },
+        "milestones": {
+          "type": "object",
+          "description": "Object mapping topic name strings to array of 4 booleans representing sub-milestones"
+        }
+      },
+      "required": [
+        "rollNo",
+        "name",
+        "phone",
+        "scores"
+      ]
+    },
+    "doubt": {
+      "title": "Subject Doubt",
+      "description": "A doubt submitted by a student regarding a subject chapter, which can be answered by the teacher",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the doubt thread"
+        },
+        "studentRollNo": {
+          "type": "integer",
+          "description": "Roll number of the student who posted the doubt"
+        },
+        "studentName": {
+          "type": "string",
+          "description": "Name of the student who posted the doubt"
+        },
+        "topic": {
+          "type": "string",
+          "description": "The specific syllabus chapter topic related to the doubt"
+        },
+        "question": {
+          "type": "string",
+          "description": "The detailed query or problem described by the student"
+        },
+        "answer": {
+          "type": "string",
+          "description": "The teacher's answer, or null if unanswered"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO format timestamp of creation"
+        },
+        "answeredAt": {
+          "type": "string",
+          "description": "ISO format timestamp of answer, or null if unanswered"
+        }
+      },
+      "required": [
+        "id",
+        "studentRollNo",
+        "studentName",
+        "topic",
+        "question",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/students/{rollNo}": {
+      "schema": "student",
+      "description": "Collection of student academic profiles"
+    },
+    "/doubts/{doubtId}": {
+      "schema": "doubt",
+      "description": "Collection of posted academic doubts"
+    }
+  }
+}

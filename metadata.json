@@ -1,0 +1,6 @@
+{
+  "name": "SAMS Chemistry",
+  "description": "Student Academic Monitoring System (SAMS) for XII-A featuring Physics, Chemistry, and Mathematics tracker, direct security storage, Google Sheets CSV sync, and Gemini-powered tutoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
