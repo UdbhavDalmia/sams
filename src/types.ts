@@ -4,6 +4,7 @@ export interface Student {
   phone: string;
   scores: Record<string, number>;
   milestones?: Record<string, boolean[]>; // stores topic name -> [NCERT Theory, NCERT Back Ex, JEE Main PYQs, JEE Adv PYQs]
+  email?: string;
 }
 
 export interface Doubt {
