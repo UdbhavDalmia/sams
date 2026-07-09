@@ -19,7 +19,8 @@ import {
   GraduationCap,
   Sparkles,
   BookOpen,
-  Mail
+  Mail,
+  History
 } from "lucide-react";
 import { Student, TopicName, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, ALL_TOPICS } from "../types";
 import { fetchWithRetry } from "../lib/fetch";
@@ -628,6 +629,58 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                     className="w-full border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white text-slate-800 font-medium"
                   />
                   <p className="text-xs text-indigo-500 font-medium">Used for secure Google Sign-In verification.</p>
+                </div>
+
+                {/* Recent Study Sessions (Last 3 logins activity logs) */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <History className="h-4.5 w-4.5 text-slate-400" /> Recent Study Sessions (Last 3)
+                  </h4>
+                  {(!selectedStudent.recentSessions || selectedStudent.recentSessions.length === 0) ? (
+                    <p className="text-xs font-semibold text-slate-400 italic bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
+                      No study sessions recorded yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {selectedStudent.recentSessions.map((session, sIdx) => {
+                        const date = new Date(session.timestamp);
+                        const formattedTime = date.toLocaleString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true
+                        });
+                        return (
+                          <div key={sIdx} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">
+                                Session {sIdx + 1}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400 font-mono">
+                                {formattedTime}
+                              </span>
+                            </div>
+                            <div className="space-y-1.5">
+                              {session.changes.map((ch, cIdx) => (
+                                <div key={cIdx} className="flex items-start gap-2 text-xs leading-relaxed">
+                                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase shrink-0 ${
+                                    ch.type === "quiz" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-indigo-50 text-indigo-600 border border-indigo-100"
+                                  }`}>
+                                    {ch.type}
+                                  </span>
+                                  <span className="font-semibold text-slate-700">
+                                    <span className="text-slate-400 font-bold mr-1">[{ch.subject}]</span>
+                                    {ch.detail}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">

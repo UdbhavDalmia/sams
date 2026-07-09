@@ -15,7 +15,7 @@ export async function fetchWithRetry(
   options: FetchWithRetryOptions = {}
 ): Promise<Response> {
   const {
-    timeoutMs = 15000, // 15 seconds default timeout
+    timeoutMs = 45000, // 45 seconds default timeout
     retries = 3,       // Retry 3 times
     backoffFactor = 2, // Double the delay each time
     initialDelayMs = 500, // Start with 500ms delay

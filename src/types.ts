@@ -1,3 +1,28 @@
+export interface ActiveQuizState {
+  topic: string;
+  difficulty: "easy" | "medium" | "hard";
+  roundsCompleted: number;
+  correctCount: number;
+  history: Array<{
+    question: string;
+    selectedIndex: number;
+    correctIndex: number;
+    correct: boolean;
+    difficulty: "easy" | "medium" | "hard";
+    explanation: string;
+  }>;
+  startedAt: string;
+}
+
+export interface ActivitySession {
+  timestamp: string;
+  changes: Array<{
+    type: "checklist" | "quiz";
+    subject: "Chemistry" | "Physics" | "Mathematics";
+    detail: string;
+  }>;
+}
+
 export interface Student {
   rollNo: number;
   name: string;
@@ -5,6 +30,12 @@ export interface Student {
   scores: Record<string, number>;
   milestones?: Record<string, boolean[]>; // stores topic name -> [NCERT Theory, NCERT Back Ex, JEE Main PYQs, JEE Adv PYQs]
   email?: string;
+  activeQuiz?: ActiveQuizState | null;
+  quizStats?: {
+    totalQuizzes: number;
+    bySubject: { chemistry: number; physics: number; maths: number };
+  };
+  recentSessions?: ActivitySession[];
 }
 
 export interface Doubt {

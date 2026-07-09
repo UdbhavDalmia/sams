@@ -83,24 +83,24 @@ let db: any = null;
 if (fs.existsSync(firebaseConfigPath)) {
   try {
     const firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf8"));
-    
+
     // Support custom Service Account key configuration in external hosting environments (like Render)
     let options: any = {
       projectId: firebaseConfig.projectId,
     };
-    
+
     let databaseId = firebaseConfig.firestoreDatabaseId;
-    
+
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
       try {
         const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
         options.credential = cert(serviceAccount);
         console.log("[Firestore] Service account detected in environment variables. Using custom credentials.");
-        
+
         if (serviceAccount && serviceAccount.project_id) {
           options.projectId = serviceAccount.project_id;
           console.log(`[Firestore] Overriding project ID from Service Account JSON: ${serviceAccount.project_id}`);
-          
+
           if (serviceAccount.project_id !== firebaseConfig.projectId) {
             databaseId = process.env.FIREBASE_DATABASE_ID || "(default)";
             console.log(`[Firestore] Custom deployment detected. Overriding database ID to: ${databaseId}`);
@@ -114,7 +114,7 @@ if (fs.existsSync(firebaseConfigPath)) {
     const adminApp = initAdminApp(options);
     db = getFirestore(adminApp, databaseId);
     console.log(`[Firestore] Initialized successfully with Database: ${databaseId}`);
-    
+
     // Asynchronously trigger seeding
     ensureFirestoreSeeded().catch((err) => {
       console.error("[Firestore] Seeding error:", err);
@@ -166,7 +166,7 @@ async function getStudents(): Promise<Student[]> {
       snapshot.forEach((doc: any) => {
         students.push(doc.data() as Student);
       });
-      
+
       if (students.length > 0) {
         // Auto-migration to ensure all topics are initialized in Firestore
         let migrationRequired = false;
@@ -217,7 +217,7 @@ async function getStudents(): Promise<Student[]> {
   }
   try {
     students = JSON.parse(fs.readFileSync(STUDENTS_FILE, "utf8"));
-    
+
     let migrated = false;
     students = students.map((s) => {
       let changed = false;
@@ -358,6 +358,57 @@ function getSubjectForTopic(topic: string): "Chemistry" | "Physics" | "Mathemati
   if (PHYSICS_TOPICS.includes(topic as any)) return "Physics";
   if (MATHS_TOPICS.includes(topic as any)) return "Mathematics";
   return null;
+}
+
+function logStudentActivity(
+  student: Student,
+  type: "checklist" | "quiz",
+  topic: string,
+  detail: string
+) {
+  if (!student.recentSessions) {
+    student.recentSessions = [];
+  }
+
+  const now = new Date();
+  const nowISO = now.toISOString();
+  const subject = getSubjectForTopic(topic) || "Chemistry"; // Fallback
+
+  // Grouping rule: check if there's an active session in the last 15 minutes
+  // 15 minutes in milliseconds = 15 * 60 * 1000 = 900,000 ms
+  const SESSION_THRESHOLD_MS = 15 * 60 * 1000;
+  
+  let activeSessionIndex = -1;
+  if (student.recentSessions.length > 0) {
+    const latestSession = student.recentSessions[0];
+    const latestTime = new Date(latestSession.timestamp);
+    if (now.getTime() - latestTime.getTime() < SESSION_THRESHOLD_MS) {
+      activeSessionIndex = 0;
+    }
+  }
+
+  const newChange = { type, subject, detail };
+
+  if (activeSessionIndex !== -1) {
+    const session = student.recentSessions[activeSessionIndex];
+    // Avoid double noise in same session (e.g. toggling rapid clicks)
+    const exists = session.changes.some(c => c.detail === detail && c.type === type);
+    if (!exists) {
+      session.changes.unshift(newChange);
+    }
+    session.timestamp = nowISO; // Refresh activity timestamp to extend session
+  } else {
+    // New study session
+    student.recentSessions.unshift({
+      timestamp: nowISO,
+      changes: [newChange],
+    });
+  }
+
+  // Keep only the 3 most recent sessions
+  if (student.recentSessions.length > 3) {
+    student.recentSessions = student.recentSessions.slice(0, 3);
+  }
 }
 
 // REST APIs
@@ -577,16 +628,25 @@ app.post("/api/student/:roll_no/save-progress", async (req, res) => {
     return res.status(404).json({ error: "Student not found" });
   }
 
-  students[studentIndex].scores[topic] = Number(score);
-  if (milestones) {
-    if (!students[studentIndex].milestones) {
-      students[studentIndex].milestones = {};
-    }
-    students[studentIndex].milestones[topic] = milestones;
-  }
+  const targetStudent = students[studentIndex];
   
+  const oldScore = targetStudent.scores[topic] || 0;
+  const newScore = Number(score);
+
+  if (milestones && Array.isArray(milestones)) {
+    if (!targetStudent.milestones) {
+      targetStudent.milestones = {};
+    }
+    targetStudent.milestones[topic] = milestones;
+  }
+
+  if (newScore !== oldScore) {
+    targetStudent.scores[topic] = newScore;
+    logStudentActivity(targetStudent, "checklist", topic, `Progress changed from ${oldScore}% to ${newScore}% in '${topic}'`);
+  }
+
   await saveStudents(students);
-  res.json({ success: true, student: students[studentIndex] });
+  res.json({ success: true, student: targetStudent });
 });
 
 // 5. Submit doubt (Student)
@@ -696,7 +756,7 @@ MATHEMATICAL AND FORMULA FORMATTING:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: topic ? `Context topic: ${topic}\n\nStudent Question: ${question}` : question,
       config: {
         systemInstruction,
@@ -715,103 +775,64 @@ MATHEMATICAL AND FORMULA FORMATTING:
   }
 });
 
-// 9.5 Always visible SAMS AI Chatbot
-app.post("/api/gemini/chatbot", async (req, res) => {
-  const { messages } = req.body;
-
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: "Messages array is required" });
-  }
-
-  const systemInstruction = `You are the SAMS AI Study Assistant, a specialized, friendly academic companion for Class XII students preparing for board exams and competitive exams like JEE/NEET.
-
-CRITICAL POLICY:
-- Your programming strictly limits your support to the official XII standard syllabus topics (Chemistry, Physics, Mathematics) and overall study strategies/prep schedules.
-- If the student asks you about coding/programming, cooking recipes, general pop culture, music, movies, or anything else outside Class XII curriculum or study strategies, you MUST politely but firmly decline to answer.
-- Always guide them back to academic chemistry, physics, math, or study strategies. For example: "I am programmed specifically to assist with Class XII Syllabus and Study Strategies. Let's keep our focus on scoring high! Would you like to review chemical kinetics or discuss a solid revision plan?"
-- Use LaTeX formatting for any mathematical expressions, chemical equations, or constants. Wrap inline math in single dollar signs $...$ and block math on separate lines in double dollar signs $$...$$.`;
-
-  try {
-    const contents = messages.map((m) => ({
-      role: m.role === "assistant" ? "model" as const : "user" as const,
-      parts: [{ text: m.text }],
-    }));
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents,
-      config: {
-        systemInstruction,
-        temperature: 0.6,
-      },
-    });
-
-    const reply = response.text || "I apologize, I am temporarily busy. Please try again.";
-    res.json({ reply });
-  } catch (err: any) {
-    console.error("Gemini Chatbot API Error:", err);
-    res.status(500).json({
-      error: "The AI Assistant is currently busy. Please try again shortly.",
-      details: err.message,
-    });
-  }
-});
-
-// 9.6 Dynamic AI Quiz Question Generator (using gemini-3.5-flash)
-app.post("/api/gemini/generate-quiz", async (req, res) => {
-  const { topic } = req.body;
+// 9.5 Adaptive Single AI Quiz Question Generator (using gemini-2.0-flash)
+app.post("/api/gemini/generate-quiz-question", async (req, res) => {
+  const { topic, difficulty, previousQuestions } = req.body;
   if (!topic) {
     return res.status(400).json({ error: "Topic is required" });
   }
 
-  const systemInstruction = `You are an expert high-school chemistry/physics/math professor setting questions for XII standard students preparing for CBSE Board and JEE Main/Advanced.
-Generate exactly 5 highly relevant multiple-choice questions for the topic: "${topic}".
+  const diff = difficulty || "medium";
+  const difficultyDesc: Record<string, string> = {
+    easy: "straightforward, concept-recall level, suitable for a student who just got a previous question wrong. Focus on definitions, direct formulas, and simple applications.",
+    medium: "moderate conceptual difficulty, testing application and understanding of core theory. Similar to CBSE Board question pattern.",
+    hard: "challenging, multi-step problem-solving level, similar to JEE Main or JEE Advanced difficulty. May require combining multiple concepts.",
+  };
 
-Format your response as a valid, parsable JSON array containing exactly 5 objects. Do NOT wrap the JSON in markdown code blocks, do not include any explanatory prefix or suffix. Return ONLY the raw JSON array of objects.
+  let systemInstruction = `You are an expert XII standard professor generating ONE multiple-choice question for: "${topic}".
+Difficulty level: ${diff.toUpperCase()} — ${difficultyDesc[diff]}
 
-Each question object must strictly have this schema:
+FORMATTING RULES (critical — do NOT break these):
+- Use $...$ for ALL inline math, variables, units, constants, and short chemical formulas/species (e.g. $E = mc^2$, $\\Delta T_f$, $\\text{H}_2\\text{O}$, $\\text{RBr}$, $\\text{AgF}$, $K_b$).
+- Use $$...$$ ONLY for important standalone equations that deserve their own line. Do NOT use block math for every formula.
+- NEVER use raw unicode math symbols or superscript/subscript symbols like ², ³, ₀, ₁, ₂, Δ, π, → outside LaTeX. Always wrap them.
+- The options list should contain 4 plausible options, all formatted cleanly with inline LaTeX where needed.
+- Return ONLY a single valid JSON object (no markdown formatting around it, no explanation outside JSON, no outer wrapper).
+
+JSON Schema:
 {
-  "id": number, // from 1 to 5
-  "question": "The question text, including LaTeX math wrapped in $...$ or $$...$$ where appropriate",
-  "options": [
-    "Option A",
-    "Option B",
-    "Option C",
-    "Option D"
-  ],
-  "answerIndex": number, // 0 to 3
-  "explanation": "Clear academic explanation of why this option is correct, with LaTeX math if needed"
-}
+  "question": "The question text. Use $...$ for inline math, $$...$$ for block math.",
+  "options": ["Option A", "Option B", "Option C", "Option D"],
+  "answerIndex": 0,
+  "explanation": "A clear, concise explanation (2-3 sentences max) of why this answer is correct. Use LaTeX where needed."
+}`;
 
-Ensure the questions are challenging, conceptually accurate, and strictly related to standard syllabus for "${topic}".`;
+  if (previousQuestions && Array.isArray(previousQuestions) && previousQuestions.length > 0) {
+    systemInstruction += `\n\nCRITICAL DEDUPLICATION RULE:
+Do NOT generate any question that is similar or identical to the following previously generated questions in this session:
+${JSON.stringify(previousQuestions)}`;
+  }
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: `Generate 5 multiple choice questions for topic: ${topic}`,
+      model: "gemini-3.1-flash-lite",
+      contents: `Generate one ${diff} MCQ for topic: ${topic}`,
       config: {
         systemInstruction,
-        temperature: 1.0,
-        responseMimeType: "application/json"
+        temperature: diff === "hard" ? 1.0 : 0.8,
+        responseMimeType: "application/json",
       },
     });
 
     const text = response.text?.trim() || "";
-    let jsonString = text;
-    if (jsonString.startsWith("```json")) {
-      jsonString = jsonString.slice(7);
-    }
-    if (jsonString.endsWith("```")) {
-      jsonString = jsonString.slice(0, -3);
-    }
-    jsonString = jsonString.trim();
+    let jsonString = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+    const question = JSON.parse(jsonString);
 
-    const questions = JSON.parse(jsonString);
-    if (!Array.isArray(questions) || questions.length === 0) {
-      throw new Error("Invalid structure returned by AI");
+    if (!question.question || !Array.isArray(question.options) || question.options.length !== 4) {
+      throw new Error("Invalid question structure returned by AI");
     }
 
-    res.json(questions);
+    res.json(question);
   } catch (err: any) {
     console.error("Gemini Quiz Generator Error:", err);
     res.status(500).json({
@@ -819,6 +840,98 @@ Ensure the questions are challenging, conceptually accurate, and strictly relate
       details: err.message,
     });
   }
+});
+
+// 9.6 Streaming AI Chatbot (SSE) (using gemini-2.0-flash)
+app.post("/api/gemini/chatbot-stream", async (req, res) => {
+  const { messages } = req.body;
+
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: "Messages array is required" });
+  }
+
+  const systemInstruction = `You are the SAMS AI Study Assistant — a specialized, friendly academic companion for Class XII students preparing for board exams and JEE/NEET.
+
+STRICT POLICY: Only answer questions directly related to XII standard Chemistry, Physics, Mathematics, or study strategies/schedules. Decline anything outside this scope politely.
+
+FORMATTING RULES (critical — do NOT break these):
+- Use $...$ for ALL inline math, variables, constants, and short formulas. Example: $E = mc^2$, $\\Delta T_f$, $K_b$.
+- Use $$...$$ ONLY for important standalone equations that deserve their own line. Do NOT use block math for every formula.
+- NEVER use raw unicode math symbols like ², ³, ₀, Δ, π outside LaTeX. Always wrap them.
+- Keep responses CONCISE and structured. Use bullet points for lists. Avoid excessive blank lines.
+- Each bullet point or explanation should be SHORT — max 2 sentences. Prioritize clarity over length.`;
+
+  try {
+    const contents = messages.map((m) => ({
+      role: m.role === "assistant" ? "model" as const : "user" as const,
+      parts: [{ text: m.text }],
+    }));
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    const stream = await ai.models.generateContentStream({
+      model: "gemini-2.5-flash",
+      contents,
+      config: { systemInstruction, temperature: 0.6 },
+    });
+
+    for await (const chunk of stream) {
+      const text = chunk.text;
+      if (text) {
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      }
+    }
+
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (err: any) {
+    console.error("Gemini Streaming Chatbot Error:", err);
+    res.write(`data: ${JSON.stringify({ error: "The AI Assistant is temporarily busy. Please try again." })}\n\n`);
+    res.end();
+  }
+});
+
+// 9.7 Save active quiz state (for reload-proof quiz continuity)
+app.post("/api/student/:roll_no/quiz-state", async (req, res) => {
+  const rollNo = parseInt(req.params.roll_no, 10);
+  const { quizState, completed, subjectHint } = req.body;
+
+  const students = await getStudents();
+  const idx = students.findIndex((s) => s.rollNo === rollNo);
+
+  if (idx === -1) {
+    return res.status(404).json({ error: "Student not found" });
+  }
+
+  if (completed) {
+    // Quiz is finished — clear active quiz, update stats
+    students[idx].activeQuiz = null;
+    
+    // Log the completed quiz details in the student activity sessions
+    if (quizState) {
+      const scoreDetail = `Scored ${quizState.correctCount}/5 in '${quizState.topic}' adaptive quiz (${quizState.difficulty} difficulty)`;
+      logStudentActivity(students[idx], "quiz", quizState.topic, scoreDetail);
+    }
+
+    if (subjectHint) {
+      if (!students[idx].quizStats) {
+        students[idx].quizStats = { totalQuizzes: 0, bySubject: { chemistry: 0, physics: 0, maths: 0 } };
+      }
+      students[idx].quizStats!.totalQuizzes += 1;
+      const sub = subjectHint as "chemistry" | "physics" | "maths";
+      if (sub === "chemistry" || sub === "physics" || sub === "maths") {
+        students[idx].quizStats!.bySubject[sub] += 1;
+      }
+    }
+  } else {
+    students[idx].activeQuiz = quizState;
+  }
+
+  await saveStudents(students);
+  res.json({ success: true, student: students[idx] });
 });
 
 // Global Process Exception Handlers to prevent backend resets/crashes
@@ -869,7 +982,7 @@ app.get("/api/health", async (req, res) => {
 
 // Vite / Static files routing
 
-const isProduction = process.env.NODE_ENV === "production" || 
+const isProduction = process.env.NODE_ENV === "production" ||
   (typeof __filename !== "undefined" && (__filename.endsWith("server.cjs") || __filename.includes("dist"))) ||
   (process.argv[1] && (process.argv[1].endsWith("server.cjs") || process.argv[1].includes("dist")));
 

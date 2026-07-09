@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  FlaskConical,
   Award,
   Sparkles,
   BookOpen,
-  HelpCircle,
   BrainCircuit,
   ArrowRight,
   LogOut,
@@ -19,13 +17,22 @@ import {
   Moon,
   MessageSquare,
   X,
-  Play,
-  ChevronDown
+  ChevronDown,
+  Trophy,
+  Zap,
+  TrendingUp,
+  Star,
+  Target,
+  ChevronRight,
+  ChevronLeft,
+  RefreshCw,
+  BarChart2
 } from "lucide-react";
-import { Student, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, TopicName, TOPIC_RESOURCES } from "../types";
+import { Student, ActiveQuizState, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, TopicName, TOPIC_RESOURCES } from "../types";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { fetchWithRetry } from "../lib/fetch";
+import SAMSLogo from "./SAMSLogo";
 
 // Dynamic translation map for standard topic formulas into beautiful textbook LaTeX
 const FORMULA_LATEX_MAP: Record<string, string> = {
@@ -135,106 +142,130 @@ const MathRenderer: React.FC<{ math: string; block?: boolean }> = ({ math, block
 };
 
 // Markdown + LaTeX Parser
-const parseMarkdownAndMath = (text: string) => {
-  if (!text) return null;
-  const parts = text.split(/(\$\$[\s\S]*?\$\$)/g);
+const parseBoldAndMathInline = (text: string): React.ReactNode[] => {
+  // Split by inline math ($...$) first
+  const parts = text.split(/(\$[\s\S]*?\$)/g);
+  
   return parts.map((part, index) => {
-    if (part.startsWith("$$") && part.endsWith("$$")) {
-      const math = part.slice(2, -2).trim();
-      return <MathRenderer key={index} math={math} block={true} />;
+    if (part.startsWith("$") && part.endsWith("$")) {
+      const math = part.slice(1, -1).trim();
+      return <MathRenderer key={`math-${index}`} math={math} block={false} />;
     }
-
-    const subParts = part.split(/(\$[\s\S]*?\$)/g);
-    return subParts.map((subPart, subIndex) => {
-      if (subPart.startsWith("$") && subPart.endsWith("$")) {
-        const math = subPart.slice(1, -1).trim();
-        return <MathRenderer key={`${index}-${subIndex}`} math={math} block={false} />;
+    
+    // For non-math, parse bold text (**...**)
+    const boldParts = part.split(/(\*\*[\s\S]*?\*\*)/g);
+    return boldParts.map((bPart, bIndex) => {
+      if (bPart.startsWith("**") && bPart.endsWith("**")) {
+        return <strong key={`bold-${index}-${bIndex}`} className="font-extrabold text-slate-900 dark:text-white">{bPart.slice(2, -2)}</strong>;
       }
-      return renderSimpleMarkdown(subPart, `${index}-${subIndex}`);
+      
+      // Parse inline code blocks (`...`)
+      const codeParts = bPart.split(/(`[\s\S]*?`)/g);
+      return codeParts.map((cPart, cIndex) => {
+        if (cPart.startsWith("`") && cPart.endsWith("`")) {
+          return (
+            <code key={`code-${index}-${bIndex}-${cIndex}`} className="bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 px-1 py-0.5 rounded font-mono text-[11px] font-bold">
+              {cPart.slice(1, -1)}
+            </code>
+          );
+        }
+        return <span key={`text-${index}-${bIndex}-${cIndex}`}>{cPart}</span>;
+      });
     });
   });
 };
 
-const renderSimpleMarkdown = (text: string, keyPrefix: string) => {
-  const lines = text.split("\n");
-  return (
-    <div key={keyPrefix} className="space-y-1.5">
-      {lines.map((line, idx) => {
-        const cleanLine = line;
-
-        if (cleanLine.startsWith("### ")) {
-          return (
-            <h4 key={idx} className="text-xs font-black mt-2.5 mb-1 flex items-center gap-1.5">
-              {parseBoldText(cleanLine.slice(4))}
-            </h4>
-          );
-        }
-        if (cleanLine.startsWith("## ")) {
-          return (
-            <h3 key={idx} className="text-sm font-black mt-3.5 mb-1.5 flex items-center gap-2">
-              {parseBoldText(cleanLine.slice(3))}
-            </h3>
-          );
-        }
-        if (cleanLine.startsWith("# ")) {
-          return (
-            <h2 key={idx} className="text-base font-black mt-4 mb-2 flex items-center gap-2.5">
-              {parseBoldText(cleanLine.slice(2))}
-            </h2>
-          );
-        }
-
-        if (cleanLine.startsWith("- ") || cleanLine.startsWith("* ")) {
-          return (
-            <div key={idx} className="flex gap-2 text-xs pl-2 leading-relaxed">
-              <span className="text-indigo-500 font-black shrink-0">•</span>
-              <span>{parseBoldText(cleanLine.slice(2))}</span>
-            </div>
-          );
-        }
-
-        const numberedMatch = cleanLine.match(/^(\d+)\.\s(.*)/);
-        if (numberedMatch) {
-          return (
-            <div key={idx} className="flex gap-2 text-xs pl-2 leading-relaxed">
-              <span className="text-indigo-500 font-extrabold shrink-0">{numberedMatch[1]}.</span>
-              <span>{parseBoldText(numberedMatch[2])}</span>
-            </div>
-          );
-        }
-
-        if (!cleanLine.trim()) return <div key={idx} className="h-1" />;
-
-        return (
-          <p key={idx} className="text-xs leading-relaxed font-medium">
-            {parseBoldText(cleanLine)}
-          </p>
-        );
-      })}
-    </div>
-  );
-};
-
-const parseBoldText = (text: string) => {
-  const parts = text.split(/(\*\*.*?\*\*)/g);
+const parseMarkdownAndMath = (text: string) => {
+  if (!text) return null;
+  
+  // Split by block math $$...$$
+  const parts = text.split(/(\$\$[\s\S]*?\$\$)/g);
+  
   return parts.map((part, index) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      const boldText = part.slice(2, -2);
-      return <strong key={index} className="font-extrabold text-slate-900 dark:text-white">{boldText}</strong>;
+    if (part.startsWith("$$") && part.endsWith("$$")) {
+      const math = part.slice(2, -2).trim();
+      return (
+        <div key={`block-math-${index}`} className="my-3 flex items-center justify-center overflow-x-auto w-full select-all">
+          <MathRenderer math={math} block={true} />
+        </div>
+      );
     }
-
-    const subParts = part.split(/(`.*?`)/g);
-    return subParts.map((subPart, subIndex) => {
-      if (subPart.startsWith("`") && subPart.endsWith("`")) {
-        const codeText = subPart.slice(1, -1);
-        return (
-          <code key={`${index}-${subIndex}`} className="bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 px-1 py-0.5 rounded font-mono text-[11px] font-bold">
-            {codeText}
-          </code>
-        );
-      }
-      return subPart;
-    });
+    
+    // For non-block-math parts, parse paragraph blocks
+    const paragraphs = part.split(/\n\n+/);
+    return (
+      <div key={`part-${index}`} className="space-y-2.5">
+        {paragraphs.map((p, pIdx) => {
+          const trimmed = p.trim();
+          if (!trimmed) return null;
+          
+          // Check for headings
+          if (trimmed.startsWith("### ")) {
+            return (
+              <h4 key={pIdx} className="text-xs font-black mt-3 mb-1">
+                {parseBoldAndMathInline(trimmed.slice(4))}
+              </h4>
+            );
+          }
+          if (trimmed.startsWith("## ")) {
+            return (
+              <h3 key={pIdx} className="text-sm font-black mt-4 mb-1.5">
+                {parseBoldAndMathInline(trimmed.slice(3))}
+              </h3>
+            );
+          }
+          if (trimmed.startsWith("# ")) {
+            return (
+              <h2 key={pIdx} className="text-base font-black mt-5 mb-2">
+                {parseBoldAndMathInline(trimmed.slice(2))}
+              </h2>
+            );
+          }
+          
+          // Check for lists
+          if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.match(/^\d+\.\s/)) {
+            const listLines = trimmed.split("\n");
+            return (
+              <div key={pIdx} className="space-y-1.5 pl-1 my-1.5">
+                {listLines.map((line, lIdx) => {
+                  const cleanLine = line.trim();
+                  if (cleanLine.startsWith("- ") || cleanLine.startsWith("* ")) {
+                    return (
+                      <div key={lIdx} className="flex gap-2 text-xs leading-relaxed">
+                        <span className="text-indigo-500 font-black shrink-0 mt-0.5">•</span>
+                        <span className="font-medium">{parseBoldAndMathInline(cleanLine.slice(2))}</span>
+                      </div>
+                    );
+                  }
+                  const numMatch = cleanLine.match(/^(\d+)\.\s(.*)/);
+                  if (numMatch) {
+                    return (
+                      <div key={lIdx} className="flex gap-2 text-xs leading-relaxed">
+                        <span className="text-indigo-500 font-extrabold shrink-0">{numMatch[1]}.</span>
+                        <span className="font-medium">{parseBoldAndMathInline(numMatch[2])}</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <p key={lIdx} className="text-xs leading-relaxed font-medium pl-3">
+                      {parseBoldAndMathInline(cleanLine)}
+                    </p>
+                  );
+                })}
+              </div>
+            );
+          }
+          
+          // Standard text paragraph - replace single newlines inside standard text with a space
+          const cleanText = trimmed.replace(/\n+/g, " ");
+          return (
+            <p key={pIdx} className="text-xs leading-relaxed font-medium">
+              {parseBoldAndMathInline(cleanText)}
+            </p>
+          );
+        })}
+      </div>
+    );
   });
 };
 
@@ -338,26 +369,38 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   // Chapter Companion Tabs (No doubts / ask AI - only cheat and milestones)
   const [activeTab, setActiveTab] = useState<"cheat" | "milestones">("cheat");
 
-  // SAMS Dynamic AI Quiz States
+  // Adaptive Quiz States (1 question at a time)
   const [quizStarted, setQuizStarted] = useState(false);
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizTopic, setQuizTopic] = useState("Solutions");
-  const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
-  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
-  const [quizSubmitted, setQuizSubmitted] = useState(false);
-  const [quizScore, setQuizScore] = useState(0);
   const [quizError, setQuizError] = useState<string | null>(null);
+  const [quizFinished, setQuizFinished] = useState(false);
+
+  // Current question state
+  const [currentQuestion, setCurrentQuestion] = useState<any | null>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  // Adaptive quiz session state (also persisted to DB)
+  const [quizState, setQuizState] = useState<ActiveQuizState | null>(null);
 
   // Persistent SAMS AI Bot Panel States
   const [showChatbot, setShowChatbot] = useState(false);
   const [chatbotMessages, setChatbotMessages] = useState<Array<{ role: "user" | "assistant"; text: string }>>([
     {
       role: "assistant",
-      text: "Hello! I am your SAMS AI Study Assistant. I am programmed specifically to support your Class XII standard curriculum (Chemistry, Physics, Mathematics) and build optimal study schedules. (Please note that non-syllabus topics like cooking or coding are strictly disabled!). Let's prepare to score high! What topic should we study?",
+      text: "Hello! I am your SAMS AI Study Assistant. Let's prepare to score high! What topic should we study?",
     },
   ]);
   const [chatbotInput, setChatbotInput] = useState("");
   const [chatbotLoading, setChatbotLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Selected Mobile Achievement for interactive description details
+  const [selectedMobileAchievement, setSelectedMobileAchievement] = useState<string | null>(null);
+
+  // Prefetch ref for the next question in active quiz
+  const prefetchRef = useRef<{ controller: AbortController; promise: Promise<any> } | null>(null);
 
   // Global Dark Mode state
   const [darkMode, setDarkMode] = useState(false);
@@ -523,27 +566,87 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     return currentScore < lowestScore ? topic : lowest;
   }, activeTopics[0]);
 
-  // Initiate Dynamic Quiz Generation on selected topic
-  const handleStartQuiz = async () => {
-    setQuizLoading(true);
-    setQuizError(null);
-    setQuizAnswers({});
-    setQuizSubmitted(false);
+  const getSubjectForTopic = (topic: string): "chemistry" | "physics" | "maths" => {
+    if ((CHEMISTRY_TOPICS as readonly string[]).includes(topic)) return "chemistry";
+    if ((PHYSICS_TOPICS as readonly string[]).includes(topic)) return "physics";
+    return "maths";
+  };
 
+  // Load active quiz from DB on mount (reload-proof)
+  useEffect(() => {
+    if (student.activeQuiz) {
+      const aq = student.activeQuiz;
+      setQuizState(aq);
+      setQuizTopic(aq.topic);
+      setQuizStarted(true);
+      // Fetch the next question immediately
+      fetchNextQuestion(aq);
+    }
+  }, []);
+
+  const persistQuizState = async (state: ActiveQuizState | null, completed = false) => {
     try {
-      const res = await fetchWithRetry("/api/gemini/generate-quiz", {
+      const subjectHint = quizState?.topic ? getSubjectForTopic(quizState.topic) : undefined;
+      await fetchWithRetry(`/api/student/${student.rollNo}/quiz-state`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: quizTopic }),
+        body: JSON.stringify({ quizState: state, completed, subjectHint }),
       });
+    } catch (err) {
+      console.error("Failed to persist quiz state:", err);
+    }
+  };
 
+  const cancelPrefetch = () => {
+    if (prefetchRef.current) {
+      try { prefetchRef.current.controller.abort(); } catch {}
+      prefetchRef.current = null;
+    }
+  };
+
+  const startPrefetchNext = (topic: string, difficulty: "easy" | "medium" | "hard", previousQuestions: string[]) => {
+    cancelPrefetch();
+
+    const controller = new AbortController();
+    const promise = fetchWithRetry("/api/gemini/generate-quiz-question", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic, difficulty, previousQuestions }),
+      signal: controller.signal,
+      timeoutMs: 45000,
+    }).then(async (res) => {
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "The AI is busy generating questions. Please try again.");
-      }
+      if (!res.ok) throw new Error(data.error || "Prefetch failed");
+      return data;
+    });
 
-      setQuizQuestions(data);
-      setQuizStarted(true);
+    prefetchRef.current = { controller, promise };
+  };
+
+  // Add cleanup on unmount
+  useEffect(() => {
+    return () => cancelPrefetch();
+  }, []);
+
+  const fetchNextQuestion = async (state: ActiveQuizState) => {
+    setQuizLoading(true);
+    setQuizError(null);
+    setSelectedAnswer(null);
+    setShowFeedback(false);
+    try {
+      const res = await fetchWithRetry("/api/gemini/generate-quiz-question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: state.topic,
+          difficulty: state.difficulty,
+          previousQuestions: state.history.map(h => h.question),
+        }),
+        timeoutMs: 45000,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "AI is busy, try again.");
+      setCurrentQuestion(data);
     } catch (err: any) {
       setQuizError(err.message);
     } finally {
@@ -551,30 +654,106 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     }
   };
 
-  const handleQuizAnswer = (qId: number, optIdx: number) => {
-    if (quizSubmitted) return;
-    setQuizAnswers((prev) => ({ ...prev, [qId]: optIdx }));
+  const handleStartQuiz = async () => {
+    const newState: ActiveQuizState = {
+      topic: quizTopic,
+      difficulty: "medium",
+      roundsCompleted: 0,
+      correctCount: 0,
+      history: [],
+      startedAt: new Date().toISOString(),
+    };
+    setQuizState(newState);
+    setQuizStarted(true);
+    setQuizFinished(false);
+    await persistQuizState(newState);
+    await fetchNextQuestion(newState);
   };
 
-  const handleQuizSubmit = () => {
-    let score = 0;
-    quizQuestions.forEach((q) => {
-      if (quizAnswers[q.id] === q.answerIndex) {
-        score++;
-      }
-    });
-    setQuizScore(score);
-    setQuizSubmitted(true);
+  const handleSelectAnswer = (idx: number) => {
+    if (showFeedback) return;
+    setSelectedAnswer(idx);
+  };
 
-    // Play chimes based on score and shoot confetti on 100% (5/5)
-    if (score === 5) {
-      playChime(true);
-      triggerConfetti();
-    } else if (score >= 3) {
-      playChime(true);
+  const handleConfirmAnswer = async () => {
+    if (selectedAnswer === null || !currentQuestion || !quizState) return;
+    const isCorrect = selectedAnswer === currentQuestion.answerIndex;
+
+    // Adaptive difficulty
+    const nextDifficulty: "easy" | "medium" | "hard" = isCorrect
+      ? quizState.difficulty === "easy" ? "medium" : "hard"
+      : quizState.difficulty === "hard" ? "medium" : "easy";
+
+    const historyEntry = {
+      question: currentQuestion.question,
+      selectedIndex: selectedAnswer,
+      correctIndex: currentQuestion.answerIndex,
+      correct: isCorrect,
+      difficulty: quizState.difficulty,
+      explanation: currentQuestion.explanation,
+    };
+
+    const updatedState: ActiveQuizState = {
+      ...quizState,
+      difficulty: nextDifficulty,
+      roundsCompleted: quizState.roundsCompleted + 1,
+      correctCount: quizState.correctCount + (isCorrect ? 1 : 0),
+      history: [...quizState.history, historyEntry],
+    };
+
+    setQuizState(updatedState);
+    setShowFeedback(true);
+
+    if (isCorrect) triggerConfetti();
+
+    if (updatedState.roundsCompleted >= 5) {
+      setQuizFinished(true);
+      await persistQuizState(updatedState, true);
+      await syncStudentData();
     } else {
-      playChime(false);
+      await persistQuizState(updatedState);
+      // PREFETCH NEXT QUESTION NOW (Exactly 1 call corresponding to the actual nextDifficulty!)
+      startPrefetchNext(updatedState.topic, nextDifficulty, updatedState.history.map(h => h.question));
     }
+  };
+
+  const handleNextQuestion = async () => {
+    if (!quizState) return;
+
+    setQuizLoading(true);
+    setQuizError(null);
+    setSelectedAnswer(null);
+    setShowFeedback(false);
+
+    try {
+      let prefetchedData: any = null;
+      if (prefetchRef.current) {
+        prefetchedData = await prefetchRef.current.promise;
+      }
+
+      if (prefetchedData) {
+        setCurrentQuestion(prefetchedData);
+        cancelPrefetch(); // clean up the slot
+      } else {
+        await fetchNextQuestion(quizState);
+      }
+    } catch (err: any) {
+      // If aborted or failed, fall back to fetching normally
+      await fetchNextQuestion(quizState);
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  const handleRestartQuiz = async () => {
+    cancelPrefetch();
+    setQuizStarted(false);
+    setQuizFinished(false);
+    setCurrentQuestion(null);
+    setSelectedAnswer(null);
+    setShowFeedback(false);
+    setQuizState(null);
+    setQuizError(null);
   };
 
   // Toggle dynamic milestones checklist (using NCERT core topics)
@@ -660,40 +839,161 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     }
   };
 
-  // Chatbot message submission
+  // Streaming chatbot message submission
   const handleChatbotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatbotInput.trim()) return;
+    if (!chatbotInput.trim() || chatbotLoading) return;
 
-    const userMsgText = chatbotInput;
+    const userMsgText = chatbotInput.trim();
     setChatbotInput("");
-    setChatbotMessages((prev) => [...prev, { role: "user", text: userMsgText }]);
+    const updatedMessages = [...chatbotMessages, { role: "user" as const, text: userMsgText }];
+    setChatbotMessages(updatedMessages);
     setChatbotLoading(true);
 
-    try {
-      const activeMsgs = [...chatbotMessages, { role: "user" as const, text: userMsgText }];
+    // Add placeholder assistant message for streaming
+    setChatbotMessages((prev) => [...prev, { role: "assistant" as const, text: "" }]);
 
-      const res = await fetchWithRetry("/api/gemini/chatbot", {
+    try {
+      const response = await fetch("/api/gemini/chatbot-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: activeMsgs }),
+        body: JSON.stringify({ messages: updatedMessages }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "AI partner is temporarily offline.");
+      if (!response.body) throw new Error("No stream received.");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n");
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") break;
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.error) throw new Error(parsed.error);
+              if (parsed.text) {
+                accumulated += parsed.text;
+                // Update last message in state with streamed text
+                setChatbotMessages((prev) => [
+                  ...prev.slice(0, -1),
+                  { role: "assistant" as const, text: accumulated },
+                ]);
+              }
+            } catch {}
+          }
+        }
       }
 
-      setChatbotMessages((prev) => [...prev, { role: "assistant", text: data.reply }]);
+      // Auto-scroll
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     } catch (err: any) {
       setChatbotMessages((prev) => [
-        ...prev,
-        { role: "assistant", text: `I apologize, I am temporarily busy. Error: ${err.message}` },
+        ...prev.slice(0, -1),
+        { role: "assistant" as const, text: `I apologize, I am temporarily busy. Please try again.` },
       ]);
     } finally {
       setChatbotLoading(false);
     }
   };
+
+  // Helper to get beautiful custom-themed icon for each achievement
+  const getAchievementIcon = (id: string, tier: string, earned: boolean, className = "h-4 w-4") => {
+    const tierColors: Record<string, string> = {
+      bronze: earned ? "text-amber-500" : "text-slate-400",
+      silver: earned ? "text-slate-300" : "text-slate-400",
+      gold: earned ? "text-yellow-400" : "text-slate-400",
+      platinum: earned ? "text-cyan-400 animate-pulse" : "text-slate-400",
+    };
+    
+    const colorClass = tierColors[tier] || "text-slate-400";
+    
+    switch (id) {
+      case "first_steps":
+        return <Star className={`${className} ${colorClass}`} />;
+      case "quiz_warrior":
+        return <Trophy className={`${className} ${colorClass}`} />;
+      case "subject_starter":
+        return <BookOpen className={`${className} ${colorClass}`} />;
+      case "on_track":
+        return <TrendingUp className={`${className} ${colorClass}`} />;
+      case "half_way":
+        return <Sliders className={`${className} ${colorClass}`} />;
+      case "chem_star":
+        return <Award className={`${className} ${colorClass}`} />;
+      case "phys_pro":
+        return <Zap className={`${className} ${colorClass}`} />;
+      case "math_maestro":
+        return <Target className={`${className} ${colorClass}`} />;
+      case "quiz_addict":
+        return <BrainCircuit className={`${className} ${colorClass}`} />;
+      case "triple_threat":
+        return <Trophy className={`${className} ${colorClass} scale-110`} />;
+      case "milestone_master":
+        return <CheckSquare className={`${className} ${colorClass}`} />;
+      case "excellence":
+        return <Sparkles className={`${className} ${colorClass}`} />;
+      case "sams_scholar":
+        return <Award className={`${className} ${colorClass} scale-110`} />;
+      case "jee_ready":
+        return <Zap className={`${className} ${colorClass} scale-110`} />;
+      default:
+        return <Award className={`${className} ${colorClass}`} />;
+    }
+  };
+
+  // Achievements computation
+  const computeAchievements = () => {
+    const totalQuizzes = student.quizStats?.totalQuizzes || 0;
+    const chemQ = student.quizStats?.bySubject?.chemistry || 0;
+    const physQ = student.quizStats?.bySubject?.physics || 0;
+    const mathQ = student.quizStats?.bySubject?.maths || 0;
+    const milestoneValues = Object.values(student.milestones || {}) as boolean[][];
+    const anyMilestone100 = milestoneValues.some(arr => arr && arr.length > 0 && arr.every(Boolean));
+
+    const scoresValues = Object.values(student.scores || {}) as number[];
+
+    const defs = [
+      { id: "first_steps", title: "First Steps", desc: "Started studying at least one chapter", icon: "🌱", tier: "bronze", earned: scoresValues.some(s => s > 0) },
+      { id: "quiz_warrior", title: "Quiz Warrior", desc: "Completed your first quiz", icon: "⚔️", tier: "bronze", earned: totalQuizzes >= 1 },
+      { id: "subject_starter", title: "Subject Starter", desc: "Any subject average ≥ 10%", icon: "📘", tier: "bronze", earned: chemAvg >= 10 || physAvg >= 10 || mathAvg >= 10 },
+      { id: "on_track", title: "On Track", desc: "Overall average ≥ 25%", icon: "🎯", tier: "silver", earned: overallAvg >= 25 },
+      { id: "half_way", title: "Half Way There", desc: "Overall average ≥ 50%", icon: "🏃", tier: "silver", earned: overallAvg >= 50 },
+      { id: "chem_star", title: "Chemistry Star", desc: "Chemistry average ≥ 60%", icon: "⚗️", tier: "silver", earned: chemAvg >= 60 },
+      { id: "phys_pro", title: "Physics Pro", desc: "Physics average ≥ 60%", icon: "⚡", tier: "silver", earned: physAvg >= 60 },
+      { id: "math_maestro", title: "Maths Maestro", desc: "Maths average ≥ 60%", icon: "📐", tier: "silver", earned: mathAvg >= 60 },
+      { id: "quiz_addict", title: "Quiz Addict", desc: "Completed 5 or more quizzes", icon: "🧠", tier: "silver", earned: totalQuizzes >= 5 },
+      { id: "triple_threat", title: "Triple Threat", desc: "All subjects ≥ 60%", icon: "🏆", tier: "gold", earned: chemAvg >= 60 && physAvg >= 60 && mathAvg >= 60 },
+      { id: "milestone_master", title: "Milestone Master", desc: "Completed all milestones for a topic", icon: "✅", tier: "gold", earned: anyMilestone100 },
+      { id: "excellence", title: "Excellence", desc: "Overall average ≥ 75%", icon: "🌟", tier: "gold", earned: overallAvg >= 75 },
+      { id: "sams_scholar", title: "SAMS Scholar", desc: "Overall average ≥ 90%", icon: "🎓", tier: "platinum", earned: overallAvg >= 90 },
+      { id: "jee_ready", title: "JEE Ready", desc: "All subjects ≥ 80%", icon: "🚀", tier: "platinum", earned: chemAvg >= 80 && physAvg >= 80 && mathAvg >= 80 },
+    ];
+    return defs;
+  };
+
+  const achievements = computeAchievements();
+  const earnedCount = achievements.filter(a => a.earned).length;
+
+  const tierColors: Record<string, string> = {
+    bronze: "from-amber-600 to-amber-400",
+    silver: "from-slate-400 to-slate-300",
+    gold: "from-yellow-500 to-amber-400",
+    platinum: "from-indigo-400 to-cyan-400",
+  };
+  const tierBg: Record<string, string> = {
+    bronze: darkMode ? "bg-amber-950/40 border-amber-800/40" : "bg-amber-50 border-amber-200",
+    silver: darkMode ? "bg-slate-800/60 border-slate-700/40" : "bg-slate-50 border-slate-200",
+    gold: darkMode ? "bg-yellow-950/40 border-yellow-800/40" : "bg-yellow-50 border-yellow-200",
+    platinum: darkMode ? "bg-indigo-950/40 border-indigo-800/40" : "bg-indigo-50 border-indigo-200",
+  };
+  const tierLabel: Record<string, string> = { bronze: "Bronze", silver: "Silver", gold: "Gold", platinum: "Platinum" };
 
 
 
@@ -704,7 +1004,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
       <header className={`px-6 py-4 flex justify-between items-center border-b shrink-0 z-10 transition-colors duration-300 ${darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"}`}>
         <div className="flex items-center gap-3">
           <div className="bg-indigo-600 p-2 rounded-xl flex items-center justify-center shadow-md shadow-indigo-600/10">
-            <FlaskConical className="h-5 w-5 text-white" />
+            <SAMSLogo size={20} className="text-white" />
           </div>
           <span className="font-bold text-lg tracking-tight">
             SAMS <span className="text-indigo-600">Analytics</span>
@@ -787,8 +1087,166 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
         </div>
       </div>
 
+      {/* ── MOBILE: Achievements relative wrapper container ── */}
+      <div className="relative lg:hidden">
+        {/* Achievements horizontal strip */}
+        <div className={`px-4 py-2.5 border-b overflow-x-auto transition-colors duration-300 ${darkMode ? "bg-slate-900/40 border-slate-800/80" : "bg-white/60 border-slate-200"}`}>
+          <div className="flex items-center gap-2 min-w-max">
+            <span className={`text-[10px] font-extrabold uppercase tracking-widest shrink-0 mr-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+              🏅 Achievements ({earnedCount}/{achievements.length})
+            </span>
+            {achievements.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => setSelectedMobileAchievement(prev => prev === a.id ? null : a.id)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
+                  a.earned
+                    ? tierBg[a.tier]
+                    : darkMode ? "bg-slate-800/40 border-slate-700/30 opacity-35" : "bg-slate-100 border-slate-200 opacity-40"
+                } ${selectedMobileAchievement === a.id ? "ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-slate-950" : ""}`}
+              >
+                <span>{getAchievementIcon(a.id, a.tier, a.earned, "h-3.5 w-3.5")}</span>
+                <span className={darkMode ? "text-slate-200" : "text-slate-700"}>{a.title}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Floating absolute overlay popup (doesn't push down layout) */}
+        <AnimatePresence>
+          {selectedMobileAchievement && (() => {
+            const activeAch = achievements.find((a) => a.id === selectedMobileAchievement);
+            if (!activeAch) return null;
+            
+            const requirementHints: Record<string, string> = {
+              first_steps: "Start studying and record preparation score > 0% on any syllabus chapter.",
+              quiz_warrior: "Complete at least one full adaptive AI Quiz session (5 rounds) in any topic.",
+              subject_starter: "Achieve a preparation average score of 10% or higher in any single subject.",
+              on_track: "Maintain a cumulative overall syllabus preparation index of 25% or higher.",
+              half_way: "Maintain a cumulative overall syllabus preparation index of 50% or higher.",
+              chem_star: "Reach a chemistry subject average score of 60% or higher.",
+              phys_pro: "Reach a physics subject average score of 60% or higher.",
+              math_maestro: "Reach a mathematics subject average score of 60% or higher.",
+              quiz_addict: "Complete 5 or more interactive adaptive AI Quiz sessions.",
+              triple_threat: "Achieve and maintain a subject average of 60% or higher in all three subjects.",
+              milestone_master: "Check off every milestone box in the prep checklist for any chapter.",
+              excellence: "Achieve and maintain a cumulative overall syllabus preparation index of 75% or higher.",
+              sams_scholar: "Maintain an outstanding cumulative overall syllabus preparation index of 90% or higher.",
+              jee_ready: "Achieve and maintain a subject average of 80% or higher in Chemistry, Physics, and Maths.",
+            };
+            
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className={`absolute left-4 right-4 mt-1 p-4 rounded-2xl border shadow-2xl z-50 text-xs transition-all duration-300 ${
+                  darkMode ? "bg-slate-900 border-slate-800 text-slate-100 shadow-slate-950/90" : "bg-white border-indigo-100 text-slate-850 shadow-indigo-950/15"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${
+                    activeAch.earned
+                      ? (darkMode ? "bg-indigo-500/15 border border-indigo-500/20" : "bg-indigo-50 border border-indigo-100")
+                      : (darkMode ? "bg-slate-800/60 border-slate-700/40" : "bg-slate-100 border border-slate-200")
+                  }`}>
+                    {getAchievementIcon(activeAch.id, activeAch.tier, activeAch.earned, "h-5 w-5")}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <h5 className="font-extrabold text-xs flex items-center gap-1.5">
+                        {activeAch.title}
+                        <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-gradient-to-r ${tierColors[activeAch.tier]} text-white shrink-0`}>
+                          {tierLabel[activeAch.tier]}
+                        </span>
+                      </h5>
+                      <button
+                        onClick={() => setSelectedMobileAchievement(null)}
+                        className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 text-xs font-black cursor-pointer p-0.5"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <p className="mt-1 text-slate-500 dark:text-slate-355 font-bold leading-relaxed">
+                      {activeAch.desc}
+                    </p>
+                    <div className={`mt-2.5 p-2 rounded-lg border text-[10px] font-bold leading-relaxed ${
+                      activeAch.earned
+                        ? (darkMode ? "bg-emerald-950/25 border-emerald-900/35 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-700")
+                        : (darkMode ? "bg-slate-800/30 border-slate-700/20 text-slate-400" : "bg-slate-100 border-slate-200 text-slate-600")
+                    }`}>
+                      {activeAch.earned ? (
+                        <span className="flex items-center gap-1">🏆 <strong>Earned:</strong> Requirement met! Keep going.</span>
+                      ) : (
+                        <span>🎯 <strong>How to unlock:</strong> {requirementHints[activeAch.id] || "Complete target milestones and quizzes."}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
+      </div>
+
+      {/* ── BODY: Sidebar (lg+) + main content ── */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* Achievements Desktop Sidebar */}
+        <aside className={`hidden lg:flex flex-col w-64 xl:w-72 shrink-0 border-r overflow-y-auto transition-colors duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200"}`}>
+          <div className="p-4 border-b sticky top-0 z-10 backdrop-blur-sm">
+            <div className={`${darkMode ? "bg-slate-800/60 border-slate-700" : "bg-indigo-50 border-indigo-100"} border rounded-2xl p-3`}>
+              <div className="flex items-center gap-2 mb-2">
+                <Trophy className="h-4 w-4 text-indigo-600" />
+                <span className={`text-xs font-black uppercase tracking-widest ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Achievements</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-black text-indigo-600">{earnedCount}</span>
+                <span className={`text-xs font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>/ {achievements.length} earned</span>
+              </div>
+              {/* Progress bar */}
+              <div className={`h-1.5 rounded-full mt-2 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}>
+                <div className="h-full bg-indigo-600 rounded-full transition-all duration-700" style={{ width: `${(earnedCount / achievements.length) * 100}%` }} />
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3 space-y-1.5 pb-8">
+            {achievements.map((a) => (
+              <div
+                key={a.id}
+                className={`flex items-start gap-3 p-3 rounded-2xl border transition-all ${
+                  a.earned
+                    ? tierBg[a.tier]
+                    : darkMode ? "bg-slate-800/20 border-slate-800/40 opacity-40" : "bg-slate-50 border-slate-100 opacity-50"
+                }`}
+              >
+                <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${
+                  a.earned
+                    ? (darkMode ? "bg-indigo-500/15 border border-indigo-500/20" : "bg-indigo-50 border border-indigo-100")
+                    : (darkMode ? "bg-slate-850 border border-slate-800" : "bg-slate-100 border border-slate-200/60")
+                }`}>
+                  {getAchievementIcon(a.id, a.tier, a.earned, "h-4 w-4")}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className={`text-xs font-extrabold leading-tight truncate ${darkMode ? "text-slate-100" : "text-slate-800"}`}>{a.title}</p>
+                    {a.earned && (
+                      <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-gradient-to-r ${tierColors[a.tier]} text-white shrink-0`}>
+                        {tierLabel[a.tier]}
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-[10px] mt-0.5 leading-snug ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{a.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+
       {/* Main Student Hub Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 space-y-8 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
 
         {/* Top Highlight Welcome Grid */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -939,36 +1397,30 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
           </div>
         </section>
 
-        {/* Refactored Interactive Gemini Academic Quiz Panel */}
+        {/* Adaptive AI Quiz Panel */}
         <section className={`p-6 rounded-[2rem] border relative overflow-hidden transition-all duration-300 ${darkMode
           ? "bg-slate-900/60 border-slate-800 text-white"
-          : "bg-white border-slate-200/80 shadow-md shadow-slate-100 text-slate-900"
-          }`}>
-          {/* Animated Background Mesh */}
+          : "bg-white border-slate-200/80 shadow-md shadow-slate-100 text-slate-900"}`}>
           <div className={`absolute inset-0 pointer-events-none z-0 ${darkMode
             ? "bg-gradient-to-br from-indigo-950/10 via-slate-950/30 to-cyan-950/10"
-            : "bg-gradient-to-br from-indigo-50/20 via-white to-sky-50/20"
-            }`} />
+            : "bg-gradient-to-br from-indigo-50/20 via-white to-sky-50/20"}`} />
 
           <div className="relative z-10 space-y-6">
             {!quizStarted ? (
-              /* Step 1: Pre-Quiz Selection and Instructions */
+              /* Pre-Quiz Selection */
               <div className="max-w-2xl space-y-4">
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${darkMode
                     ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/20"
-                    : "bg-indigo-50 text-indigo-600 border-indigo-100"
-                    }`}>
-                    Interactive AI Quiz Desk
+                    : "bg-indigo-50 text-indigo-600 border-indigo-100"}`}>
+                    Adaptive AI Quiz
                   </span>
                 </div>
-                <h3 className={`text-2xl font-black font-display ${darkMode ? "text-white" : "text-slate-900"
-                  }`}>
-                  Test Your Skills with On-Demand Assessments
+                <h3 className={`text-2xl font-black font-display ${darkMode ? "text-white" : "text-slate-900"}`}>
+                  Adaptive Assessment Session
                 </h3>
-                <p className={`text-sm leading-relaxed font-semibold ${darkMode ? "text-indigo-200" : "text-slate-900"
-                  }`}>
-                  Select any Class XII textbook unit or exam topic. SAMS will set five conceptually rigorous MCQ questions customized directly for your selected topic, matching CBSE and JEE Main patterns.
+                <p className={`text-sm leading-relaxed font-semibold ${darkMode ? "text-indigo-200" : "text-slate-700"}`}>
+                  5 questions, one at a time. Difficulty adjusts based on your answers — correct gets harder, wrong gets easier. Full performance report at the end.
                 </p>
 
                 {quizError && (
@@ -978,214 +1430,272 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                   </div>
                 )}
 
-                {/* Topic selection row */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-3 items-stretch sm:items-end">
                   <div className="flex-1 min-w-0 space-y-2">
-                    <label className={`block text-xs font-black uppercase tracking-wider ${darkMode ? "text-indigo-300" : "text-indigo-600"
-                      }`}>
-                      Select Assessment Topic
+                    <label className={`block text-xs font-black uppercase tracking-wider ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
+                      Select Topic
                     </label>
                     <div className="relative">
                       <select
                         value={quizTopic}
                         onChange={(e) => setQuizTopic(e.target.value)}
-                        className={`w-full max-w-full border rounded-xl pl-4 pr-10 py-3 text-base font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer truncate appearance-none ${darkMode
+                        className={`w-full border rounded-xl pl-4 pr-10 py-3 text-base font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer appearance-none ${darkMode
                           ? "bg-slate-950 text-white border-slate-800"
-                          : "bg-slate-50 text-slate-850 border-slate-200"
-                          }`}
+                          : "bg-slate-50 text-slate-900 border-slate-200"}`}
                       >
                         {standardChaptersList.map((chap) => (
-                          <option key={chap} value={chap} className="bg-slate-950 text-white font-medium">
-                            {chap}
-                          </option>
+                          <option key={chap} value={chap}>{chap}</option>
                         ))}
                       </select>
-                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-900 dark:text-slate-400 pointer-events-none" />
+                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
                   </div>
-
                   <button
                     onClick={handleStartQuiz}
                     disabled={quizLoading}
-                    className={`font-extrabold text-sm px-6 py-3.5 rounded-xl transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2 ${darkMode
-                      ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white shadow-indigo-600/10"
-                      : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white shadow-indigo-600/15"
-                      }`}
+                    className={`font-extrabold text-sm px-6 py-3.5 rounded-xl transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2 min-w-[180px] ${darkMode
+                      ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white"
+                      : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white"}`}
                   >
                     {quizLoading ? (
-                      <>
-                        <Loader className="w-4 h-4 animate-spin text-white" />
-                        Generating Assessment Questions...
-                      </>
+                      <><Loader className="w-4 h-4 animate-spin" /> Generating...</>
                     ) : (
-                      <>
-                        <Play className="w-4 h-4 text-white fill-current" />
-                        Generate Assessment Quiz
-                      </>
+                      <><Zap className="w-4 h-4" /> Start Quiz</>
                     )}
                   </button>
                 </div>
               </div>
+            ) : quizFinished && quizState ? (
+              /* Performance Report */
+              <div className="space-y-6 max-w-2xl">
+                <div className="text-center space-y-2">
+                  <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${darkMode ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border-emerald-100"}`}>
+                    Session Complete
+                  </span>
+                  <h3 className={`text-2xl font-black ${darkMode ? "text-white" : "text-slate-900"}`}>
+                    Performance Report
+                  </h3>
+                  <p className={`text-sm font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                    Topic: {quizState.topic}
+                  </p>
+                </div>
+
+                {/* Score card */}
+                <div className={`p-5 rounded-2xl border text-center ${darkMode ? "bg-slate-800/60 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
+                  <div className="flex items-center justify-center gap-4">
+                    <span className="text-6xl font-black text-indigo-600">{quizState.correctCount}</span>
+                    <div className="text-left">
+                      <p className={`text-xs font-bold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-slate-500"}`}>out of 5</p>
+                      <p className={`text-sm font-extrabold ${darkMode ? "text-slate-200" : "text-slate-700"}`}>
+                        {quizState.correctCount === 5 ? "🏆 Perfect!" : quizState.correctCount >= 4 ? "🌟 Excellent!" : quizState.correctCount >= 3 ? "👍 Good work" : quizState.correctCount >= 2 ? "📚 Keep practicing" : "💪 Don't give up!"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`h-2 rounded-full mt-4 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}>
+                    <div className={`h-full rounded-full transition-all duration-700 ${quizState.correctCount >= 4 ? "bg-emerald-500" : quizState.correctCount >= 3 ? "bg-amber-500" : "bg-rose-500"}`}
+                      style={{ width: `${(quizState.correctCount / 5) * 100}%` }} />
+                  </div>
+                </div>
+
+                {/* Difficulty progression */}
+                <div>
+                  <p className={`text-xs font-black uppercase tracking-wider mb-2 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Question Breakdown</p>
+                  <div className="space-y-2">
+                    {quizState.history.map((h, i) => (
+                      <div key={i} className={`flex items-start gap-3 p-3 rounded-xl border ${darkMode ? "bg-slate-800/40 border-slate-700/40" : "bg-slate-50 border-slate-100"}`}>
+                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 mt-0.5 ${h.correct ? (darkMode ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-700") : (darkMode ? "bg-rose-500/20 text-rose-400" : "bg-rose-100 text-rose-600")}`}>
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full ${h.difficulty === "hard" ? "bg-rose-100 text-rose-600" : h.difficulty === "medium" ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"}`}>
+                              {h.difficulty}
+                            </span>
+                            <span className={`text-xs font-bold ${h.correct ? (darkMode ? "text-emerald-400" : "text-emerald-700") : (darkMode ? "text-rose-400" : "text-rose-600")}`}>
+                              {h.correct ? "✓ Correct" : "✗ Incorrect"}
+                            </span>
+                          </div>
+                          <div className={`text-xs mt-1 leading-snug line-clamp-2 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>{parseMarkdownAndMath(h.question)}</div>
+                          {!h.correct && (
+                            <div className={`text-[10px] mt-1 leading-snug ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{parseMarkdownAndMath(h.explanation)}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Recommendation */}
+                {quizState.correctCount < 5 && (
+                  <div className={`p-4 rounded-2xl border ${darkMode ? "bg-indigo-950/40 border-indigo-800/40" : "bg-indigo-50 border-indigo-100"}`}>
+                    <p className={`text-xs font-extrabold uppercase tracking-wider mb-1 ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>Study Recommendation</p>
+                    <p className={`text-xs font-semibold leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+                      Review the incorrect questions above and revisit your {quizState.topic} notes. Focus on the explanations provided — they target the exact concept gaps.
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleRestartQuiz}
+                  className="w-full flex items-center justify-center gap-2 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all"
+                >
+                  <RefreshCw className="h-4 w-4" /> Start New Quiz
+                </button>
+              </div>
             ) : (
-              /* Step 2: Assessment Session Active */
-              <div className="space-y-6">
-                <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b pb-4 ${darkMode ? "border-slate-800" : "border-slate-100"
-                  }`}>
+              /* Active Question */
+              <div className="space-y-5 max-w-2xl">
+                {/* Header */}
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    <span className={`text-[10px] font-extrabold uppercase tracking-widest ${darkMode ? "text-indigo-300" : "text-indigo-600"
-                      }`}>
-                      Active AI Assessment Unit
+                    <span className={`text-[10px] font-extrabold tracking-widest uppercase ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
+                      Active Assessment
                     </span>
-                    <h4 className={`text-lg font-black mt-1 ${darkMode ? "text-white" : "text-slate-900"
-                      }`}>Topic: {quizTopic}</h4>
+                    <h4 className={`text-base font-black mt-0.5 ${darkMode ? "text-white" : "text-slate-900"}`}>
+                      {quizState?.topic || quizTopic}
+                    </h4>
                   </div>
-                  <div className="text-right">
-                    <span className={`text-xs font-semibold ${darkMode ? "text-indigo-300" : "text-slate-900"
-                      }`}>
-                      Assessments are automatically graded with step-by-step rationales.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  {quizQuestions.map((q, qIdx) => (
-                    <div key={q.id} className={`p-5 rounded-2xl border space-y-4 ${darkMode
-                      ? "bg-slate-950/40 border-slate-900/40"
-                      : "bg-slate-50 border-slate-100"
-                      }`}>
-                      <div className="flex items-start gap-3">
-                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${darkMode ? "bg-indigo-500/25 text-indigo-300" : "bg-indigo-100 text-indigo-600"
-                          }`}>
-                          {qIdx + 1}
-                        </span>
-                        <div className={`text-xs font-black leading-relaxed pt-0.5 select-text ${darkMode ? "text-white" : "text-black"
-                          }`}>
-                          {q.question}
-                        </div>
-                      </div>
-
-                      {/* Options Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-9">
-                        {q.options.map((opt: string, optIdx: number) => {
-                          const isSelected = quizAnswers[q.id] === optIdx;
-                          const isCorrect = q.answerIndex === optIdx;
-
-                          let optStyle = "";
-                          if (darkMode) {
-                            optStyle = "bg-indigo-950/30 border-indigo-800/50 text-indigo-100 hover:bg-indigo-900/30";
-                            if (isSelected) {
-                              optStyle = "bg-indigo-600 border-indigo-400 text-white";
-                            }
-                            if (quizSubmitted) {
-                              if (isCorrect) {
-                                optStyle = "bg-emerald-600 border-emerald-400 text-white font-extrabold";
-                              } else if (isSelected && !isCorrect) {
-                                optStyle = "bg-rose-600 border-rose-400 text-white";
-                              } else {
-                                optStyle = "opacity-40 bg-indigo-950/20 border-indigo-900 text-indigo-300";
-                              }
-                            }
-                          } else {
-                            optStyle = "bg-white border-slate-300 text-slate-900 hover:bg-indigo-50/50 hover:border-indigo-100";
-                            if (isSelected) {
-                              optStyle = "bg-indigo-50 border-indigo-300 text-indigo-700 font-extrabold shadow-sm";
-                            }
-                            if (quizSubmitted) {
-                              if (isCorrect) {
-                                optStyle = "bg-emerald-50 border-emerald-200 text-emerald-700 font-extrabold";
-                              } else if (isSelected && !isCorrect) {
-                                optStyle = "bg-rose-50 border-rose-200 text-rose-700 font-extrabold";
-                              } else {
-                                optStyle = "opacity-40 bg-slate-50 border-slate-200 text-slate-900 font-extrabold";
-                              }
-                            }
-                          }
-
-                          return (
-                            <button
-                              key={optIdx}
-                              onClick={() => handleQuizAnswer(q.id, optIdx)}
-                              disabled={quizSubmitted}
-                              className={`p-3.5 rounded-xl border text-left text-xs font-bold transition-all ${optStyle} ${!quizSubmitted ? "cursor-pointer" : "cursor-default"}`}
-                            >
-                              <span className="mr-2 uppercase text-[10px] opacity-60">
-                                {["A", "B", "C", "D"][optIdx]}.
-                              </span>
-                              {opt}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Show Academic Rationale after submission */}
-                      {quizSubmitted && (
-                        <div className={`pl-9 pt-2 border-t mt-2 space-y-1 ${darkMode ? "text-indigo-200 border-indigo-850" : "text-slate-900 border-slate-200"
-                          }`}>
-                          <p className={`font-extrabold uppercase tracking-widest text-[9px] ${darkMode ? "text-emerald-400" : "text-emerald-600"
-                            }`}>
-                            Academic Explanatory Rationale:
-                          </p>
-                          <p className="opacity-95 leading-relaxed font-bold">{q.explanation}</p>
-                        </div>
-                      )}
+                  <div className="flex items-center gap-2">
+                    {/* Progress dots */}
+                    <div className="flex gap-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className={`w-2 h-2 rounded-full ${i < (quizState?.roundsCompleted || 0)
+                          ? (quizState?.history[i]?.correct ? "bg-emerald-500" : "bg-rose-500")
+                          : i === (quizState?.roundsCompleted || 0) ? "bg-indigo-500 animate-pulse" : (darkMode ? "bg-slate-700" : "bg-slate-200")}`} />
+                      ))}
                     </div>
-                  ))}
-                </div>
-
-                {/* Submit / Reset Actions */}
-                <div className={`flex justify-between items-center border-t pt-4 ${darkMode ? "border-slate-800" : "border-slate-100"
-                  }`}>
-                  {quizSubmitted ? (
-                    <div className="flex items-center gap-3">
-                      <span className={`text-lg font-black ${darkMode ? "text-indigo-300" : "text-indigo-650"
-                        }`}>
-                        Evaluated Score: {quizScore}/5
+                    <span className={`text-xs font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                      {(quizState?.roundsCompleted || 0) + 1}/5
+                    </span>
+                    {/* Difficulty badge */}
+                    {quizState && (
+                      <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${quizState.difficulty === "hard" ? "bg-rose-100 text-rose-700" : quizState.difficulty === "medium" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                        {quizState.difficulty}
                       </span>
-                      {quizScore === 5 && (
-                        <span className="bg-emerald-500 text-slate-900 text-[10px] px-2.5 py-1 rounded-full font-extrabold uppercase tracking-widest animate-bounce">
-                          Comprehensive Mastery Met
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <div className={`text-xs font-bold ${darkMode ? "text-indigo-300" : "text-slate-900"
-                      }`}>
-                      Please respond to all five questions to submit.
-                    </div>
-                  )}
-
-                  <div className="flex gap-3">
-                    {!quizSubmitted ? (
-                      <button
-                        onClick={handleQuizSubmit}
-                        disabled={Object.keys(quizAnswers).length < 5}
-                        className={`font-extrabold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer ${darkMode
-                          ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-950 disabled:text-indigo-700 text-white"
-                          : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-indigo-600 font-extrabold"
-                          }`}
-                      >
-                        Submit Assessment
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setQuizStarted(false);
-                        }}
-                        className={`font-extrabold text-sm px-5 py-2.5 rounded-xl transition-all cursor-pointer ${darkMode
-                          ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-750"
-                          : "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
-                          }`}
-                      >
-                        New Assessment
-                      </button>
                     )}
                   </div>
                 </div>
+
+                {quizLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-4">
+                    <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    <p className={`text-sm font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Generating next question...</p>
+                  </div>
+                ) : quizError ? (
+                  <div className="space-y-4 py-8 text-center max-w-md mx-auto">
+                    <div className="mx-auto w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                      <AlertCircle className="h-6 w-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className={`text-sm font-black ${darkMode ? "text-white" : "text-slate-900"}`}>Failed to load question</h4>
+                      <p className={`text-xs font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{quizError}</p>
+                    </div>
+                    <div className="flex items-center justify-center gap-3 pt-2">
+                      <button
+                        onClick={() => quizState && fetchNextQuestion(quizState)}
+                        className="px-4 py-2 font-extrabold text-xs rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all cursor-pointer"
+                      >
+                        Try Again
+                      </button>
+                      <button
+                        onClick={handleRestartQuiz}
+                        className={`px-4 py-2 font-extrabold text-xs rounded-xl border transition-all cursor-pointer ${
+                          darkMode ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        Exit Quiz
+                      </button>
+                    </div>
+                  </div>
+                ) : currentQuestion ? (
+                  <div className={`p-5 rounded-2xl border space-y-4 ${darkMode ? "bg-slate-950/40 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
+                    {/* Question */}
+                    <div className={`text-sm font-bold leading-relaxed select-text ${darkMode ? "text-white" : "text-slate-900"}`}>
+                      {parseMarkdownAndMath(currentQuestion.question)}
+                    </div>
+
+                    {/* Options */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {currentQuestion.options.map((opt: string, optIdx: number) => {
+                        const isSelected = selectedAnswer === optIdx;
+                        const isCorrect = optIdx === currentQuestion.answerIndex;
+
+                        let style = "";
+                        if (showFeedback) {
+                          if (isCorrect) style = darkMode ? "bg-emerald-600 border-emerald-400 text-white" : "bg-emerald-50 border-emerald-300 text-emerald-700 font-extrabold";
+                          else if (isSelected) style = darkMode ? "bg-rose-600 border-rose-400 text-white" : "bg-rose-50 border-rose-200 text-rose-600";
+                          else style = "opacity-40 " + (darkMode ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-white border-slate-200 text-slate-500");
+                        } else {
+                          style = isSelected
+                            ? darkMode ? "bg-indigo-600 border-indigo-400 text-white" : "bg-indigo-50 border-indigo-300 text-indigo-700 font-extrabold"
+                            : darkMode ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750 hover:border-indigo-700" : "bg-white border-slate-200 text-slate-800 hover:bg-indigo-50 hover:border-indigo-200";
+                        }
+
+                        return (
+                          <button
+                            key={optIdx}
+                            onClick={() => handleSelectAnswer(optIdx)}
+                            disabled={showFeedback}
+                            className={`p-3.5 rounded-xl border text-left text-xs font-semibold transition-all ${style} ${!showFeedback ? "cursor-pointer" : "cursor-default"}`}
+                          >
+                            <span className="font-black text-[10px] opacity-60 mr-1.5">{["A", "B", "C", "D"][optIdx]}.</span>
+                            <span>{parseBoldAndMathInline(opt)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Feedback area */}
+                    {showFeedback && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                        className={`p-3.5 rounded-xl border ${selectedAnswer === currentQuestion.answerIndex
+                          ? (darkMode ? "bg-emerald-950/40 border-emerald-800/40" : "bg-emerald-50 border-emerald-200")
+                          : (darkMode ? "bg-rose-950/40 border-rose-800/40" : "bg-rose-50 border-rose-200")}`}
+                      >
+                        <p className={`text-xs font-extrabold mb-1 ${selectedAnswer === currentQuestion.answerIndex ? (darkMode ? "text-emerald-400" : "text-emerald-700") : (darkMode ? "text-rose-400" : "text-rose-600")}`}>
+                          {selectedAnswer === currentQuestion.answerIndex ? "✓ Correct!" : "✗ Incorrect"}
+                        </p>
+                        <p className={`text-xs leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+                          {parseMarkdownAndMath(currentQuestion.explanation)}
+                        </p>
+                      </motion.div>
+                    )}
+
+                    {/* Action row */}
+                    <div className="flex items-center justify-between gap-3">
+                      {!showFeedback ? (
+                        <button
+                          onClick={handleConfirmAnswer}
+                          disabled={selectedAnswer === null}
+                          className="flex-1 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+                        >
+                          Confirm Answer
+                        </button>
+                      ) : (quizState?.roundsCompleted || 0) < 5 ? (
+                        <button
+                          onClick={handleNextQuestion}
+                          className="flex-1 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center justify-center gap-2"
+                        >
+                          Next Question <ChevronRight className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                      <button
+                        onClick={handleRestartQuiz}
+                        className={`px-4 py-3 text-xs font-bold rounded-xl transition-all ${darkMode ? "bg-slate-800 text-slate-400 hover:text-slate-200" : "bg-slate-100 text-slate-500 hover:text-slate-700"}`}
+                      >
+                        Exit
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
         </section>
       </main>
+      </div>  {/* End sidebar flex wrapper */}
+
 
       {/* SAMS Academic Chapter Companion Slide panel */}
       <AnimatePresence>
@@ -1278,8 +1788,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                                 {item.label}
                               </span>
                               <div className={`px-3.5 py-3 rounded-xl flex items-center justify-center select-all border overflow-x-auto ${darkMode
-                                  ? "bg-slate-800 border-slate-700 text-indigo-200"
-                                  : "bg-indigo-600/5 border-indigo-100/50 text-indigo-700"
+                                ? "bg-slate-800 border-slate-700 text-indigo-200"
+                                : "bg-indigo-600/5 border-indigo-100/50 text-indigo-700"
                                 }`}>
                                 <MathRenderer math={item.formula} block={false} />
                               </div>
@@ -1346,8 +1856,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                               key={cIdx}
                               onClick={() => handleToggleMilestone(cIdx)}
                               className={`w-full text-left rounded-xl border transition-all flex items-stretch cursor-pointer overflow-hidden ${isChecked
-                                  ? "border-indigo-200 dark:border-indigo-800/60"
-                                  : "border-slate-200 dark:border-slate-700/60 hover:border-indigo-200 dark:hover:border-indigo-800/40"
+                                ? "border-indigo-200 dark:border-indigo-800/60"
+                                : "border-slate-200 dark:border-slate-700/60 hover:border-indigo-200 dark:hover:border-indigo-800/40"
                                 }`}
                             >
                               {/* Left accent stripe */}
@@ -1355,13 +1865,13 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                                 }`} />
 
                               <div className={`flex items-center gap-3 px-3.5 py-3 flex-1 min-w-0 transition-colors ${isChecked
-                                  ? "bg-indigo-50/50 dark:bg-indigo-950/20"
-                                  : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                                ? "bg-indigo-50/50 dark:bg-indigo-950/20"
+                                : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-900/60"
                                 }`}>
                                 {/* Custom checkbox circle */}
                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${isChecked
-                                    ? "bg-indigo-500 border-indigo-500"
-                                    : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                                  ? "bg-indigo-500 border-indigo-500"
+                                  : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
                                   }`}>
                                   {isChecked && (
                                     <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12">
@@ -1371,15 +1881,15 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                                 </div>
 
                                 <span className={`flex-1 text-xs leading-snug transition-colors ${isChecked
-                                    ? "font-bold text-indigo-900 dark:text-indigo-200 line-through decoration-indigo-300 dark:decoration-indigo-700 decoration-1"
-                                    : "font-semibold text-slate-700 dark:text-slate-300"
+                                  ? "font-bold text-indigo-900 dark:text-indigo-200 line-through decoration-indigo-300 dark:decoration-indigo-700 decoration-1"
+                                  : "font-semibold text-slate-700 dark:text-slate-300"
                                   }`}>
                                   {concept}
                                 </span>
 
                                 <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${isChecked
-                                    ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"
-                                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                                  ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                                   }`}>
                                   +{weight}%
                                 </span>
