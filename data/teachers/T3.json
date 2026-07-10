@@ -1,0 +1,14 @@
+{
+  "id": "T3",
+  "name": "Mr. Tarun Makkar",
+  "subject": "Mathematics",
+  "passcodes": [
+    "MATH12A",
+    "TARUN12"
+  ],
+  "email": "",
+  "classes": [
+    "xii-a",
+    "xii-b"
+  ]
+}

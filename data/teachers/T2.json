@@ -1,0 +1,14 @@
+{
+  "id": "T2",
+  "name": "Mr. Narendra Kumar",
+  "subject": "Physics",
+  "passcodes": [
+    "PHYS12A",
+    "NARENDRA12"
+  ],
+  "email": "",
+  "classes": [
+    "xii-a",
+    "xii-b"
+  ]
+}

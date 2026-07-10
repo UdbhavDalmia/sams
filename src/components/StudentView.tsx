@@ -26,9 +26,10 @@ import {
   ChevronRight,
   ChevronLeft,
   RefreshCw,
-  BarChart2
+  BarChart2,
+  Dna
 } from "lucide-react";
-import { Student, ActiveQuizState, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, TopicName, TOPIC_RESOURCES } from "../types";
+import { Student, ActiveQuizState, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS, TopicName, TOPIC_RESOURCES, getStudentSubjects } from "../types";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { fetchWithRetry } from "../lib/fetch";
@@ -363,8 +364,11 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   const [student, setStudent] = useState<Student>(initialStudent);
   const [selectedTopic, setSelectedTopic] = useState<TopicName | null>(null);
 
+  const studentSubjects = getStudentSubjects(initialStudent.scores);
   // Subject Navigation Tab
-  const [activeSubject, setActiveSubject] = useState<"Chemistry" | "Physics" | "Mathematics" | "All">("Chemistry");
+  const [activeSubject, setActiveSubject] = useState<"Chemistry" | "Physics" | "Mathematics" | "Biology" | "All">(
+    studentSubjects.includes("Chemistry") ? "Chemistry" : (studentSubjects[0] as any || "Physics")
+  );
 
   // Chapter Companion Tabs (No doubts / ask AI - only cheat and milestones)
   const [activeTab, setActiveTab] = useState<"cheat" | "milestones">("cheat");
@@ -456,16 +460,36 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   ];
 
   // Determine active topics based on chosen subject
-  const activeTopics = activeSubject === "Physics"
+  const activeTopics = (activeSubject === "Physics"
     ? PHYSICS_TOPICS
     : (activeSubject === "Mathematics"
       ? MATHS_TOPICS
-      : (activeSubject === "Chemistry" ? CHEMISTRY_TOPICS : [...CHEMISTRY_TOPICS, ...PHYSICS_TOPICS, ...MATHS_TOPICS] as TopicName[]));
+      : (activeSubject === "Biology"
+        ? BIOLOGY_TOPICS
+        : (activeSubject === "Chemistry"
+          ? CHEMISTRY_TOPICS
+          : getStudentSubjects(student.scores).reduce((acc, sub) => {
+              if (sub === "Chemistry") return [...acc, ...CHEMISTRY_TOPICS];
+              if (sub === "Physics") return [...acc, ...PHYSICS_TOPICS];
+              if (sub === "Mathematics") return [...acc, ...MATHS_TOPICS];
+              if (sub === "Biology") return [...acc, ...BIOLOGY_TOPICS];
+              return acc;
+            }, [] as string[]) as TopicName[]
+          )
+        )
+      )) as string[];
+
+  // Sync quizTopic to first available chapter if current is not in active topics
+  useEffect(() => {
+    if (activeTopics.length > 0 && !activeTopics.includes(quizTopic)) {
+      setQuizTopic(activeTopics[0]);
+    }
+  }, [activeTopics, quizTopic]);
 
   // Sync current student progress from database on mount
   const syncStudentData = async () => {
     try {
-      const res = await fetchWithRetry(`/api/student/${student.rollNo}`);
+      const res = await fetchWithRetry(`/api/student/${student.rollNo}?classId=${student.classId || "xii-a"}`);
       if (res.ok) {
         const data = await res.json();
         if (data && !data.error) setStudent(data);
@@ -525,8 +549,11 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   const mathScores = MATHS_TOPICS.map(t => student.scores[t] || 0);
   const mathAvg = mathScores.length > 0 ? Math.round(mathScores.reduce((sum, v) => sum + v, 0) / mathScores.length) : 0;
 
+  const bioScores = BIOLOGY_TOPICS.map(t => student.scores[t] || 0);
+  const bioAvg = bioScores.length > 0 ? Math.round(bioScores.reduce((sum, v) => sum + v, 0) / bioScores.length) : 0;
+
   // Syllabus Coverage and Completion Counts
-  const totalTopicsCount = 30;
+  const totalTopicsCount = topicKeys.length;
   const studiedTopicsCount = (Object.values(student.scores) as number[]).filter(score => score > 0).length;
   const completedTopicsCount = (Object.values(student.scores) as number[]).filter(score => score >= 75).length;
 
@@ -566,9 +593,10 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     return currentScore < lowestScore ? topic : lowest;
   }, activeTopics[0]);
 
-  const getSubjectForTopic = (topic: string): "chemistry" | "physics" | "maths" => {
+  const getSubjectForTopic = (topic: string): "chemistry" | "physics" | "maths" | "biology" => {
     if ((CHEMISTRY_TOPICS as readonly string[]).includes(topic)) return "chemistry";
     if ((PHYSICS_TOPICS as readonly string[]).includes(topic)) return "physics";
+    if ((BIOLOGY_TOPICS as readonly string[]).includes(topic)) return "biology";
     return "maths";
   };
 
@@ -587,7 +615,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   const persistQuizState = async (state: ActiveQuizState | null, completed = false) => {
     try {
       const subjectHint = quizState?.topic ? getSubjectForTopic(quizState.topic) : undefined;
-      await fetchWithRetry(`/api/student/${student.rollNo}/quiz-state`, {
+      await fetchWithRetry(`/api/student/${student.rollNo}/quiz-state?classId=${student.classId || "xii-a"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quizState: state, completed, subjectHint }),
@@ -810,7 +838,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     setSaveProgressSuccess(false);
 
     try {
-      const res = await fetchWithRetry(`/api/student/${student.rollNo}/save-progress`, {
+      const res = await fetchWithRetry(`/api/student/${student.rollNo}/save-progress?classId=${student.classId || "xii-a"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -931,6 +959,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
         return <Zap className={`${className} ${colorClass}`} />;
       case "math_maestro":
         return <Target className={`${className} ${colorClass}`} />;
+      case "bio_star":
+        return <Dna className={`${className} ${colorClass}`} />;
       case "quiz_addict":
         return <BrainCircuit className={`${className} ${colorClass}`} />;
       case "triple_threat":
@@ -954,6 +984,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     const chemQ = student.quizStats?.bySubject?.chemistry || 0;
     const physQ = student.quizStats?.bySubject?.physics || 0;
     const mathQ = student.quizStats?.bySubject?.maths || 0;
+    const bioQ = student.quizStats?.bySubject?.biology || 0;
     const milestoneValues = Object.values(student.milestones || {}) as boolean[][];
     const anyMilestone100 = milestoneValues.some(arr => arr && arr.length > 0 && arr.every(Boolean));
 
@@ -962,19 +993,68 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     const defs = [
       { id: "first_steps", title: "First Steps", desc: "Started studying at least one chapter", icon: "🌱", tier: "bronze", earned: scoresValues.some(s => s > 0) },
       { id: "quiz_warrior", title: "Quiz Warrior", desc: "Completed your first quiz", icon: "⚔️", tier: "bronze", earned: totalQuizzes >= 1 },
-      { id: "subject_starter", title: "Subject Starter", desc: "Any subject average ≥ 10%", icon: "📘", tier: "bronze", earned: chemAvg >= 10 || physAvg >= 10 || mathAvg >= 10 },
+      {
+        id: "subject_starter",
+        title: "Subject Starter",
+        desc: "Any subject average ≥ 10%",
+        icon: "📘",
+        tier: "bronze",
+        earned: (studentSubjects.includes("Chemistry") && chemAvg >= 10) ||
+                (studentSubjects.includes("Physics") && physAvg >= 10) ||
+                (studentSubjects.includes("Mathematics") && mathAvg >= 10) ||
+                (studentSubjects.includes("Biology") && bioAvg >= 10)
+      },
       { id: "on_track", title: "On Track", desc: "Overall average ≥ 25%", icon: "🎯", tier: "silver", earned: overallAvg >= 25 },
       { id: "half_way", title: "Half Way There", desc: "Overall average ≥ 50%", icon: "🏃", tier: "silver", earned: overallAvg >= 50 },
-      { id: "chem_star", title: "Chemistry Star", desc: "Chemistry average ≥ 60%", icon: "⚗️", tier: "silver", earned: chemAvg >= 60 },
-      { id: "phys_pro", title: "Physics Pro", desc: "Physics average ≥ 60%", icon: "⚡", tier: "silver", earned: physAvg >= 60 },
-      { id: "math_maestro", title: "Maths Maestro", desc: "Maths average ≥ 60%", icon: "📐", tier: "silver", earned: mathAvg >= 60 },
+    ];
+
+    if (studentSubjects.includes("Chemistry")) {
+      defs.push({ id: "chem_star", title: "Chemistry Star", desc: "Chemistry average ≥ 60%", icon: "⚗️", tier: "silver", earned: chemAvg >= 60 });
+    }
+    if (studentSubjects.includes("Physics")) {
+      defs.push({ id: "phys_pro", title: "Physics Pro", desc: "Physics average ≥ 60%", icon: "⚡", tier: "silver", earned: physAvg >= 60 });
+    }
+    if (studentSubjects.includes("Mathematics")) {
+      defs.push({ id: "math_maestro", title: "Maths Maestro", desc: "Maths average ≥ 60%", icon: "📐", tier: "silver", earned: mathAvg >= 60 });
+    }
+    if (studentSubjects.includes("Biology")) {
+      defs.push({ id: "bio_star", title: "Biology Star", desc: "Biology average ≥ 60%", icon: "🧬", tier: "silver", earned: bioAvg >= 60 });
+    }
+
+    defs.push(
       { id: "quiz_addict", title: "Quiz Addict", desc: "Completed 5 or more quizzes", icon: "🧠", tier: "silver", earned: totalQuizzes >= 5 },
-      { id: "triple_threat", title: "Triple Threat", desc: "All subjects ≥ 60%", icon: "🏆", tier: "gold", earned: chemAvg >= 60 && physAvg >= 60 && mathAvg >= 60 },
+      {
+        id: "triple_threat",
+        title: "Multi-Subject Master",
+        desc: "All subjects ≥ 60%",
+        icon: "🏆",
+        tier: "gold",
+        earned: studentSubjects.length > 0 && studentSubjects.every(sub => {
+          if (sub === "Chemistry") return chemAvg >= 60;
+          if (sub === "Physics") return physAvg >= 60;
+          if (sub === "Mathematics") return mathAvg >= 60;
+          if (sub === "Biology") return bioAvg >= 60;
+          return true;
+        })
+      },
       { id: "milestone_master", title: "Milestone Master", desc: "Completed all milestones for a topic", icon: "✅", tier: "gold", earned: anyMilestone100 },
       { id: "excellence", title: "Excellence", desc: "Overall average ≥ 75%", icon: "🌟", tier: "gold", earned: overallAvg >= 75 },
       { id: "sams_scholar", title: "SAMS Scholar", desc: "Overall average ≥ 90%", icon: "🎓", tier: "platinum", earned: overallAvg >= 90 },
-      { id: "jee_ready", title: "JEE Ready", desc: "All subjects ≥ 80%", icon: "🚀", tier: "platinum", earned: chemAvg >= 80 && physAvg >= 80 && mathAvg >= 80 },
-    ];
+      {
+        id: "jee_ready",
+        title: "Exam Ready",
+        desc: "All subjects ≥ 80%",
+        icon: "🚀",
+        tier: "platinum",
+        earned: studentSubjects.length > 0 && studentSubjects.every(sub => {
+          if (sub === "Chemistry") return chemAvg >= 80;
+          if (sub === "Physics") return physAvg >= 80;
+          if (sub === "Mathematics") return mathAvg >= 80;
+          if (sub === "Biology") return bioAvg >= 80;
+          return true;
+        })
+      }
+    );
     return defs;
   };
 
@@ -1028,7 +1108,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
           {/* Student Status Profile Badge */}
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-400">Class XII-A Roll {student.rollNo}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-400">Class {(student.classId || "xii-a").toUpperCase()} Roll {student.rollNo}</p>
               <p className="text-xs font-extrabold">{student.name}</p>
             </div>
             <div className="w-9 h-9 rounded-full bg-indigo-600 text-white font-extrabold flex items-center justify-center text-xs tracking-tight shadow-md shadow-indigo-600/10 uppercase">
@@ -1071,19 +1151,49 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
           )}
         </div>
         {/* Second row: Faculty - always on its own line so it doesn't break awkwardly */}
-        <div className="flex flex-wrap items-center justify-center gap-1 mt-1.5 text-center">
-          <span className="text-slate-900 dark:text-slate-400">Class Faculty:</span>
-          <span className="text-indigo-600 dark:text-indigo-400 font-semibold">
-            Pradeep Gusain (Chem)
-          </span>
-          <span className="text-slate-400 dark:text-slate-600 hidden sm:inline">•</span>
-          <span className="text-indigo-600 dark:text-indigo-400 font-semibold">
-            Narendra Kumar (Phy)
-          </span>
-          <span className="text-slate-400 dark:text-slate-600 hidden sm:inline">•</span>
-          <span className="text-indigo-600 dark:text-indigo-400 font-semibold">
-            Tarun Makkar (Maths)
-          </span>
+        <div className="flex flex-wrap items-center justify-center gap-1 mt-1.5 text-center text-xs">
+          <span className="text-slate-900 dark:text-slate-400 font-medium">Class Faculty:</span>
+          {(() => {
+            const facultyList: React.ReactNode[] = [];
+            if (studentSubjects.includes("Chemistry")) {
+              facultyList.push(
+                <span key="chem" className="text-indigo-600 dark:text-indigo-400 font-semibold">
+                  Pradeep Gusain (Chem)
+                </span>
+              );
+            }
+            if (studentSubjects.includes("Physics")) {
+              facultyList.push(
+                <span key="phy" className="text-indigo-600 dark:text-indigo-400 font-semibold">
+                  Narendra Kumar (Phy)
+                </span>
+              );
+            }
+            if (studentSubjects.includes("Mathematics")) {
+              facultyList.push(
+                <span key="math" className="text-indigo-600 dark:text-indigo-400 font-semibold">
+                  Tarun Makkar (Maths)
+                </span>
+              );
+            }
+            if (studentSubjects.includes("Biology")) {
+              facultyList.push(
+                <span key="bio" className="text-indigo-600 dark:text-indigo-400 font-semibold">
+                  Manishi Chawla (Bio)
+                </span>
+              );
+            }
+            const elements: React.ReactNode[] = [];
+            facultyList.forEach((fac, idx) => {
+              elements.push(fac);
+              if (idx < facultyList.length - 1) {
+                elements.push(
+                  <span key={`bullet-${idx}`} className="text-slate-400 dark:text-slate-600 hidden sm:inline">•</span>
+                );
+              }
+            });
+            return elements;
+          })()}
         </div>
       </div>
 
@@ -1266,19 +1376,17 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                 <span className="font-black text-slate-900 dark:text-slate-100">{completedTopicsCount} / {totalTopicsCount}</span>
               </div>
 
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-1 text-[10px] text-center font-extrabold text-slate-900 dark:text-slate-400">
-                <div>
-                  <span className="block text-slate-900 dark:text-slate-200 font-black text-xs">{chemAvg}%</span>
-                  Chemistry
-                </div>
-                <div>
-                  <span className="block text-slate-900 dark:text-slate-200 font-black text-xs">{physAvg}%</span>
-                  Physics
-                </div>
-                <div>
-                  <span className="block text-slate-900 dark:text-slate-200 font-black text-xs">{mathAvg}%</span>
-                  Mathematics
-                </div>
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid gap-1 text-[10px] text-center font-extrabold text-slate-900 dark:text-slate-400"
+                   style={{ gridTemplateColumns: `repeat(${studentSubjects.length}, minmax(0, 1fr))` }}>
+                {studentSubjects.map((sub) => {
+                  const avg = sub === "Chemistry" ? chemAvg : sub === "Physics" ? physAvg : sub === "Mathematics" ? mathAvg : bioAvg;
+                  return (
+                    <div key={sub}>
+                      <span className="block text-slate-900 dark:text-slate-200 font-black text-xs">{avg}%</span>
+                      {sub}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1306,9 +1414,9 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
         {/* Dynamic Subject Nav tabs */}
         <section className={`flex flex-col sm:flex-row p-2 rounded-[2rem] border transition-colors duration-300 items-stretch sm:items-center justify-between gap-2 w-full ${darkMode ? "bg-slate-900 border-slate-800" : "bg-[#f1f5f9] border-slate-200/80"
           }`}>
-          {["Chemistry", "Physics", "Mathematics"].map((sub) => {
+          {studentSubjects.map((sub) => {
             const isSelected = activeSubject === sub;
-            const unitCount = sub === "Chemistry" ? CHEMISTRY_TOPICS.length : sub === "Physics" ? PHYSICS_TOPICS.length : MATHS_TOPICS.length;
+            const unitCount = sub === "Chemistry" ? CHEMISTRY_TOPICS.length : sub === "Physics" ? PHYSICS_TOPICS.length : sub === "Mathematics" ? MATHS_TOPICS.length : BIOLOGY_TOPICS.length;
 
             return (
               <button
@@ -1443,7 +1551,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                           ? "bg-slate-950 text-white border-slate-800"
                           : "bg-slate-50 text-slate-900 border-slate-200"}`}
                       >
-                        {standardChaptersList.map((chap) => (
+                        {activeTopics.map((chap) => (
                           <option key={chap} value={chap}>{chap}</option>
                         ))}
                       </select>

@@ -8,7 +8,7 @@ import { GoogleGenAI } from "@google/genai";
 import { initializeApp as initAdminApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
-import { Student, Doubt, ALL_TOPICS, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS } from "./src/types";
+import { Student, Teacher, Doubt, ALL_TOPICS, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS } from "./src/types.ts";
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({
@@ -25,15 +25,15 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: "10mb" }));
 
-// Paths for JSON storage (fallback)
 const DATA_DIR = path.join(process.cwd(), "data");
-const STUDENTS_FILE = path.join(DATA_DIR, "students.json");
+const STUDENTS_DIR = path.join(DATA_DIR, "students");
+const TEACHERS_DIR = path.join(DATA_DIR, "teachers");
 const DOUBTS_FILE = path.join(DATA_DIR, "doubts.json");
 
-// Ensure data directory exists for fallback
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+// Ensure directories exist
+[DATA_DIR, STUDENTS_DIR, TEACHERS_DIR].forEach(dir => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
 
 // Initial seed list of 37 chemistry students with default registered Gmails
 const INITIAL_STUDENTS: Omit<Student, "scores">[] = [
@@ -76,6 +76,27 @@ const INITIAL_STUDENTS: Omit<Student, "scores">[] = [
   { rollNo: 37, name: "Priyanshi Vahal", phone: "9810297183", email: "vahalpriyanshi34@gmail.com" }
 ];
 
+const XIIB_STUDENTS_DATA = [
+  { rollNo: 1, name: "Om Kumar", phone: "9891675231", email: "om3004229@gmail.com" },
+  { rollNo: 2, name: "Nancy", phone: "7678139241", email: "poojacaptaan@gmail.com" },
+  { rollNo: 3, name: "Nikul Parveen", phone: "9582293142", email: "nikulparveen13@gmail.com" },
+  { rollNo: 4, name: "Riya", phone: "8076784963", email: "dk6570338@gmail.com" },
+  { rollNo: 5, name: "Muskan", phone: "7678668033", email: "ayeshaang021@gmail.com" },
+  { rollNo: 6, name: "Dhruv Thakur", phone: "8447393993", email: "tdhruv905@gmail.com" },
+  { rollNo: 7, name: "Aarya Tiwari", phone: "8010707571", email: "tsicity@gmail.com" },
+  { rollNo: 8, name: "Sushant Kumar", phone: "8595740842", email: "sushantkumarroy1909@gmail.com" },
+  { rollNo: 9, name: "Khyati", phone: "9810626252", email: "k9895464@gmail.com" },
+  { rollNo: 10, name: "Ritika Singh", phone: "8860445115", email: "ritikasin2008@gmail.com" },
+  { rollNo: 11, name: "Aastha", phone: "8766284954", email: "shakyaaastha66@gmail.com" },
+  { rollNo: 12, name: "Arpit", phone: "9560475013", email: "x1987mukesh@gmail.com" },
+  { rollNo: 13, name: "Poorvanshi Singh", phone: "9911562542", email: "ak1148843@gmail.com" },
+  { rollNo: 14, name: "Mohd. Uvesh", phone: "7827070130", email: "uveshmohd609@gmail.com" },
+  { rollNo: 15, name: "Caleb Abrol", phone: "9871818919", email: "calebmasin45@gmail.com" },
+  { rollNo: 16, name: "Mayank Pal", phone: "9811508668", email: "mayankp8433@gmail.com" },
+  { rollNo: 17, name: "Naitik Khurana", phone: "9818954695", email: "naitikkhurana10@gmail.com" },
+  { rollNo: 18, name: "Khushal Kumar", phone: "", email: "" }
+];
+
 // Initialize Firestore Admin Client
 const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
 let db: any = null;
@@ -116,9 +137,10 @@ if (fs.existsSync(firebaseConfigPath)) {
     console.log(`[Firestore] Initialized successfully with Database: ${databaseId}`);
 
     // Asynchronously trigger seeding
-    ensureFirestoreSeeded().catch((err) => {
-      console.error("[Firestore] Seeding error:", err);
-    });
+    ensureFirestoreSeeded()
+      .catch((err) => {
+        console.error("[Firestore] Seeding error:", err);
+      });
   } catch (err) {
     console.error("[Firestore] Initialization failed. Falling back to local storage.", err);
   }
@@ -127,29 +149,159 @@ if (fs.existsSync(firebaseConfigPath)) {
 }
 
 async function ensureFirestoreSeeded() {
+  // Check local directory for xii-a
+  const xiiADir = path.join(STUDENTS_DIR, "xii-a");
+  if (!fs.existsSync(xiiADir)) {
+    fs.mkdirSync(xiiADir, { recursive: true });
+  }
+
+  // Create local JSON files for xii-a if they don't exist
+  INITIAL_STUDENTS.forEach((s) => {
+    const filePath = path.join(xiiADir, `${s.rollNo}.json`);
+    if (!fs.existsSync(filePath)) {
+      const scores: Record<string, number> = {};
+      CHEMISTRY_TOPICS.forEach(t => scores[t] = 0);
+      PHYSICS_TOPICS.forEach(t => scores[t] = 0);
+      MATHS_TOPICS.forEach(t => scores[t] = 0);
+
+      const studentData: Student = {
+        ...s,
+        classId: "xii-a",
+        scores,
+        milestones: {},
+        quizStats: {
+          totalQuizzes: 0,
+          bySubject: { chemistry: 0, physics: 0, maths: 0 }
+        }
+      };
+      fs.writeFileSync(filePath, JSON.stringify(studentData, null, 2), "utf8");
+    }
+  });
+
+  // First, check local directory for xii-b
+  const xiiBDir = path.join(STUDENTS_DIR, "xii-b");
+  if (!fs.existsSync(xiiBDir)) {
+    fs.mkdirSync(xiiBDir, { recursive: true });
+  }
+
+  // Create local JSON files for xii-b if they don't exist
+  XIIB_STUDENTS_DATA.forEach((s) => {
+    const filePath = path.join(xiiBDir, `${s.rollNo}.json`);
+    if (!fs.existsSync(filePath)) {
+      const isPCMB = [7, 14, 17].includes(s.rollNo);
+      const scores: Record<string, number> = {};
+      
+      // Initialize scores based on subject profile
+      CHEMISTRY_TOPICS.forEach(t => scores[t] = 0);
+      PHYSICS_TOPICS.forEach(t => scores[t] = 0);
+      BIOLOGY_TOPICS.forEach(t => scores[t] = 0);
+      if (isPCMB) {
+        MATHS_TOPICS.forEach(t => scores[t] = 0);
+      }
+
+      const studentData: Student = {
+        ...s,
+        classId: "xii-b",
+        scores,
+        milestones: {},
+        quizStats: {
+          totalQuizzes: 0,
+          bySubject: { chemistry: 0, physics: 0, maths: 0, biology: 0 }
+        }
+      };
+      fs.writeFileSync(filePath, JSON.stringify(studentData, null, 2), "utf8");
+    }
+  });
+
+  // Seed/update local teacher files
+  const teachersList = ["T1", "T2", "T3", "T4"];
+  teachersList.forEach((tId) => {
+    const tPath = path.join(TEACHERS_DIR, `${tId}.json`);
+    let teacherData: Teacher;
+
+    if (fs.existsSync(tPath)) {
+      teacherData = JSON.parse(fs.readFileSync(tPath, "utf8")) as Teacher;
+      if (!teacherData.classes) {
+        teacherData.classes = tId === "T4" ? ["xii-b"] : ["xii-a", "xii-b"];
+      }
+      if (tId === "T4") {
+        if (!teacherData.passcodes.includes("BIO12B")) {
+          teacherData.passcodes.push("BIO12B");
+        }
+        teacherData.passcodes = Array.from(new Set(teacherData.passcodes.map(p => p.trim().toUpperCase())));
+        teacherData.classes = ["xii-b"];
+      } else {
+        teacherData.classes = ["xii-a", "xii-b"];
+      }
+      fs.writeFileSync(tPath, JSON.stringify(teacherData, null, 2), "utf8");
+    } else {
+      if (tId === "T1") {
+        teacherData = { id: "T1", name: "Mr. Pradeep Gusain", subject: "Chemistry", passcodes: ["CHEM12A", "PRADEEP12", "SAMS12"], email: "", classes: ["xii-a", "xii-b"] };
+      } else if (tId === "T2") {
+        teacherData = { id: "T2", name: "Mr. Narendra Kumar", subject: "Physics", passcodes: ["PHYS12A", "NARENDRA12", "SATISH12"], email: "", classes: ["xii-a", "xii-b"] };
+      } else if (tId === "T3") {
+        teacherData = { id: "T3", name: "Mr. Tarun Makkar", subject: "Mathematics", passcodes: ["MATH12A", "TARUN12", "AMIT12"], email: "", classes: ["xii-a", "xii-b"] };
+      } else {
+        teacherData = { id: "T4", name: "Ms. Manishi Chawla", subject: "Biology", passcodes: ["BIO12B", "MANISHI12"], email: "", classes: ["xii-b"] };
+      }
+      fs.writeFileSync(tPath, JSON.stringify(teacherData, null, 2), "utf8");
+    }
+  });
+
   if (!db) return;
   try {
-    const studentsRef = db.collection("students");
-    const snapshot = await studentsRef.limit(1).get();
-    if (snapshot.empty) {
-      console.log("[Firestore] Database is empty. Seeding INITIAL_STUDENTS class...");
+    // 1. Seed xii-a in Firestore if missing
+    const xiiARef = db.collection("xii-a");
+    const snapshotA = await xiiARef.limit(1).get();
+    if (snapshotA.empty) {
+      console.log("[Firestore] xii-a is empty. Seeding from local files...");
+      const files = fs.readdirSync(xiiADir);
       const batch = db.batch();
-      INITIAL_STUDENTS.forEach((s) => {
-        const scores: Record<string, number> = {};
-        ALL_TOPICS.forEach((t) => {
-          scores[t] = 0;
-        });
-        const docRef = studentsRef.doc(String(s.rollNo));
-        batch.set(docRef, {
-          ...s,
-          scores,
-          milestones: {}
-        });
+      files.forEach((file) => {
+        if (file.endsWith(".json")) {
+          const s = JSON.parse(fs.readFileSync(path.join(xiiADir, file), "utf8")) as Student;
+          batch.set(xiiARef.doc(String(s.rollNo)), s);
+        }
       });
       await batch.commit();
-      console.log("[Firestore] Seeding complete! 37 students inserted.");
+      console.log("[Firestore] Seeding xii-a complete.");
     } else {
-      console.log("[Firestore] Verification: Database is already seeded.");
+      console.log("[Firestore] Verification: xii-a is already seeded.");
+    }
+
+    // 2. Seed xii-b in Firestore if missing
+    const xiiBRef = db.collection("xii-b");
+    const snapshotB = await xiiBRef.limit(1).get();
+    if (snapshotB.empty) {
+      console.log("[Firestore] xii-b is empty. Seeding from local files...");
+      const files = fs.readdirSync(xiiBDir);
+      const batch = db.batch();
+      files.forEach((file) => {
+        if (file.endsWith(".json")) {
+          const s = JSON.parse(fs.readFileSync(path.join(xiiBDir, file), "utf8")) as Student;
+          batch.set(xiiBRef.doc(String(s.rollNo)), s);
+        }
+      });
+      await batch.commit();
+      console.log("[Firestore] Seeding xii-b complete.");
+    } else {
+      console.log("[Firestore] Verification: xii-b is already seeded.");
+    }
+
+    // 3. Seed teacher T4 in Firestore if missing
+    // 3. Seed teachers in Firestore if missing
+    const teachersList = ["T1", "T2", "T3", "T4"];
+    for (const tId of teachersList) {
+      const tDoc = await db.collection("teachers").doc(tId).get();
+      if (!tDoc.exists) {
+        const tPath = path.join(TEACHERS_DIR, `${tId}.json`);
+        if (fs.existsSync(tPath)) {
+          console.log(`[Firestore] Teacher ${tId} missing in Firestore. Seeding from local JSON file...`);
+          const tLocal = JSON.parse(fs.readFileSync(tPath, "utf8")) as Teacher;
+          await db.collection("teachers").doc(tId).set(tLocal);
+          console.log(`[Firestore] Teacher ${tId} seeding complete.`);
+        }
+      }
     }
   } catch (err) {
     console.error("[Firestore] Failed to seed database or query Firestore. Disabling cloud sync and falling back to stable local storage.", err);
@@ -157,119 +309,96 @@ async function ensureFirestoreSeeded() {
   }
 }
 
+
+
+// Caching mechanism for getStudents to prevent excessive reads
+let studentsCache: Student[] | null = null;
+let studentsCacheTime = 0;
+const CACHE_TTL = 60 * 1000; // 60 seconds
+
 // Asynchronous Data Managers (with robust fallbacks)
 async function getStudents(): Promise<Student[]> {
+  if (studentsCache && Date.now() - studentsCacheTime < CACHE_TTL) {
+    return studentsCache;
+  }
+
+  let students: Student[] = [];
+
   if (db) {
     try {
-      const snapshot = await db.collection("students").get();
-      const students: Student[] = [];
-      snapshot.forEach((doc: any) => {
+      // Query root class collections
+      const [snapshotA, snapshotB] = await Promise.all([
+        db.collection("xii-a").get(),
+        db.collection("xii-b").get()
+      ]);
+      snapshotA.forEach((doc: any) => {
+        students.push(doc.data() as Student);
+      });
+      snapshotB.forEach((doc: any) => {
         students.push(doc.data() as Student);
       });
 
       if (students.length > 0) {
-        // Auto-migration to ensure all topics are initialized in Firestore
-        let migrationRequired = false;
+        // Apply defaults in-memory instead of writing to DB to save writes
         students.forEach((s) => {
           if (!s.scores) s.scores = {};
           if (!s.milestones) s.milestones = {};
           ALL_TOPICS.forEach((t) => {
-            if (s.scores[t] === undefined) {
+            if (s.scores[t] === undefined && t in s.scores) {
               s.scores[t] = 0;
-              migrationRequired = true;
             }
           });
         });
 
-        if (migrationRequired) {
-          console.log("[Firestore] Database records required schema migration. Syncing...");
-          const batch = db.batch();
-          students.forEach((s) => {
-            const docRef = db.collection("students").doc(String(s.rollNo));
-            batch.set(docRef, s);
-          });
-          await batch.commit();
-        }
-
-        return students.sort((a, b) => a.rollNo - b.rollNo);
+        students.sort((a, b) => a.rollNo - b.rollNo);
+        studentsCache = students;
+        studentsCacheTime = Date.now();
+        return students;
       }
     } catch (err) {
-      console.error("[Firestore] Error reading students. Falling back to local file.", err);
+      console.error("[Firestore] Error reading students via collectionGroup. Falling back to local directory.", err);
     }
   }
 
-  // Local File Fallback
-  let students: Student[] = [];
-  if (!fs.existsSync(STUDENTS_FILE)) {
-    students = INITIAL_STUDENTS.map((s) => {
-      const scores: Record<string, number> = {};
-      ALL_TOPICS.forEach((t) => {
-        scores[t] = 0;
-      });
-      return { ...s, scores, milestones: {} };
-    });
-    try {
-      fs.writeFileSync(STUDENTS_FILE, JSON.stringify(students, null, 2), "utf8");
-    } catch (writeErr) {
-      console.error("[Fallback] Failed to write students.json file on disk:", writeErr);
-    }
-    return students;
-  }
+  // Local Directory Fallback
   try {
-    students = JSON.parse(fs.readFileSync(STUDENTS_FILE, "utf8"));
-
-    let migrated = false;
-    students = students.map((s) => {
-      let changed = false;
-      if (!s.scores) {
-        s.scores = {};
-        changed = true;
-      }
-      ALL_TOPICS.forEach((t) => {
-        if (s.scores[t] === undefined) {
-          s.scores[t] = 0;
-          changed = true;
+    const classes = ["xii-a", "xii-b"];
+    for (const cls of classes) {
+      const classDir = path.join(STUDENTS_DIR, cls);
+      if (fs.existsSync(classDir)) {
+        const files = fs.readdirSync(classDir);
+        for (const file of files) {
+          if (file.endsWith(".json")) {
+            const s = JSON.parse(fs.readFileSync(path.join(classDir, file), "utf8"));
+            if (!s.scores) s.scores = {};
+            if (!s.milestones) s.milestones = {};
+            students.push(s);
+          }
         }
-      });
-      if (!s.milestones) {
-        s.milestones = {};
-        changed = true;
-      }
-      if (changed) migrated = true;
-      return s;
-    });
-
-    if (migrated) {
-      try {
-        fs.writeFileSync(STUDENTS_FILE, JSON.stringify(students, null, 2), "utf8");
-      } catch (writeErr) {
-        console.error("[Fallback] Failed to write migrated students.json file on disk:", writeErr);
       }
     }
+    students.sort((a, b) => a.rollNo - b.rollNo);
+    studentsCache = students;
+    studentsCacheTime = Date.now();
     return students;
   } catch (err) {
-    console.error("Error reading students local database file, resetting:", err);
-    // Safely return INITIAL_STUDENTS in-memory instead of an empty array if file reading fails
-    return INITIAL_STUDENTS.map((s) => {
-      const scores: Record<string, number> = {};
-      ALL_TOPICS.forEach((t) => {
-        scores[t] = 0;
-      });
-      return { ...s, scores, milestones: {} };
-    });
+    console.error("Error reading students local directory:", err);
   }
+  return [];
 }
 
 async function saveStudents(students: Student[]): Promise<void> {
+  // Clear cache
+  studentsCache = null;
+  
   if (db) {
     try {
-      // Chunk batch operations to stay safely under Firestore's 500-write limit
       const batchSize = 100;
       for (let i = 0; i < students.length; i += batchSize) {
         const batch = db.batch();
         const chunk = students.slice(i, i + batchSize);
         chunk.forEach((s) => {
-          const docRef = db.collection("students").doc(String(s.rollNo));
+          const docRef = db.collection(s.classId || "xii-a").doc(String(s.rollNo));
           batch.set(docRef, s);
         });
         await batch.commit();
@@ -280,9 +409,158 @@ async function saveStudents(students: Student[]): Promise<void> {
     }
   }
   try {
-    fs.writeFileSync(STUDENTS_FILE, JSON.stringify(students, null, 2), "utf8");
+    students.forEach((s) => {
+      const classDir = path.join(STUDENTS_DIR, s.classId || "xii-a");
+      if (!fs.existsSync(classDir)) fs.mkdirSync(classDir, { recursive: true });
+      fs.writeFileSync(path.join(classDir, `${s.rollNo}.json`), JSON.stringify(s, null, 2), "utf8");
+    });
   } catch (writeErr) {
-    console.error("[Fallback] Failed to write students.json local database file:", writeErr);
+    console.error("[Fallback] Failed to save students locally:", writeErr);
+  }
+}
+
+async function getStudentByRollNo(rollNo: number, classId: string = "xii-a"): Promise<Student | null> {
+  if (db) {
+    try {
+      const doc = await db.collection(classId).doc(String(rollNo)).get();
+      if (doc.exists) {
+        const s = doc.data() as Student;
+        if (!s.scores) s.scores = {};
+        if (!s.milestones) s.milestones = {};
+        return s;
+      }
+      return null;
+    } catch (err) {
+      console.error(`[Firestore] Error reading student ${rollNo} in class ${classId}:`, err);
+    }
+  }
+  // Fallback to local fallback json
+  const classDir = path.join(STUDENTS_DIR, classId);
+  const filePath = path.join(classDir, `${rollNo}.json`);
+  if (fs.existsSync(filePath)) {
+    const s = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    if (!s.scores) s.scores = {};
+    if (!s.milestones) s.milestones = {};
+    return s;
+  }
+  return null;
+}
+
+async function getStudentByEmail(email: string): Promise<Student | null> {
+  if (db) {
+    try {
+      // Query both root class collections
+      const [snapshotA, snapshotB] = await Promise.all([
+        db.collection("xii-a").where("email", "==", email.trim().toLowerCase()).limit(1).get(),
+        db.collection("xii-b").where("email", "==", email.trim().toLowerCase()).limit(1).get()
+      ]);
+      let doc = !snapshotA.empty ? snapshotA.docs[0] : (!snapshotB.empty ? snapshotB.docs[0] : null);
+      if (doc) {
+        const s = doc.data() as Student;
+        if (!s.scores) s.scores = {};
+        if (!s.milestones) s.milestones = {};
+        ALL_TOPICS.forEach((t) => {
+          if (s.scores[t] === undefined) {
+            s.scores[t] = 0;
+          }
+        });
+        return s;
+      }
+      return null;
+    } catch (err) {
+      console.error(`[Firestore] Error reading student by email ${email}:`, err);
+    }
+  }
+  const students = await getStudents();
+  return students.find((s) => s.email && s.email.toLowerCase() === email.trim().toLowerCase()) || null;
+}
+
+async function saveStudent(student: Student): Promise<void> {
+  studentsCache = null; // Invalidate cache
+  if (db) {
+    try {
+      await db.collection(student.classId || "xii-a").doc(String(student.rollNo)).set(student);
+      return;
+    } catch (err) {
+      console.error(`[Firestore] Error saving student ${student.rollNo}:`, err);
+    }
+  }
+  try {
+    const classDir = path.join(STUDENTS_DIR, student.classId || "xii-a");
+    if (!fs.existsSync(classDir)) fs.mkdirSync(classDir, { recursive: true });
+    fs.writeFileSync(path.join(classDir, `${student.rollNo}.json`), JSON.stringify(student, null, 2), "utf8");
+  } catch (writeErr) {
+    console.error(`[Fallback] Failed to save student ${student.rollNo} locally:`, writeErr);
+  }
+}
+
+let teachersCache: Teacher[] | null = null;
+let teachersCacheTime = 0;
+
+async function getTeachers(): Promise<Teacher[]> {
+  if (teachersCache && Date.now() - teachersCacheTime < CACHE_TTL) {
+    return teachersCache;
+  }
+  const teachers: Teacher[] = [];
+  
+  if (db) {
+    try {
+      const snapshot = await db.collection("teachers").get();
+      snapshot.forEach(doc => teachers.push(doc.data() as Teacher));
+      if (teachers.length > 0) {
+        teachersCache = teachers;
+        teachersCacheTime = Date.now();
+        return teachers;
+      }
+    } catch (err) {
+      console.error("[Firestore] Error reading teachers:", err);
+    }
+  }
+
+  try {
+    if (fs.existsSync(TEACHERS_DIR)) {
+      const files = fs.readdirSync(TEACHERS_DIR);
+      for (const file of files) {
+        if (file.endsWith(".json")) {
+          const t = JSON.parse(fs.readFileSync(path.join(TEACHERS_DIR, file), "utf8"));
+          teachers.push(t);
+        }
+      }
+    }
+    teachersCache = teachers;
+    teachersCacheTime = Date.now();
+    return teachers;
+  } catch (err) {
+    console.error("Error reading teachers directory:", err);
+  }
+  return [];
+}
+
+async function getTeacherByEmail(email: string): Promise<Teacher | null> {
+  const teachers = await getTeachers();
+  return teachers.find((t) => t.email && t.email.toLowerCase() === email.trim().toLowerCase()) || null;
+}
+
+async function getTeacherByPasscode(passcode: string): Promise<Teacher | null> {
+  const teachers = await getTeachers();
+  const cleanPass = passcode.trim().toUpperCase();
+  return teachers.find((t) => t.passcodes.includes(cleanPass)) || null;
+}
+
+async function saveTeacher(teacher: Teacher): Promise<void> {
+  teachersCache = null;
+  if (db) {
+    try {
+      await db.collection("teachers").doc(teacher.id).set(teacher);
+    } catch (err) {
+      console.error(`[Firestore] Error saving teacher ${teacher.id}:`, err);
+    }
+  }
+  try {
+    if (!fs.existsSync(TEACHERS_DIR)) fs.mkdirSync(TEACHERS_DIR, { recursive: true });
+    fs.writeFileSync(path.join(TEACHERS_DIR, `${teacher.id}.json`), JSON.stringify(teacher, null, 2), "utf8");
+  } catch (writeErr) {
+    console.error(`[Fallback] Failed to save teacher ${teacher.id} locally:`, writeErr);
   }
 }
 
@@ -344,19 +622,17 @@ async function saveDoubts(doubts: Doubt[]): Promise<void> {
 }
 
 // Teacher & Subject Authorization Helpers
-function getSubjectForPasscode(passcode: any): "Chemistry" | "Physics" | "Mathematics" | null {
+async function getSubjectForPasscode(passcode: any): Promise<"Chemistry" | "Physics" | "Mathematics" | "Biology" | null> {
   if (!passcode) return null;
-  const p = String(passcode).trim().toUpperCase();
-  if (p === "CHEM12A" || p === "PRADEEP12" || p === "SAMS12") return "Chemistry";
-  if (p === "PHYS12A" || p === "NARENDRA12" || p === "SATISH12") return "Physics";
-  if (p === "MATH12A" || p === "TARUN12" || p === "AMIT12") return "Mathematics";
-  return null;
+  const teacher = await getTeacherByPasscode(String(passcode));
+  return teacher ? teacher.subject as any : null;
 }
 
-function getSubjectForTopic(topic: string): "Chemistry" | "Physics" | "Mathematics" | null {
+function getSubjectForTopic(topic: string): "Chemistry" | "Physics" | "Mathematics" | "Biology" | null {
   if (CHEMISTRY_TOPICS.includes(topic as any)) return "Chemistry";
   if (PHYSICS_TOPICS.includes(topic as any)) return "Physics";
   if (MATHS_TOPICS.includes(topic as any)) return "Mathematics";
+  if (BIOLOGY_TOPICS.includes(topic as any)) return "Biology";
   return null;
 }
 
@@ -415,20 +691,15 @@ function logStudentActivity(
 
 // 1. Authentication
 app.post("/api/login", async (req, res) => {
-  const { role, rollNo, phone, passcode } = req.body;
+  const { role, rollNo, phone, passcode, classId } = req.body;
 
   if (role === "teacher") {
     const cleanPass = String(passcode).trim().toUpperCase();
-    if (cleanPass === "CHEM12A" || cleanPass === "PRADEEP12" || cleanPass === "SAMS12") {
-      return res.json({ success: true, role: "teacher", name: "Mr. Pradeep Gusain", passcode: "CHEM12A" });
+    const teacher = await getTeacherByPasscode(cleanPass);
+    if (teacher) {
+      return res.json({ success: true, role: "teacher", name: teacher.name, passcode: teacher.passcodes[0] });
     }
-    if (cleanPass === "PHYS12A" || cleanPass === "NARENDRA12" || cleanPass === "SATISH12") {
-      return res.json({ success: true, role: "teacher", name: "Mr. Narendra Kumar", passcode: "PHYS12A" });
-    }
-    if (cleanPass === "MATH12A" || cleanPass === "TARUN12" || cleanPass === "AMIT12") {
-      return res.json({ success: true, role: "teacher", name: "Mr. Tarun Makkar", passcode: "MATH12A" });
-    }
-    return res.status(401).json({ error: "Invalid teacher passcode. Hints: CHEM12A (Chemistry), PHYS12A (Physics), MATH12A (Maths)" });
+    return res.status(401).json({ error: "Invalid teacher passcode. Hints: CHEM12A (Chemistry), PHYS12A (Physics), MATH12A (Maths), BIO12B (Biology)" });
   }
 
   const numRollNo = parseInt(rollNo, 10);
@@ -436,8 +707,7 @@ app.post("/api/login", async (req, res) => {
     return res.status(400).json({ error: "Roll number must be a valid number" });
   }
 
-  const students = await getStudents();
-  const student = students.find((s) => s.rollNo === numRollNo);
+  const student = await getStudentByRollNo(numRollNo, classId || "xii-a");
 
   if (!student) {
     return res.status(404).json({ error: `Student with Roll No. ${numRollNo} not found` });
@@ -478,8 +748,12 @@ app.post("/api/login-google", async (req, res) => {
     return res.status(400).json({ error: "Email or ID token is required" });
   }
 
-  const students = await getStudents();
-  const student = students.find((s) => s.email && s.email.toLowerCase() === email.toLowerCase());
+  const teacher = await getTeacherByEmail(email);
+  if (teacher) {
+    return res.json({ success: true, role: "teacher", name: teacher.name, passcode: teacher.passcodes[0] });
+  }
+
+  const student = await getStudentByEmail(email);
 
   if (student) {
     // Log in directly since the identity has been authenticated via proper Google Login
@@ -487,41 +761,64 @@ app.post("/api/login-google", async (req, res) => {
   }
 
   return res.status(404).json({
-    error: `No student found with the registered Gmail: ${email}`,
+    error: `No user found with the registered Gmail: ${email}`,
     needsLinking: true,
   });
 });
 
 // 1.6 Google Account Self-Linking
 app.post("/api/link-google-account", async (req, res) => {
-  const { email, rollNo, phone } = req.body;
-  if (!email || !rollNo || !phone) {
-    return res.status(400).json({ error: "Email, roll number, and phone number are required" });
+  const { email, rollNo, phone, passcode, role, classId } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
+  if (role === "teacher") {
+    if (!passcode) {
+      return res.status(400).json({ error: "Passcode is required to link a teacher account" });
+    }
+    const cleanPass = String(passcode).trim().toUpperCase();
+    const teacher = await getTeacherByPasscode(cleanPass);
+    if (!teacher) {
+      return res.status(404).json({ error: "Invalid teacher passcode" });
+    }
+    
+    // Check if email already linked
+    const existing = await getTeacherByEmail(email);
+    if (existing && existing.id !== teacher.id) {
+      return res.status(400).json({ error: `The email ${email} is already linked to ${existing.name}` });
+    }
+
+    teacher.email = email;
+    await saveTeacher(teacher);
+    return res.json({ success: true, role: "teacher", name: teacher.name, passcode: teacher.passcodes[0] });
+  }
+
+  if (!rollNo || !phone) {
+    return res.status(400).json({ error: "Roll number and phone number are required" });
   }
 
   const numRollNo = parseInt(rollNo, 10);
-  const students = await getStudents();
-  const studentIndex = students.findIndex((s) => s.rollNo === numRollNo);
+  const student = await getStudentByRollNo(numRollNo, classId || "xii-a");
 
-  if (studentIndex === -1) {
+  if (!student) {
     return res.status(404).json({ error: `Student with Roll No. ${numRollNo} not found` });
   }
 
-  const student = students[studentIndex];
   const cleanPhoneInput = String(phone).trim();
   const dbPhone = String(student.phone).trim();
   const last4Db = dbPhone.slice(-4);
 
   if (cleanPhoneInput === dbPhone || cleanPhoneInput === last4Db) {
     // Check if this email is already linked to another student
-    const existing = students.find((s) => s.email && s.email.toLowerCase() === email.toLowerCase());
+    const existing = await getStudentByEmail(email);
     if (existing && existing.rollNo !== numRollNo) {
       return res.status(400).json({ error: `The email ${email} is already linked to ${existing.name}` });
     }
 
-    students[studentIndex].email = email;
-    await saveStudents(students);
-    return res.json({ success: true, role: "student", student: students[studentIndex] });
+    student.email = email;
+    await saveStudent(student);
+    return res.json({ success: true, role: "student", student });
   }
 
   return res.status(401).json({
@@ -532,8 +829,8 @@ app.post("/api/link-google-account", async (req, res) => {
 // 2. Fetch specific student
 app.get("/api/student/:roll_no", async (req, res) => {
   const rollNo = parseInt(req.params.roll_no, 10);
-  const students = await getStudents();
-  const student = students.find((s) => s.rollNo === rollNo);
+  const classId = req.query.classId as string || "xii-a";
+  const student = await getStudentByRollNo(rollNo, classId);
 
   if (!student) {
     return res.status(404).json({ error: "Student not found" });
@@ -541,10 +838,24 @@ app.get("/api/student/:roll_no", async (req, res) => {
   res.json(student);
 });
 
+// 2.8 Get Teacher profile details dynamically
+app.get("/api/teacher/profile", async (req, res) => {
+  const auth = req.headers["x-teacher-passcode"];
+  if (!auth) return res.status(401).json({ error: "Missing passcode" });
+  const teacher = await getTeacherByPasscode(String(auth));
+  if (!teacher) return res.status(404).json({ error: "Teacher not found" });
+  res.json({
+    name: teacher.name,
+    subject: teacher.subject,
+    email: teacher.email,
+    classes: teacher.classes
+  });
+});
+
 // 3. Fetch all students (Teacher only, checked via header)
 app.get("/api/students", async (req, res) => {
   const auth = req.headers["x-teacher-passcode"];
-  if (!getSubjectForPasscode(auth)) {
+  if (!(await getSubjectForPasscode(auth))) {
     return res.status(403).json({ error: "Unauthorized access to teacher class details" });
   }
   res.json(await getStudents());
@@ -553,13 +864,13 @@ app.get("/api/students", async (req, res) => {
 // 4. Update student score (Teacher only)
 app.post("/api/student/:roll_no/score", async (req, res) => {
   const auth = req.headers["x-teacher-passcode"];
-  const teacherSubject = getSubjectForPasscode(auth);
+  const teacherSubject = await getSubjectForPasscode(auth);
   if (!teacherSubject) {
     return res.status(403).json({ error: "Unauthorized action" });
   }
 
   const rollNo = parseInt(req.params.roll_no, 10);
-  const { topic, score, milestones } = req.body;
+  const { topic, score, milestones, classId } = req.body;
 
   if (!topic || score === undefined || score < 0 || score > 100) {
     return res.status(400).json({ error: "Invalid topic name or score value (must be 0-100)" });
@@ -570,83 +881,79 @@ app.post("/api/student/:roll_no/score", async (req, res) => {
     return res.status(403).json({ error: `You are only authorized to update scores for ${teacherSubject}` });
   }
 
-  const students = await getStudents();
-  const studentIndex = students.findIndex((s) => s.rollNo === rollNo);
+  const student = await getStudentByRollNo(rollNo, classId || "xii-a");
 
-  if (studentIndex === -1) {
+  if (!student) {
     return res.status(404).json({ error: "Student not found" });
   }
 
-  students[studentIndex].scores[topic] = Number(score);
+  student.scores[topic] = Number(score);
   if (milestones) {
-    if (!students[studentIndex].milestones) {
-      students[studentIndex].milestones = {};
+    if (!student.milestones) {
+      student.milestones = {};
     }
-    students[studentIndex].milestones[topic] = milestones;
+    student.milestones[topic] = milestones;
   }
-  await saveStudents(students);
+  await saveStudent(student);
 
-  res.json({ success: true, student: students[studentIndex] });
+  res.json({ success: true, student });
 });
 
 // 4.2 Update student email (Teacher only)
 app.post("/api/student/:roll_no/email", async (req, res) => {
   const auth = req.headers["x-teacher-passcode"];
-  if (!getSubjectForPasscode(auth)) {
+  if (!(await getSubjectForPasscode(auth))) {
     return res.status(403).json({ error: "Unauthorized action" });
   }
 
   const rollNo = parseInt(req.params.roll_no, 10);
-  const { email } = req.body;
+  const { email, classId } = req.body;
 
-  const students = await getStudents();
-  const studentIndex = students.findIndex((s) => s.rollNo === rollNo);
+  const student = await getStudentByRollNo(rollNo, classId || "xii-a");
 
-  if (studentIndex === -1) {
+  if (!student) {
     return res.status(404).json({ error: "Student not found" });
   }
 
-  students[studentIndex].email = String(email).trim().toLowerCase();
-  await saveStudents(students);
+  student.email = String(email).trim().toLowerCase();
+  await saveStudent(student);
 
-  res.json({ success: true, student: students[studentIndex] });
+  res.json({ success: true, student });
 });
 
 // 4.5 Save Student Progress & Milestones (Self-Entry API for both Students and Teachers)
 app.post("/api/student/:roll_no/save-progress", async (req, res) => {
   const rollNo = parseInt(req.params.roll_no, 10);
   const { topic, score, milestones } = req.body;
+  const classId = req.query.classId as string || req.body.classId as string || "xii-a";
 
   if (!topic || score === undefined || score < 0 || score > 100) {
     return res.status(400).json({ error: "Invalid topic name or score value (must be 0-100)" });
   }
 
-  const students = await getStudents();
-  const studentIndex = students.findIndex((s) => s.rollNo === rollNo);
+  const student = await getStudentByRollNo(rollNo, classId);
 
-  if (studentIndex === -1) {
+  if (!student) {
     return res.status(404).json({ error: "Student not found" });
   }
 
-  const targetStudent = students[studentIndex];
-  
-  const oldScore = targetStudent.scores[topic] || 0;
+  const oldScore = student.scores[topic] || 0;
   const newScore = Number(score);
 
   if (milestones && Array.isArray(milestones)) {
-    if (!targetStudent.milestones) {
-      targetStudent.milestones = {};
+    if (!student.milestones) {
+      student.milestones = {};
     }
-    targetStudent.milestones[topic] = milestones;
+    student.milestones[topic] = milestones;
   }
 
   if (newScore !== oldScore) {
-    targetStudent.scores[topic] = newScore;
-    logStudentActivity(targetStudent, "checklist", topic, `Progress changed from ${oldScore}% to ${newScore}% in '${topic}'`);
+    student.scores[topic] = newScore;
+    logStudentActivity(student, "checklist", topic, `Progress changed from ${oldScore}% to ${newScore}% in '${topic}'`);
   }
 
-  await saveStudents(students);
-  res.json({ success: true, student: targetStudent });
+  await saveStudent(student);
+  res.json({ success: true, student });
 });
 
 // 5. Submit doubt (Student)
@@ -687,7 +994,7 @@ app.get("/api/student/:roll_no/doubts", async (req, res) => {
 // 7. Get all doubts (Teacher only)
 app.get("/api/teacher/doubts", async (req, res) => {
   const auth = req.headers["x-teacher-passcode"];
-  const teacherSubject = getSubjectForPasscode(auth);
+  const teacherSubject = await getSubjectForPasscode(auth);
   if (!teacherSubject) {
     return res.status(403).json({ error: "Unauthorized" });
   }
@@ -699,7 +1006,7 @@ app.get("/api/teacher/doubts", async (req, res) => {
 // 8. Answer a doubt (Teacher only)
 app.post("/api/teacher/doubt/:id/answer", async (req, res) => {
   const auth = req.headers["x-teacher-passcode"];
-  const teacherSubject = getSubjectForPasscode(auth);
+  const teacherSubject = await getSubjectForPasscode(auth);
   if (!teacherSubject) {
     return res.status(403).json({ error: "Unauthorized" });
   }
@@ -898,40 +1205,43 @@ FORMATTING RULES (critical — do NOT break these):
 app.post("/api/student/:roll_no/quiz-state", async (req, res) => {
   const rollNo = parseInt(req.params.roll_no, 10);
   const { quizState, completed, subjectHint } = req.body;
+  const classId = req.query.classId as string || req.body.classId as string || "xii-a";
 
-  const students = await getStudents();
-  const idx = students.findIndex((s) => s.rollNo === rollNo);
+  const student = await getStudentByRollNo(rollNo, classId);
 
-  if (idx === -1) {
+  if (!student) {
     return res.status(404).json({ error: "Student not found" });
   }
 
   if (completed) {
     // Quiz is finished — clear active quiz, update stats
-    students[idx].activeQuiz = null;
+    student.activeQuiz = null;
     
     // Log the completed quiz details in the student activity sessions
     if (quizState) {
       const scoreDetail = `Scored ${quizState.correctCount}/5 in '${quizState.topic}' adaptive quiz (${quizState.difficulty} difficulty)`;
-      logStudentActivity(students[idx], "quiz", quizState.topic, scoreDetail);
+      logStudentActivity(student, "quiz", quizState.topic, scoreDetail);
     }
 
     if (subjectHint) {
-      if (!students[idx].quizStats) {
-        students[idx].quizStats = { totalQuizzes: 0, bySubject: { chemistry: 0, physics: 0, maths: 0 } };
+      if (!student.quizStats) {
+        student.quizStats = { totalQuizzes: 0, bySubject: { chemistry: 0, physics: 0, maths: 0, biology: 0 } };
       }
-      students[idx].quizStats!.totalQuizzes += 1;
-      const sub = subjectHint as "chemistry" | "physics" | "maths";
-      if (sub === "chemistry" || sub === "physics" || sub === "maths") {
-        students[idx].quizStats!.bySubject[sub] += 1;
+      student.quizStats!.totalQuizzes += 1;
+      const sub = subjectHint as "chemistry" | "physics" | "maths" | "biology";
+      if (sub === "chemistry" || sub === "physics" || sub === "maths" || sub === "biology") {
+        if (student.quizStats!.bySubject[sub] === undefined) {
+          student.quizStats!.bySubject[sub] = 0;
+        }
+        student.quizStats!.bySubject[sub]! += 1;
       }
     }
   } else {
-    students[idx].activeQuiz = quizState;
+    student.activeQuiz = quizState;
   }
 
-  await saveStudents(students);
-  res.json({ success: true, student: students[idx] });
+  await saveStudent(student);
+  res.json({ success: true, student });
 });
 
 // Global Process Exception Handlers to prevent backend resets/crashes
@@ -953,7 +1263,7 @@ app.get("/api/health", async (req, res) => {
     if (db) {
       try {
         // Quick active ping test to verify Firestore query health
-        await db.collection("students").limit(1).get();
+        await db.collection("xii-a").limit(1).get();
         firestoreStatus = "connected";
         isFirestoreHealthy = true;
       } catch (e: any) {

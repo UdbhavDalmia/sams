@@ -22,7 +22,7 @@ import {
   Mail,
   History
 } from "lucide-react";
-import { Student, TopicName, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, ALL_TOPICS } from "../types";
+import { Student, TopicName, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS, ALL_TOPICS, getStudentSubjects } from "../types";
 import { fetchWithRetry } from "../lib/fetch";
 
 interface TeacherViewProps {
@@ -34,15 +34,18 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   const getTeacherDetails = (pass: string) => {
     const p = pass.toUpperCase();
     if (p === "PHYS12A" || p === "NARENDRA12" || p === "SATISH12") {
-      return { name: "Mr. Narendra Kumar", role: "Physics Faculty", subject: "Physics" as const, initials: "NK" };
+      return { name: "Mr. Narendra Kumar", role: "Physics Faculty", subject: "Physics" as const, initials: "NK", classLabel: "Class XII-A & XII-B", classes: ["xii-a", "xii-b"] };
     }
     if (p === "MATH12A" || p === "TARUN12" || p === "AMIT12") {
-      return { name: "Mr. Tarun Makkar", role: "Mathematics Faculty", subject: "Mathematics" as const, initials: "TM" };
+      return { name: "Mr. Tarun Makkar", role: "Mathematics Faculty", subject: "Mathematics" as const, initials: "TM", classLabel: "Class XII-A & XII-B", classes: ["xii-a", "xii-b"] };
     }
-    return { name: "Mr. Pradeep Gusain", role: "Class XII-A Coordinator", subject: "Chemistry" as const, initials: "PG" };
+    if (p === "BIO12A" || p === "MANISHI12" || p === "BIO12B") {
+      return { name: "Ms. Manishi Chawla", role: "Biology Faculty / Class XII-B Coordinator", subject: "Biology" as const, initials: "MC", classLabel: "Class XII-B", classes: ["xii-b"] };
+    }
+    return { name: "Mr. Pradeep Gusain", role: "Class XII-A Coordinator", subject: "Chemistry" as const, initials: "PG", classLabel: "Class XII-A & XII-B", classes: ["xii-a", "xii-b"] };
   };
 
-  const teacherDetails = getTeacherDetails(passcode);
+  const [teacherDetails, setTeacherDetails] = useState(getTeacherDetails(passcode));
 
   const [students, setStudents] = useState<Student[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,9 +53,12 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [rollNoFilter, setRollNoFilter] = useState("");
+  const [classFilter, setClassFilter] = useState<"all" | "xii-a" | "xii-b">(
+    getTeacherDetails(passcode).classes.length === 1 ? (getTeacherDetails(passcode).classes[0] as any) : "all"
+  );
 
   // Active Subject Selection State
-  const [activeSubject, setActiveSubject] = useState<"Chemistry" | "Physics" | "Mathematics">(teacherDetails.subject);
+  const [activeSubject, setActiveSubject] = useState<"Chemistry" | "Physics" | "Mathematics" | "Biology">(teacherDetails.subject);
 
   // Score & Email editor states
   const [editScores, setEditScores] = useState<Record<string, number>>({});
@@ -63,11 +69,46 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   // Determine active topics list based on selected subject
   const activeTopics = activeSubject === "Physics"
     ? PHYSICS_TOPICS
-    : (activeSubject === "Mathematics" ? MATHS_TOPICS : CHEMISTRY_TOPICS);
+    : (activeSubject === "Mathematics"
+      ? MATHS_TOPICS
+      : (activeSubject === "Biology" ? BIOLOGY_TOPICS : CHEMISTRY_TOPICS));
 
   // Load class data on mount
   const fetchClassData = async () => {
     try {
+      // 1. Fetch dynamic teacher profile
+      const profileRes = await fetchWithRetry("/api/teacher/profile", {
+        headers: { "x-teacher-passcode": passcode },
+      });
+      if (profileRes.ok) {
+        const data = await profileRes.json();
+        const initials = data.name.split(" ").filter((n: string) => !n.includes(".")).map((n: string) => n[0]).join("").toUpperCase() || "T";
+        const subject = data.subject;
+        const classes = data.classes || (subject === "Biology" ? ["xii-b"] : ["xii-a", "xii-b"]);
+        const role = subject === "Biology" 
+          ? "Biology Faculty / Class XII-B Coordinator" 
+          : (subject === "Chemistry" ? "Class XII-A Coordinator" : `${subject} Faculty`);
+        const classLabel = classes.length > 1
+          ? "Class XII-A & XII-B"
+          : `Class ${classes[0].toUpperCase()}`;
+        
+        setTeacherDetails({
+          name: data.name,
+          role,
+          subject,
+          initials,
+          classLabel,
+          classes
+        });
+        setActiveSubject(subject);
+        if (classes.length === 1) {
+          setClassFilter(classes[0]);
+        } else {
+          setClassFilter("all");
+        }
+      }
+
+      // 2. Fetch students list
       const classRes = await fetchWithRetry("/api/students", {
         headers: { "x-teacher-passcode": passcode },
       });
@@ -123,7 +164,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
               "Content-Type": "application/json",
               "x-teacher-passcode": passcode,
             },
-            body: JSON.stringify({ topic, score: newScore, milestones: milestonesArr }),
+            body: JSON.stringify({ topic, score: newScore, milestones: milestonesArr, classId: selectedStudent.classId || "xii-a" }),
           });
         }
       });
@@ -138,7 +179,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
             "Content-Type": "application/json",
             "x-teacher-passcode": passcode,
           },
-          body: JSON.stringify({ email: editEmail.trim().toLowerCase() }),
+          body: JSON.stringify({ email: editEmail.trim().toLowerCase(), classId: selectedStudent.classId || "xii-a" }),
         });
       }
 
@@ -169,7 +210,12 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   };
 
   // Calculations for charts and metrics
-  const totalStudents = students.length;
+  const subjectStudents = students.filter(s => {
+    const matchesSubject = getStudentSubjects(s.scores).includes(activeSubject);
+    const matchesClass = classFilter === "all" || s.classId === classFilter;
+    return matchesSubject && matchesClass;
+  });
+  const totalStudents = subjectStudents.length;
 
   const calculateStudentAvg = (s: Student) => {
     const scores = activeTopics.map(t => s.scores[t] || 0);
@@ -178,12 +224,12 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   };
 
   const classAvg = totalStudents > 0
-    ? Math.round(students.reduce((sum, s) => sum + calculateStudentAvg(s), 0) / totalStudents)
+    ? Math.round(subjectStudents.reduce((sum, s) => sum + calculateStudentAvg(s), 0) / totalStudents)
     : 0;
 
   // Calculate perfect 100% chapters completed across the class for active subject
   let perfectChaptersCount = 0;
-  students.forEach((s) => {
+  subjectStudents.forEach((s) => {
     activeTopics.forEach((t) => {
       if ((s.scores[t] || 0) === 100) {
         perfectChaptersCount++;
@@ -194,7 +240,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   // Calculate topic-specific averages for the class progress bar chart
   const topicAverages = activeTopics.map((topic) => {
     let sum = 0;
-    students.forEach((s) => {
+    subjectStudents.forEach((s) => {
       sum += s.scores[topic] || 0;
     });
     const avg = totalStudents > 0 ? Math.round(sum / totalStudents) : 0;
@@ -204,7 +250,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   // Find most challenging chapter in the current subject
   let mostChallengingChapter = "None";
   let lowestAvg = 100;
-  if (students.length > 0) {
+  if (subjectStudents.length > 0) {
     topicAverages.forEach((t) => {
       if (t.avg < lowestAvg) {
         lowestAvg = t.avg;
@@ -214,7 +260,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   }
 
   // Filter and sort class list
-  const filteredStudents = students
+  const filteredStudents = subjectStudents
     .filter((s) => {
       const q = searchQuery.toLowerCase();
       const rollMatch = rollNoFilter.trim() === "" || s.rollNo.toString() === rollNoFilter.trim();
@@ -227,6 +273,12 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
       return rollMatch && textMatch;
     })
     .sort((a, b) => {
+      const classA = a.classId || "xii-a";
+      const classB = b.classId || "xii-a";
+      if (classA !== classB) {
+        return classA.localeCompare(classB);
+      }
+
       let comparison = 0;
       if (sortBy === "rollNo") {
         comparison = a.rollNo - b.rollNo;
@@ -321,7 +373,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                 Total Class Size
               </span>
               <span className="text-3xl font-black text-slate-900 block mt-1 font-display">{totalStudents}</span>
-              <span className="text-[11px] text-slate-500 font-medium mt-1 block">Class XII-A Student List</span>
+              <span className="text-[11px] text-slate-500 font-medium mt-1 block">{teacherDetails.classLabel} Student List</span>
             </div>
             <div className="p-4 bg-indigo-50 text-indigo-500 rounded-2xl shrink-0">
               <Users className="h-6 w-6" />
@@ -422,10 +474,31 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h3 className="text-lg font-black text-slate-900 font-display">Student Progress List</h3>
-              <p className="text-xs text-slate-400 font-medium">Class XII-A status reports for {activeSubject}</p>
+              <p className="text-xs text-slate-400 font-medium">
+                {classFilter === "all" ? teacherDetails.classLabel : `Class ${classFilter.toUpperCase()}`} status reports for {activeSubject}
+              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              {/* Class Filter */}
+              <div className="relative">
+                <select
+                  value={classFilter}
+                  onChange={(e) => setClassFilter(e.target.value as any)}
+                  className="block w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-sm font-bold cursor-pointer"
+                >
+                  {teacherDetails.classes && teacherDetails.classes.length > 1 && (
+                    <option value="all">All Classes</option>
+                  )}
+                  {teacherDetails.classes && teacherDetails.classes.includes("xii-a") && (
+                    <option value="xii-a">Class XII-A</option>
+                  )}
+                  {teacherDetails.classes && teacherDetails.classes.includes("xii-b") && (
+                    <option value="xii-b">Class XII-B</option>
+                  )}
+                </select>
+              </div>
+
               {/* Roll No Filter */}
               <div className="relative w-28">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -434,7 +507,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                 <input
                   type="number"
                   min="1"
-                  max="37"
+                  max={classFilter === "xii-b" || (classFilter === "all" && activeSubject === "Biology") ? "18" : "37"}
                   placeholder="Roll No"
                   value={rollNoFilter}
                   onChange={(e) => setRollNoFilter(e.target.value)}
@@ -501,7 +574,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                 {filteredStudents.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
-                      No student records match this query in the Class XII-A list.
+                      No student records match this query in the {teacherDetails.classLabel} list.
                     </td>
                   </tr>
                 ) : (
@@ -528,12 +601,19 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                     }
 
                     return (
-                      <tr key={s.rollNo} className="hover:bg-slate-50/50 transition-colors">
+                      <tr key={`${s.classId || "unknown"}-${s.rollNo}`} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-4 text-sm font-mono font-bold text-slate-500">
                           {s.rollNo}
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm font-extrabold text-slate-800 block">{s.name}</span>
+                          <span className="text-sm font-extrabold text-slate-800 block">
+                            {s.name}
+                            {classFilter === "all" && (
+                              <span className="ml-2 inline-block px-1.5 py-0.5 text-[9px] font-black uppercase bg-slate-100 text-slate-500 rounded border border-slate-200">
+                                {s.classId?.toUpperCase() || "XII-A"}
+                              </span>
+                            )}
+                          </span>
                           <span className="text-xs font-mono text-slate-400">{s.email || "No Gmail Linked"}</span>
                         </td>
                         <td className="px-6 py-4 text-sm font-mono text-slate-500">

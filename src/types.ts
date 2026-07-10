@@ -18,13 +18,23 @@ export interface ActivitySession {
   timestamp: string;
   changes: Array<{
     type: "checklist" | "quiz";
-    subject: "Chemistry" | "Physics" | "Mathematics";
+    subject: "Chemistry" | "Physics" | "Mathematics" | "Biology";
     detail: string;
   }>;
 }
 
+export interface Teacher {
+  id: string;
+  name: string;
+  subject: string;
+  passcodes: string[];
+  email: string;
+  classes: string[];
+}
+
 export interface Student {
   rollNo: number;
+  classId?: string;
   name: string;
   phone: string;
   scores: Record<string, number>;
@@ -33,7 +43,7 @@ export interface Student {
   activeQuiz?: ActiveQuizState | null;
   quizStats?: {
     totalQuizzes: number;
-    bySubject: { chemistry: number; physics: number; maths: number };
+    bySubject: { chemistry: number; physics: number; maths: number; biology?: number };
   };
   recentSessions?: ActivitySession[];
 }
@@ -96,11 +106,34 @@ export const MATHS_TOPICS = [
   "Probability and LPP"
 ] as const;
 
+export const BIOLOGY_TOPICS = [
+  "Sexual Reproduction in Flowering Plants",
+  "Human Reproduction",
+  "Reproductive Health",
+  "Principles of Inheritance and Variation",
+  "Molecular Basis of Inheritance",
+  "Evolution",
+  "Human Health and Diseases",
+  "Microbes in Human Welfare",
+  "Biotechnology Principles and Processes",
+  "Biotechnology and its Applications"
+] as const;
+
 export const ALL_TOPICS = [
   ...CHEMISTRY_TOPICS,
   ...PHYSICS_TOPICS,
-  ...MATHS_TOPICS
+  ...MATHS_TOPICS,
+  ...BIOLOGY_TOPICS
 ];
+
+export function getStudentSubjects(scores: Record<string, number>): string[] {
+  const subjects: string[] = [];
+  if (CHEMISTRY_TOPICS.some(t => t in scores)) subjects.push("Chemistry");
+  if (PHYSICS_TOPICS.some(t => t in scores)) subjects.push("Physics");
+  if (MATHS_TOPICS.some(t => t in scores)) subjects.push("Mathematics");
+  if (BIOLOGY_TOPICS.some(t => t in scores)) subjects.push("Biology");
+  return subjects;
+}
 
 export type TopicName = string;
 
@@ -637,6 +670,171 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
     tips: [
       "Bayes' theorem is used when an event has occurred and you need to trace its probability back to a specific prior cause.",
       "In LPP, the optimal (maximum or minimum) values of the objective function are guaranteed to occur at the corner points of the feasible region."
+    ]
+  },
+  "Sexual Reproduction in Flowering Plants": {
+    name: "Sexual Reproduction in Flowering Plants",
+    formulas: [
+      { label: "Pollen grains from 1 PMC", formula: "4 functional pollen grains" },
+      { label: "Embryo sac structure", formula: "7-celled, 8-nucleate structure" }
+    ],
+    concepts: [
+      "Microsporogenesis and Megasporogenesis steps",
+      "Double fertilization: Syngamy (zygote) and Triple Fusion (endosperm)",
+      "Outbreeding devices to prevent self-pollination",
+      "Apomixis (seed production without fertilization) and Polyembryony"
+    ],
+    tips: [
+      "In angiosperms, the endosperm is triploid (3n) while the embryo is diploid (2n).",
+      "Exine of pollen grains is made of sporopollenin, one of the most resistant organic materials."
+    ]
+  },
+  "Human Reproduction": {
+    name: "Human Reproduction",
+    formulas: [
+      { label: "Spermatogenesis yield", formula: "1 Primary Spermatocyte -> 4 Sperms" },
+      { label: "Oogenesis yield", formula: "1 Primary Oocyte -> 1 Ovum + Polar Bodies" }
+    ],
+    concepts: [
+      "Male and female reproductive systems and gametogenesis",
+      "Menstrual cycle phases (Follicular, Luteal, Menstruation)",
+      "Fertilization, cleavage, blastocyst formation, and implantation",
+      "Parturition and lactation hormones (Oxytocin, Prolactin)"
+    ],
+    tips: [
+      "LH surge triggers ovulation around day 14 of a standard 28-day menstrual cycle.",
+      "Colostrum, the first milk produced after birth, is rich in IgA antibodies."
+    ]
+  },
+  "Reproductive Health": {
+    name: "Reproductive Health",
+    formulas: [
+      { label: "Natural Rhythm Method", formula: "Avoid intercourse during days 10-17 of cycle" }
+    ],
+    concepts: [
+      "Contraceptive methods: Barrier, IUDs, Hormonal, Surgical",
+      "Sexually Transmitted Infections (STIs) and prevention",
+      "Assisted Reproductive Technologies (ART): IVF, ZIFT, GIFT",
+      "Amniocentesis: usage and statutory ban reasons"
+    ],
+    tips: [
+      "Lippes loop is non-medicated, CuT/Cu7 are copper-releasing, and Progestasert is hormone-releasing IUD.",
+      "Hepatitis-B, Genital Herpes, and HIV are not completely curable STIs."
+    ]
+  },
+  "Principles of Inheritance and Variation": {
+    name: "Principles of Inheritance and Variation",
+    formulas: [
+      { label: "Monohybrid F2 Ratio", formula: "3:1 (Phenotypic), 1:2:1 (Genotypic)" },
+      { label: "Dihybrid F2 Ratio", formula: "9:3:3:1 (Phenotypic)" },
+      { label: "Hardy-Weinberg Equilibrium", formula: "p² + 2pq + q² = 1" }
+    ],
+    concepts: [
+      "Mendel's Laws of Inheritance: Dominance, Segregation, Independent Assortment",
+      "Incomplete dominance, Co-dominance (ABO blood groups), Pleiotropy",
+      "Sex determination (XY, XO, ZW systems) and pedigree analysis",
+      "Chromosomal vs Mendelian disorders (Down's, Turner's, Hemophilia)"
+    ],
+    tips: [
+      "Hemophilia and Color blindness are X-linked recessive disorders, whereas Sickle cell anemia is autosomal recessive.",
+      "Down's syndrome is due to trisomy of chromosome 21."
+    ]
+  },
+  "Molecular Basis of Inheritance": {
+    name: "Molecular Basis of Inheritance",
+    formulas: [
+      { label: "DNA Helix Pitch", formula: "3.4 nm (10 base pairs per turn)" },
+      { label: "Chargaff's Rule", formula: "[A] + [G] = [T] + [C] or A/T = G/C = 1" }
+    ],
+    concepts: [
+      "DNA structure, packaging (nucleosome), and replication (semiconservative)",
+      "Transcription and translation processes in prokaryotes and eukaryotes",
+      "Genetic code properties (universal, degenerate, non-overlapping)",
+      "Regulation of gene expression (Lac Operon) and DNA fingerprinting"
+    ],
+    tips: [
+      "RNA polymerase transcribes DNA 5' to 3'. The codon AUG acts as both the start codon and codes for Methionine.",
+      "Sanger sequencing was used for sequencing the human genome."
+    ]
+  },
+  "Evolution": {
+    name: "Evolution",
+    formulas: [
+      { label: "Gene frequency change", formula: "p + q = 1 (allele frequency)" }
+    ],
+    concepts: [
+      "Origin of life (Oparin-Haldane, Miller's experiment)",
+      "Evidences of evolution: Homologous vs Analogous organs, Adaptive radiation",
+      "Darwin's Natural Selection vs Lamarckism and Mutation theory",
+      "Hardy-Weinberg equilibrium factors, Human evolution stages"
+    ],
+    tips: [
+      "Homologous organs show divergent evolution (common ancestry), while analogous organs show convergent evolution (common function).",
+      "Miller used CH4, NH3, H2, and water vapor at 800°C to simulate early Earth's atmosphere."
+    ]
+  },
+  "Human Health and Diseases": {
+    name: "Human Health and Diseases",
+    formulas: [
+      { label: "Antibody structure", formula: "H2L2 (2 heavy, 2 light chains)" }
+    ],
+    concepts: [
+      "Common human diseases: Typhoid, Malaria, Pneumonia, Amoebiasis",
+      "Innate vs Acquired immunity, B and T lymphocytes",
+      "Active vs Passive immunity, Allergy, Autoimmunity, AIDS, Cancer",
+      "Drug and alcohol abuse consequences"
+    ],
+    tips: [
+      "Malaria sporozoites enter the human body via female Anopheles bite, reproduce in liver, then rupture RBCs releasing haemozoin.",
+      "The HIV virus selectively attacks and destroys Helper T-cells (CD4+)."
+    ]
+  },
+  "Microbes in Human Welfare": {
+    name: "Microbes in Human Welfare",
+    formulas: [
+      { label: "BOD relationship", formula: "BOD ∝ Organic matter load" }
+    ],
+    concepts: [
+      "Microbes in household and industrial products (Curd, Bread, Toddy, Antibiotics)",
+      "Sewage treatment: Primary vs Secondary (flocs, activated sludge)",
+      "Biogas production mechanism and Methanogens",
+      "Microbes as biocontrol agents (Bacillus thuringiensis, Baculoviruses, Trichoderma)"
+    ],
+    tips: [
+      "Cyclosporin A (immunosuppressant) is produced by Trichoderma polysporum, and Statins (cholesterol-lowering) by Monascus purpureus.",
+      "BOD is a measure of the organic matter present in water; higher BOD means higher pollution."
+    ]
+  },
+  "Biotechnology Principles and Processes": {
+    name: "Biotechnology Principles and Processes",
+    formulas: [
+      { label: "PCR Amplification", formula: "2^n copies (n = number of cycles)" }
+    ],
+    concepts: [
+      "Restriction enzymes: Endonucleases vs Exonucleases, sticky ends",
+      "Gel electrophoresis (Agarose, ethidium bromide staining)",
+      "Cloning vectors: plasmid pBR322 selectable markers, insertional inactivation",
+      "PCR steps: Denaturation (94°C), Annealing (54°C), Extension (72°C)"
+    ],
+    tips: [
+      "DNA is negatively charged, so it moves towards the positive electrode (anode) during agarose gel electrophoresis.",
+      "Taq polymerase remains stable at high temperatures during the denaturation step of PCR."
+    ]
+  },
+  "Biotechnology and its Applications": {
+    name: "Biotechnology and its Applications",
+    formulas: [
+      { label: "Bt Toxin activation", formula: "Alkaline pH of insect midgut" }
+    ],
+    concepts: [
+      "Pest-resistant plants: Bt cotton, RNA interference (RNAi) in tobacco plants",
+      "Genetically Engineered Insulin: A & B peptide chains disulfide bonds",
+      "Gene therapy: ADA deficiency permanent cure stages",
+      "Transgenic animals, Ethical issues, Biopiracy"
+    ],
+    tips: [
+      "ADA deficiency can be cured permanently if treated with gene therapy at early embryonic stages.",
+      "RNA interference takes place in all eukaryotic organisms as a method of cellular defense."
     ]
   }
 };

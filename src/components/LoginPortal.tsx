@@ -13,6 +13,7 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
   const [role, setRole] = useState<"student" | "teacher">("student");
   const [rollNo, setRollNo] = useState("");
   const [phone, setPhone] = useState("");
+  const [classId, setClassId] = useState("xii-a");
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -30,6 +31,8 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
   const [isLinkingStep, setIsLinkingStep] = useState(false);
   const [linkRollNo, setLinkRollNo] = useState("");
   const [linkPhone, setLinkPhone] = useState("");
+  const [linkClassId, setLinkClassId] = useState("xii-a");
+  const [linkPasscode, setLinkPasscode] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
 
@@ -49,7 +52,7 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
     setLoginSuccess({ name: role === "student" ? `Roll #${rollNo}` : "Teacher Portal" });
     
     try {
-      const body = role === "student" ? { role, rollNo, phone } : { role, passcode };
+      const body = role === "student" ? { role, rollNo, phone, classId } : { role, passcode };
       const res = await fetchWithRetry("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -125,7 +128,7 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
       const res = await fetchWithRetry("/api/link-google-account", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rollNo: linkRollNo, phone: linkPhone, email: googleEmailInput }),
+        body: JSON.stringify({ role, rollNo: linkRollNo, phone: linkPhone, passcode: linkPasscode, email: googleEmailInput, classId: linkClassId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Linking failed");
@@ -309,6 +312,23 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
             {role === "student" ? (
               <>
                 <div>
+                  <label htmlFor="classId" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
+                    Your Class
+                  </label>
+                  <div className="mt-2 relative rounded-xl shadow-none">
+                    <select
+                      id="classId"
+                      value={classId}
+                      onChange={(e) => setClassId(e.target.value)}
+                      className="block w-full px-3 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-base font-medium transition-all cursor-pointer"
+                    >
+                      <option value="xii-a">XII-A (PCM)</option>
+                      <option value="xii-b">XII-B (PCB / PCMB)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
                   <label htmlFor="rollNo" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
                     Your Roll Number
                   </label>
@@ -317,12 +337,12 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                       <User className="h-4 w-4 text-slate-400" />
                     </div>
                     <input
-                      id="rollNo" name="rollNo" type="number" required min="1" max="37"
+                      id="rollNo" name="rollNo" type="number" required min="1" max={classId === "xii-a" ? "37" : "18"}
                       placeholder="e.g. 1" value={rollNo} onChange={(e) => setRollNo(e.target.value)}
                       className="block w-full pl-10 pr-3 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-base font-medium transition-all"
                     />
                   </div>
-                  <p className="mt-1.5 text-xs text-slate-400 font-mono">Hint: Class supports rolls 1 through 37</p>
+                  <p className="mt-1.5 text-xs text-slate-400 font-mono">Hint: Class supports rolls 1 through {classId === "xii-a" ? 37 : 18}</p>
                 </div>
 
                 <div>
@@ -394,7 +414,6 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
             </button>
           </form>
 
-          {role === "student" && (
             <div className="space-y-4 pt-2">
               <div className="relative flex items-center justify-center">
                 <div className="absolute inset-0 flex items-center">
@@ -419,10 +438,9 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                 Sign in with Google
               </button>
               <p className="text-center text-[10px] text-slate-400 font-medium">
-                Google login is for pre-registered students only
+                Google login is for pre-registered users only
               </p>
             </div>
-          )}
 
           <div className="mt-5 border-t border-slate-100 pt-4 flex justify-center items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
             <span className="flex items-center gap-1">
@@ -464,18 +482,40 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                 <form onSubmit={handleGoogleLinkSubmit} className="space-y-4">
                   <div className="p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-2xl text-xs leading-relaxed">
                     <p className="font-bold text-slate-800 mb-1">Link Google Email to SAMS</p>
-                    <span className="font-mono text-indigo-700 font-extrabold">{googleEmailInput}</span> is not linked to student data. Enter your Roll and Phone to verify and link instantly.
+                    <span className="font-mono text-indigo-700 font-extrabold">{googleEmailInput}</span> is not linked to {role === "student" ? "student" : "staff"} data. Enter your {role === "student" ? "Roll and Phone" : "Staff Passcode"} to verify and link instantly.
                   </div>
-                  <div>
-                    <label htmlFor="linkRollNo" className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Verify Roll Number</label>
-                    <input id="linkRollNo" type="number" required placeholder="e.g. 5" value={linkRollNo} onChange={(e) => setLinkRollNo(e.target.value)}
-                      className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800" />
-                  </div>
-                  <div>
-                    <label htmlFor="linkPhone" className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Verify Phone (or last 4 digits)</label>
-                    <input id="linkPhone" type="password" required placeholder="e.g. 4362" value={linkPhone} onChange={(e) => setLinkPhone(e.target.value)}
-                      className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800" />
-                  </div>
+                  {role === "student" ? (
+                    <>
+                      <div>
+                        <label htmlFor="linkClassId" className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Verify Class</label>
+                        <select
+                          id="linkClassId"
+                          value={linkClassId}
+                          onChange={(e) => setLinkClassId(e.target.value)}
+                          className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 cursor-pointer font-medium"
+                        >
+                          <option value="xii-a">XII-A (PCM)</option>
+                          <option value="xii-b">XII-B (PCB / PCMB)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label htmlFor="linkRollNo" className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Verify Roll Number</label>
+                        <input id="linkRollNo" type="number" required min="1" max={linkClassId === "xii-a" ? "37" : "18"} placeholder="e.g. 5" value={linkRollNo} onChange={(e) => setLinkRollNo(e.target.value)}
+                          className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800" />
+                      </div>
+                      <div>
+                        <label htmlFor="linkPhone" className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Verify Phone (or last 4 digits)</label>
+                        <input id="linkPhone" type="password" required placeholder="e.g. 4362" value={linkPhone} onChange={(e) => setLinkPhone(e.target.value)}
+                          className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800" />
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <label htmlFor="linkPasscode" className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Verify Staff Passcode</label>
+                      <input id="linkPasscode" type="password" required placeholder="Enter Passcode" value={linkPasscode} onChange={(e) => setLinkPasscode(e.target.value)}
+                        className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800" />
+                    </div>
+                  )}
                   <div className="flex gap-3 pt-2">
                     <button type="button" onClick={() => setIsLinkingStep(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">Back</button>
                     <button type="submit" disabled={googleLoading} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer">

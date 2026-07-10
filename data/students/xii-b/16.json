@@ -1,0 +1,49 @@
+{
+  "rollNo": 16,
+  "name": "Mayank Pal",
+  "phone": "9811508668",
+  "email": "mayankp8433@gmail.com",
+  "classId": "xii-b",
+  "scores": {
+    "Solutions": 0,
+    "Electrochemistry": 0,
+    "Chemical Kinetics": 0,
+    "d- and f-Block": 0,
+    "Coordination Compounds": 0,
+    "Haloalkanes and Haloarenes": 0,
+    "Alcohols Phenols and Ethers": 0,
+    "Aldehydes Ketones and Carboxylic Acids": 0,
+    "Amines": 0,
+    "Biomolecules": 0,
+    "Electrostatics": 0,
+    "Current Electricity": 0,
+    "Magnetic Effects of Current": 0,
+    "Electromagnetic Induction and AC": 0,
+    "Electromagnetic Waves": 0,
+    "Ray Optics and Optical Instruments": 0,
+    "Wave Optics": 0,
+    "Dual Nature of Matter": 0,
+    "Atoms and Nuclei": 0,
+    "Electronic Devices": 0,
+    "Sexual Reproduction in Flowering Plants": 0,
+    "Human Reproduction": 0,
+    "Reproductive Health": 0,
+    "Principles of Inheritance and Variation": 0,
+    "Molecular Basis of Inheritance": 0,
+    "Evolution": 0,
+    "Human Health and Diseases": 0,
+    "Microbes in Human Welfare": 0,
+    "Biotechnology Principles and Processes": 0,
+    "Biotechnology and its Applications": 0
+  },
+  "milestones": {},
+  "quizStats": {
+    "totalQuizzes": 0,
+    "bySubject": {
+      "chemistry": 0,
+      "physics": 0,
+      "maths": 0,
+      "biology": 0
+    }
+  }
+}

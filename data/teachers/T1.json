@@ -1,0 +1,14 @@
+{
+  "id": "T1",
+  "name": "Mr. Pradeep Gusain",
+  "subject": "Chemistry",
+  "passcodes": [
+    "CHEM12A",
+    "PRADEEP12"
+  ],
+  "email": "prys2023@gmail.com",
+  "classes": [
+    "xii-a",
+    "xii-b"
+  ]
+}
