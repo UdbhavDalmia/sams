@@ -29,6 +29,16 @@ export async function fetchWithRetry(
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
 
+    // Forward the abort from caller's signal to our internal controller
+    const onAbort = () => controller.abort();
+    if (fetchOptions.signal) {
+      if (fetchOptions.signal.aborted) {
+        controller.abort();
+      } else {
+        fetchOptions.signal.addEventListener("abort", onAbort);
+      }
+    }
+
     try {
       const response = await fetch(url, {
         ...fetchOptions,
@@ -36,6 +46,9 @@ export async function fetchWithRetry(
       });
 
       clearTimeout(id);
+      if (fetchOptions.signal) {
+        fetchOptions.signal.removeEventListener("abort", onAbort);
+      }
 
       // Retry on transient server errors (like 502/503/504 gateway issues)
       if (
@@ -54,6 +67,9 @@ export async function fetchWithRetry(
       return response;
     } catch (error: any) {
       clearTimeout(id);
+      if (fetchOptions.signal) {
+        fetchOptions.signal.removeEventListener("abort", onAbort);
+      }
       lastError = error;
 
       const isAbort = error.name === "AbortError";

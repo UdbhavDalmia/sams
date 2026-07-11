@@ -364,7 +364,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   const [student, setStudent] = useState<Student>(initialStudent);
   const [selectedTopic, setSelectedTopic] = useState<TopicName | null>(null);
 
-  const studentSubjects = getStudentSubjects(initialStudent.scores);
+  const studentSubjects = getStudentSubjects(student.scores);
   // Subject Navigation Tab
   const [activeSubject, setActiveSubject] = useState<"Chemistry" | "Physics" | "Mathematics" | "Biology" | "All">(
     studentSubjects.includes("Chemistry") ? "Chemistry" : (studentSubjects[0] as any || "Physics")
@@ -502,6 +502,20 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   useEffect(() => {
     syncStudentData();
   }, [student.rollNo]);
+
+  // Synchronize student state to localStorage to keep the session cache updated
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("sams_session_v1");
+      if (saved) {
+        const session = JSON.parse(saved);
+        session.student = student;
+        localStorage.setItem("sams_session_v1", JSON.stringify(session));
+      }
+    } catch (err) {
+      console.error("Error updating cached student session in localStorage:", err);
+    }
+  }, [student]);
 
   // Sync modal states whenever a topic is selected
   useEffect(() => {
