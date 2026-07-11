@@ -18,3 +18,10 @@ View your app in AI Studio: https://ai.studio/apps/a1c9bc96-1ffd-4869-bc8d-cbbcb
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Netlify deployment
+
+Netlify build settings are defined in `netlify.toml`. Keep `GEMINI_API_KEY` and
+`FIREBASE_SERVICE_ACCOUNT` in Netlify environment variables; never add their
+values to the repository. `FIREBASE_DATABASE_ID` is excluded from secret-value
+scanning because it is a public database identifier used by the application.

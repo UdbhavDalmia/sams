@@ -1,0 +1,8 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # The Firestore database ID is an identifier, not a credential. Its value is
+  # intentionally present in application configuration and source fallbacks.
+  SECRETS_SCAN_OMIT_KEYS = "FIREBASE_DATABASE_ID"
