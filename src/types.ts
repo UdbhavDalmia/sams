@@ -38,7 +38,7 @@ export interface Student {
   name: string;
   phone: string;
   scores: Record<string, number>;
-  milestones?: Record<string, boolean[]>; // stores topic name -> [NCERT Theory, NCERT Back Ex, JEE Main PYQs, JEE Adv PYQs]
+  milestones?: Record<string, boolean[]>; // stores topic name -> array of booleans mapping to NCERT concepts list
   email?: string;
   activeQuiz?: ActiveQuizState | null;
   quizStats?: {
@@ -46,17 +46,6 @@ export interface Student {
     bySubject: { chemistry: number; physics: number; maths: number; biology?: number };
   };
   recentSessions?: ActivitySession[];
-}
-
-export interface Doubt {
-  id: string;
-  studentRollNo: number;
-  studentName: string;
-  topic: string;
-  question: string;
-  answer: string | null;
-  createdAt: string;
-  answeredAt: string | null;
 }
 
 export interface Achievement {
@@ -155,9 +144,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Osmotic Pressure", formula: "π = i • C • R • T" }
     ],
     concepts: [
-      "Ideal & Non-ideal solutions (positive/negative deviations)",
-      "Colligative properties depending only on solute particles count",
-      "van 't Hoff factor (i) for association/dissociation"
+      "Types of solutions & concentration units (molarity, molality, mole fraction)",
+      "Solubility of gases in liquids (Henry's Law)",
+      "Raoult's Law & vapor pressure of liquid-liquid solutions",
+      "Ideal and non-ideal solutions (positive & negative deviations)",
+      "Colligative properties (vapor pressure lowering, boiling pt elevation, freezing pt depression, osmotic pressure)",
+      "van 't Hoff factor (i) for association/dissociation of solutes"
     ],
     tips: [
       "Always check if the solute dissociates (like NaCl: i=2) or associates (like Benzoic acid: i=0.5) in colligative calculations.",
@@ -173,10 +165,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Cell Resistance", formula: "R = ρ • (l/A) = (1/κ) • G*" }
     ],
     concepts: [
-      "Galvanic vs Electrolytic cells",
-      "Standard Hydrogen Electrode (SHE) calibration",
-      "Primary (Dry, Mercury) vs Secondary batteries (Lead accumulator, Ni-Cd)",
-      "Fuel cells (H2-O2 cell) & Corrosion mechanism"
+      "Galvanic cells, EMF of a cell, and measurement of electrode potential",
+      "Nernst equation, equilibrium constant, and Gibbs energy of cell reactions",
+      "Conductance of electrolytic solutions & Kohlrausch's Law",
+      "Electrolysis: Faraday's laws of electrolysis and product prediction",
+      "Primary and secondary batteries (dry cell, lead storage battery, fuel cells)",
+      "Corrosion: mechanism, factors, and methods of prevention"
     ],
     tips: [
       "In Nernst Equation, Q is [Products]/[Reactants]. Ensure pure solids and liquids are taken as unit activity (1).",
@@ -192,10 +186,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Arrhenius Equation", formula: "log(k_2/k_1) = (E_a / 2.303 R) • [1/T_1 - 1/T_2]" }
     ],
     concepts: [
-      "Rate of reaction, order vs molecularity",
-      "Pseudo first order reactions (e.g. Acid hydrolysis of ethyl acetate)",
-      "Activation energy (Ea) and transition state theory",
-      "Collision theory of chemical reactions"
+      "Rate of reaction: average and instantaneous rates",
+      "Factors affecting reaction rate (concentration, temperature, catalyst)",
+      "Order and molecularity of a reaction",
+      "Integrated rate equations and half-life for zero & first order reactions",
+      "Temperature dependence of reaction rate (Arrhenius equation and activation energy)",
+      "Collision theory of chemical reactions (elementary ideas)"
     ],
     tips: [
       "Order can be fractional or zero and is determined experimentally. Molecularity is always a whole number and is theoretical.",
@@ -208,10 +204,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Spin-only Magnetic Moment", formula: "μ = √[n(n+2)] Bohr Magneton (BM)" }
     ],
     concepts: [
-      "General properties of transition elements (metallic character, ionic radii)",
-      "Variable oxidation states and catalytic properties",
-      "Lanthanoid Contraction: cause (poor shielding of 4f electrons) and consequences",
-      "Preparation & properties of K2Cr2O7 and KMnO4"
+      "General characteristics & electronic configurations of transition elements (d-block)",
+      "Trends in properties: metallic character, ionic radii, oxidation states",
+      "Catalytic properties, interstitial compounds, and alloy formation",
+      "Lanthanoids: electronic configuration, oxidation states, and lanthanoid contraction",
+      "Actinoids: electronic configuration, oxidation states, and comparison with lanthanoids",
+      "Preparation and properties of potassium dichromate ($K_2Cr_2O_7$) and potassium permanganate ($KMnO_4$)"
     ],
     tips: [
       "Lanthanoid contraction causes Zr (4d) and Hf (5d) to have almost identical atomic radii, making their separation difficult.",
@@ -225,10 +223,11 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
     ],
     concepts: [
       "Werner's coordination theory (primary vs secondary valencies)",
-      "IUPAC nomenclature of coordination complexes",
-      "Valence Bond Theory (VBT): hybridization (d2sp3 vs sp3d2) & magnetic properties",
-      "Crystal Field Theory (CFT): d-orbital splitting in octahedral (t2g and eg) & tetrahedral complexes",
-      "Isomerism (structural and stereoisomerism)"
+      "IUPAC nomenclature of coordination complexes and types of ligands",
+      "Structural and stereoisomerism in coordination complexes",
+      "Valence Bond Theory (VBT): hybridization, geometry, and magnetic properties",
+      "Crystal Field Theory (CFT): d-orbital splitting in octahedral and tetrahedral complexes",
+      "Stability, color, and bonding in metal carbonyls"
     ],
     tips: [
       "Strong field ligands (like CN-, CO, en, NH3) cause pairing of electrons (low spin), while weak field ligands (F-, Cl-, H2O) do not (high spin).",
@@ -239,10 +238,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
     name: "Haloalkanes and Haloarenes",
     formulas: [],
     concepts: [
-      "SN1 vs SN2 reaction mechanisms (nucleophilic substitution)",
-      "Electrophilic substitution of haloarenes (ortho/para directors)",
-      "Chiral carbons, optical activity, enantiomers, and racemic mixtures",
-      "Name Reactions: Sandmeyer, Finkelstein, Swarts, Wurtz, Wurtz-Fittig, Fittig"
+      "Classification, nomenclature, and nature of C-X bond in alkyl/aryl halides",
+      "Methods of preparation of haloalkanes and haloarenes",
+      "Physical properties: boiling points, density, and solubility trends",
+      "SN1 and SN2 nucleophilic substitution reaction mechanisms",
+      "Elimination reactions (Saytzeff's rule) and organometallic reactions (Grignard)",
+      "Electrophilic substitution reactions in haloarenes and polyhalogen compounds"
     ],
     tips: [
       "SN2: Single-step, pentavalent transition state, inversion of configuration (Walden inversion), reactivity order: Methyl > 1° > 2° > 3°.",
@@ -253,10 +254,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
     name: "Alcohols Phenols and Ethers",
     formulas: [],
     concepts: [
-      "Acidity of phenols compared to alcohols (resonance stabilization of phenoxide ion)",
-      "Mechanism of dehydration of alcohols to alkenes/ethers",
-      "Lucas Test for distinguishing 1°, 2°, 3° alcohols",
-      "Name Reactions: Kolbe's Reaction, Reimer-Tiemann, Williamson Ether Synthesis"
+      "Nomenclature, classification, and preparation of alcohols and phenols",
+      "Physical properties: boiling points and solubility (hydrogen bonding effects)",
+      "Chemical reactions: acidity of alcohols and phenols (substituent effects)",
+      "Mechanisms of acid-catalyzed hydration & dehydration of alcohols",
+      "Identification tests: Lucas test and chemical oxidation reactions",
+      "Preparation and chemical reactions of ethers (Williamson synthesis, cleavage by HX)"
     ],
     tips: [
       "Phenol undergoes Reimer-Tiemann with CHCl3 + aq. NaOH to yield Salicylaldehyde (ortho-hydroxybenzaldehyde).",
@@ -267,10 +270,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
     name: "Aldehydes Ketones and Carboxylic Acids",
     formulas: [],
     concepts: [
-      "Nucleophilic addition reactions of carbonyls (relative reactivity of aldehydes vs ketones)",
-      "Tollens' Test (Silver Mirror) and Fehling's Test for aldehydes",
-      "Acidity of carboxylic acids & effect of substituents (Electron Withdrawing Groups increase acidity)",
-      "Name Reactions: Rosenmund Reduction, Stephen Reaction, Etard Reaction, Clemmensen and Wolff-Kishner Reductions, Aldol Condensation, Cannizzaro, Hell-Volhard-Zelinsky (HVZ)"
+      "Nomenclature, structure, and preparation methods of carbonyl compounds",
+      "Nucleophilic addition reaction mechanisms (HCN, NaHSO3, alcohols, Grignard)",
+      "Oxidation reactions: Tollens' test, Fehling's test, and Haloform reaction",
+      "Aldol condensation and Cannizzaro reactions (alpha-hydrogen significance)",
+      "Nomenclature, structure, and preparation methods of carboxylic acids",
+      "Acidity of carboxylic acids and reactions involving -COOH cleavage (esterification, HVZ)"
     ],
     tips: [
       "Aldol condensation requires α-hydrogen (base-catalyzed). Cannizzaro occurs in aldehydes lacking α-hydrogen (concentrated alkali).",
@@ -281,10 +286,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
     name: "Amines",
     formulas: [],
     concepts: [
-      "Basicity of amines in gaseous phase vs aqueous phase (influence of inductive, steric, and solvation effects)",
-      "Hinsberg's Test to distinguish 1°, 2°, 3° amines",
-      "Diazotization of aniline and coupling reactions of diazonium salts",
-      "Name Reactions: Gabriel Phthalimide Synthesis, Hoffmann Bromamide Degradation, Carbylamine Reaction"
+      "Classification, nomenclature, structure, and preparation methods of amines",
+      "Physical properties: boiling points, solubility, and basicity trends",
+      "Basicity of aliphatic and aromatic amines in gaseous and aqueous phases",
+      "Chemical reactions: acylation, carbylamine reaction, Hinsberg's test",
+      "Preparation and properties of diazonium salts",
+      "Synthetic applications of diazonium salts (Sandmeyer and coupling reactions)"
     ],
     tips: [
       "Basicity order in aqueous solution for methyl amines: 2° > 1° > 3° > NH3. For ethyl amines: 2° > 3° > 1° > NH3.",
@@ -295,10 +302,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
     name: "Biomolecules",
     formulas: [],
     concepts: [
-      "Monosaccharides: structure of D-Glucose (open vs cyclic ring, mutarotation, anomers)",
-      "Peptide bond formation, classification of proteins (fibrous vs globular)",
-      "Primary, secondary, tertiary, and quaternary structures of proteins & Denaturation",
-      "Nucleic acids: Chemical composition of DNA and RNA, double helix model"
+      "Monosaccharides: structure, cyclic form, and chemical reactions of Glucose and Fructose",
+      "Disaccharides (Sucrose, Lactose, Maltose) and Polysaccharides (Starch, Cellulose, Glycogen)",
+      "Amino acids: classification, peptide bond, zwitterion structure",
+      "Proteins: primary, secondary (alpha-helix, beta-pleated), tertiary, and quaternary structures",
+      "Enzymes: mechanism of action and denaturation of proteins",
+      "Nucleic acids: chemical composition of DNA/RNA, double helix model, and replication"
     ],
     tips: [
       "Glucose reduces Tollens' and Fehling's reagent because of the free/hemicetal aldehyde group, hence it is a reducing sugar.",
@@ -316,10 +325,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Capacitance (Parallel Plate)", formula: "C = K ε₀ A / d" }
     ],
     concepts: [
-      "Gauss's Law and its three standard applications",
-      "Equipotential surfaces and work done in moving a charge",
-      "Electric dipole moment, torque, and potential energy in external fields",
-      "Energy density stored in a capacitor"
+      "Coulomb's law, forces between multiple charges, and electric field lines",
+      "Electric dipole: field, torque, and potential energy in a uniform field",
+      "Gauss's law: statement and applications (infinite wire, infinite sheet, spherical shell)",
+      "Electric potential, potential difference, and equipotential surfaces",
+      "Capacitors, capacitance, and parallel plate capacitor with dielectric medium",
+      "Combinations of capacitors, energy stored, and energy density in a capacitor"
     ],
     tips: [
       "When integrating via Gauss's Law, ensure the Gaussian surface mimics the symmetry of the charge distribution (spherical, cylindrical, or planar).",
@@ -335,10 +346,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Meter Bridge Ratio", formula: "P / Q = l / (100 - l)" }
     ],
     concepts: [
-      "Drift velocity, relaxation time, and temperature coefficient of resistance",
-      "Internal resistance of a cell, terminal potential difference, and emf",
-      "Series and parallel combinations of cells (equivalent emf and resistance)",
-      "Wheatstone Bridge balanced condition"
+      "Electric current, drift velocity, mobility, and their relation to current",
+      "Ohm's law, electrical resistance, resistivity, and temperature dependence",
+      "Carbon resistors, color coding, and electrical energy and power",
+      "Internal resistance of a cell, EMF, terminal potential difference, and combinations of cells",
+      "Kirchhoff's rules and their applications in circuit analysis",
+      "Wheatstone bridge principle, slide wire meter bridge, and potentiometer"
     ],
     tips: [
       "For Kirchhoff's loop calculations, stay strict with your sign convention: traversing from (-) to (+) on a cell is +emf, and moving with the current across a resistor is -IR.",
@@ -354,10 +367,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Lorentz Magnetic Force", formula: "F_m = q (v × B)" }
     ],
     concepts: [
-      "Biot-Savart Law and circular current loop field integration",
-      "Ampere's law, infinitely long wire, and solenoid fields",
-      "Force between two parallel current-carrying wires (definition of Ampere)",
-      "Galvanometer conversion to Ammeter (shunt resistance) and Voltmeter (series resistance)"
+      "Biot-Savart law and magnetic field on the axis of a circular current loop",
+      "Ampere's circuital law and magnetic field of an infinitely long straight wire & solenoid",
+      "Force on a moving charge and current-carrying conductor in a magnetic field",
+      "Motion of a charged particle in a uniform magnetic/electric field (cyclotron)",
+      "Magnetic force between two parallel current-carrying conductors (definition of Ampere)",
+      "Torque on current loop in a magnetic field and moving coil galvanometer (sensitivity)"
     ],
     tips: [
       "Use Right Hand Rule to cross-product vectors. Fingers curl from velocity (v) to magnetic field (B), thumb indicates the positive charge force direction.",
@@ -373,10 +388,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Resonant Frequency", formula: "f_r = 1 / (2π √(L C))" }
     ],
     concepts: [
-      "Lenz's Law as a statement of conservation of energy",
-      "Self and Mutual induction coefficients",
-      "Phasor diagrams and power factor in LCR circuits",
-      "Quality Factor (Q-factor) and sharpness of resonance in tuning circuits"
+      "Faraday's laws of induction, induced EMF, Lenz's law, and conservation of energy",
+      "Motional electromotive force (EMF) and eddy currents (applications)",
+      "Self-induction and mutual induction coefficients (solenoids, coils)",
+      "Alternating current, peak and RMS values, reactance, and LCR series circuit impedance",
+      "Resonance in LCR circuits: resonant frequency, Q-factor, and power factor",
+      "Electrical generators and transformers (energy loss mechanisms)"
     ],
     tips: [
       "Lenz's law always opposes the change in flux. If magnetic flux is increasing, the induced magnetic field will point in the opposite direction.",
@@ -391,9 +408,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Wave Vector Intensity", formula: "I = c ε₀ E_rms²" }
     ],
     concepts: [
-      "Maxwell's addition of displacement current to Ampere's Law",
-      "Transverse nature of EM waves (electric and magnetic fields oscillate mutually perpendicularly)",
-      "The Electromagnetic Spectrum: spectrum bands, wavelengths, sources, and practical uses"
+      "Displacement current: Ampere-Maxwell law modification",
+      "Maxwell's equations (qualitative ideas only)",
+      "Electromagnetic waves: source, transverse nature, and speed formula",
+      "Energy, momentum, and radiation pressure of electromagnetic waves",
+      "The electromagnetic spectrum: radio waves, microwaves, infrared, visible spectrum",
+      "UV, X-rays, gamma rays: production, detection, and practical applications"
     ],
     tips: [
       "EM waves carry both energy and momentum. When they strike a surface, they exert radiation pressure on it.",
@@ -409,10 +429,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Astronomical Telescope Mag.", formula: "m = -f_o / f_e" }
     ],
     concepts: [
-      "Total Internal Reflection: conditions, critical angle and optic fiber mechanism",
-      "Refraction through spherical surface and prism properties",
-      "Power of thin lenses in contact",
-      "Ray diagrams of compound microscope and refracting/reflecting telescopes"
+      "Reflection of light: spherical mirrors and mirror formula derivation",
+      "Refraction of light: snell's law, apparent depth, and total internal reflection",
+      "Refraction at spherical surfaces, thin lens formula, and lens maker's formula",
+      "Refraction through a prism: angle of minimum deviation and prism formula",
+      "Optical instruments: simple and compound microscopes (magnifying power)",
+      "Astronomical refracting/reflecting telescopes (magnifying power and aberrations)"
     ],
     tips: [
       "Always apply sign convention in every problem: directions along incident ray are positive, opposite are negative.",
@@ -428,10 +450,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Brewster's Polarization", formula: "μ = tan(i_p)" }
     ],
     concepts: [
-      "Huygens' Principle: secondary wavelets and proof of reflection/refraction laws",
-      "Coherent sources requirement and Young's Double Slit Experiment (YDSE) intensity",
-      "Single slit diffraction: central maximum width and comparison with interference",
-      "Polarization by reflection (Brewster's angle) and Malus's Law"
+      "Wavefronts and Huygens' principle: wave propagation explanation",
+      "Proof of laws of reflection and refraction using Huygens' principle",
+      "Coherent sources, light wave interference, and Young's double slit experiment (YDSE)",
+      "Analytical expression for fringe width and dark/bright fringe conditions",
+      "Diffraction of light: single slit diffraction, width of central maximum",
+      "Polarization of light: Brewster's law, polaroids, and Malus's law"
     ],
     tips: [
       "Interference fringes are of equal width, whereas diffraction fringes decrease rapidly in width and brightness as order increases.",
@@ -447,10 +471,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Electron de Broglie Wavelength", formula: "λ = 12.27 / √V Å" }
     ],
     concepts: [
-      "Hertz, Lenard, and Millikan observations on photoelectric emission",
-      "Failure of wave theory of light in explaining photoelectric features",
-      "Photon packet theory and relation of intensity vs saturation current",
-      "Wave nature of matter and experimental Davisson-Germer confirmation"
+      "Photoelectric effect: Hertz, Lenard, Millikan experimental observations",
+      "Wave theory failure and Einstein's explanation using photon hypothesis",
+      "Photoelectric equation: work function, threshold frequency, and stopping potential",
+      "Wave-particle duality: de Broglie wavelength of matter waves",
+      "de Broglie wavelength of an electron: formula and voltage dependency",
+      "Davisson-Germer experiment (experimental confirmation of wave nature)"
     ],
     tips: [
       "Maximum kinetic energy of photoelectrons depends only on frequency of incident light, not on light intensity.",
@@ -466,10 +492,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Mass-Energy Equivalence", formula: "E = Δm • c²" }
     ],
     concepts: [
-      "Rutherford alpha-particle scattering experiment and nuclear size limits",
-      "Postulates of Bohr model of hydrogen atom and spectral series lines",
-      "Composition and size of nucleus, mass defect, and nuclear density constancy",
-      "Binding Energy per Nucleon curve: stability implications (fission and fusion)"
+      "Alpha-particle scattering experiment, Rutherford model, and distance of closest approach",
+      "Bohr model of hydrogen atom: postulates, orbit radius, velocity, and energy levels",
+      "Spectral series of hydrogen atom (Lyman, Balmer, Paschen, Brackett, Pfund)",
+      "Composition of nucleus: proton-neutron model, size, and nuclear density",
+      "Mass defect, binding energy, and binding energy per nucleon curve",
+      "Nuclear forces, nuclear fission, and nuclear fusion mechanisms"
     ],
     tips: [
       "Nuclear density is independent of mass number A. It is nearly identical for all nuclei (~2.3 × 10¹⁷ kg/m³).",
@@ -482,10 +510,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Charge Carrier Density", formula: "n_i² = n_e • n_h" }
     ],
     concepts: [
-      "Classification of solids into metals, semiconductors, and insulators using energy band gaps",
-      "Intrinsic vs extrinsic (n-type and p-type) semiconductor doping",
-      "p-n junction formation: depletion layer, barrier potential, and forward/reverse bias curves",
-      "Diodes as half-wave and full-wave rectifiers, Zener diode, LEDs, solar cells"
+      "Energy bands in solids: valence band, conduction band, and band gap classification",
+      "Intrinsic semiconductors and extrinsic doping (n-type and p-type)",
+      "p-n junction diode: formation, depletion region, barrier potential, and I-V curves",
+      "Junction diode as a rectifier: half-wave and full-wave rectification",
+      "Special purpose p-n junction diodes: Zener diode (voltage regulator), photodiode",
+      "Light emitting diodes (LEDs) and solar cell operational principles"
     ],
     tips: [
       "In forward bias, external field opposes barrier potential, narrowing the depletion layer. In reverse bias, it supports barrier potential, widening it.",
@@ -502,8 +532,11 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
     ],
     concepts: [
       "Types of relations: reflexive, symmetric, transitive, and equivalence relations",
-      "Types of functions: injective (one-to-one), surjective (onto), and bijective (both)",
-      "Composition of functions and invertible functions requirements"
+      "Equivalence classes and their algebraic properties",
+      "Types of functions: injective (one-to-one), surjective (onto), and bijective functions",
+      "Composition of functions: associative property and identity functions",
+      "Invertible functions: condition of existence and properties of inverse functions",
+      "Bijective mapping and counting of onto functions"
     ],
     tips: [
       "To prove a function is one-to-one, set f(x₁) = f(x₂) and show that it algebraically guarantees x₁ = x₂.",
@@ -518,9 +551,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "tan⁻¹(x) Domain / Range", formula: "D: R, R: (-π/2, π/2)" }
     ],
     concepts: [
-      "Principal value branch values and definitions",
+      "Definition, domain, range, and principal value branches of inverse trig functions",
       "Graphs of inverse trigonometric functions",
-      "Basic algebraic property identities and conversions"
+      "Properties of inverse trig functions: reciprocal, negative argument, and co-function relations",
+      "Sum and difference formulas ($\\tan^{-1}x \\pm \\tan^{-1}y$)",
+      "Double and triple angle conversions ($2\\sin^{-1}x$, $2\\cos^{-1}x$, $2\\tan^{-1}x$)",
+      "Simplification of complex inverse trigonometric expressions"
     ],
     tips: [
       "Always check if your solved angle lies strictly within the principal branch interval (e.g. for sin⁻¹(x), angle must be in [-90°, 90°]).",
@@ -536,10 +572,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Area of Triangle (Determinant)", formula: "Area = 0.5 • |x₁(y₂ - y₃) + x₂(y₃ - y₁) + x₃(y₁ - y₂)|" }
     ],
     concepts: [
-      "Symmetric and skew-symmetric matrices (properties and summation splitting)",
-      "Properties of determinants (expansion, scalar multiplication)",
-      "Adjoint and inverse of a square matrix",
-      "Solving system of linear equations using matrix inverse method"
+      "Types of matrices, matrix operations (addition, scalar multiplication, multiplication)",
+      "Symmetric and skew-symmetric matrices: properties and sum representation",
+      "Determinant of a square matrix, minors, cofactors, and expansion properties",
+      "Adjoint of a matrix and inverse of a square matrix (existence conditions)",
+      "Solution of a system of linear equations using matrix inverse method",
+      "Area of a triangle using determinants and test of consistency"
     ],
     tips: [
       "For skew-symmetric matrices, all diagonal elements are always zero, and the determinant of an odd-order skew-symmetric matrix is always zero.",
@@ -554,10 +592,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Parametric Derivative", formula: "dy/dx = (dy/dt) / (dx/dt)" }
     ],
     concepts: [
-      "Continuity of a function at a point and in an interval",
-      "Differentiability of composite, implicit, and inverse trig functions",
-      "Exponential, logarithmic, and parametric differentiation methods",
-      "Rolle's and Mean Value Theorems (MVT) geometrical meaning"
+      "Continuity of a function at a point, in an interval, and algebra of continuous functions",
+      "Differentiability of functions, relation between continuity and differentiability",
+      "Differentiation of composite functions (chain rule) and implicit functions",
+      "Derivatives of inverse trigonometric functions and exponential/logarithmic functions",
+      "Logarithmic differentiation, parametric differentiation, and second-order derivatives",
+      "Rolle's Theorem and Lagrange's Mean Value Theorem (geometrical interpretations)"
     ],
     tips: [
       "A function is differentiable at x = c if Left Hand Derivative (LHD) equals Right Hand Derivative (RHD). Note that differentiability implies continuity, but not vice versa.",
@@ -572,10 +612,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "First Derivative critical pt", formula: "f'(c) = 0" }
     ],
     concepts: [
-      "Rate of change of quantities in physics and geometry",
-      "Strictly increasing and decreasing intervals of a function",
-      "Local/absolute maxima and minima using first and second derivative tests",
-      "Applied optimization word problems (finding max volume, min surface area)"
+      "Rate of change of quantities: equations of motion, geometric expansion",
+      "Increasing and decreasing functions: critical points, strictly increasing/decreasing intervals",
+      "Tangents and normals: equations, slopes, and perpendicular/parallel conditions",
+      "Maxima and minima: local maxima/minima, first and second derivative tests",
+      "Absolute maxima and minima in a closed interval",
+      "Applied optimization problems: maximizing volume, minimizing cost or material area"
     ],
     tips: [
       "For maxima and minima word problems, find a single helper equation to express your target quantity in terms of exactly one variable before differentiating.",
@@ -591,10 +633,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Special Integral", formula: "∫ dx / √(a² - x²) = sin⁻¹(x/a) + C" }
     ],
     concepts: [
-      "Integration as the inverse process of differentiation (indefinite integrals)",
-      "Methods of integration: substitution, partial fractions, and integration by parts",
-      "Fundamental Theorem of Calculus and definite integral evaluation",
-      "Essential properties of definite integrals (splitting, symmetry, substitution limits)"
+      "Integration as the inverse process of differentiation: basic properties & formulas",
+      "Integration by method of substitution: standard algebraic and trigonometric substitutions",
+      "Integration using trigonometric identities and special integrals ($\\int \\frac{dx}{x^2 \\pm a^2}$)",
+      "Integration by partial fractions: linear, repeated, and quadratic factors",
+      "Integration by parts: ILATE rule and standard forms ($\\int e^x[f(x)+f'(x)]dx$)",
+      "Definite integrals: Fundamental Theorem of Calculus and mathematical properties"
     ],
     tips: [
       "The ILATE rule is extremely useful for deciding first (u) and second (v) functions in integration by parts (Inverse, Logarithmic, Algebraic, Trigonometric, Exponential).",
@@ -609,8 +653,11 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
     ],
     concepts: [
       "Area bounded by simple standard curves: lines, circles, parabolas, and ellipses",
-      "Finding intersection points and setting up coordinate limits",
-      "Calculating areas of symmetrical regions using multiplier coefficients"
+      "Finding intersection coordinates of curves to establish integration limits",
+      "Area under a curve and area between two curves (splitting regions)",
+      "Horizontal vs vertical integration methods ($\\int y\\,dx$ vs $\\int x\\,dy$)",
+      "Symmetry in area calculations: identifying and calculating symmetrical parts",
+      "Standard applications: area of circle/ellipse sectors and shaded regions"
     ],
     tips: [
       "Always sketch the curves first! A rough sketch ensures you select the correct upper/lower boundaries and prevents double-counting overlapping areas.",
@@ -625,10 +672,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Linear DE Solution", formula: "y • I.F. = ∫ (Q • I.F.) dx + C" }
     ],
     concepts: [
-      "Order (highest derivative) and degree (power of highest derivative) of a differential equation",
-      "Formation of differential equations representing families of curves",
-      "Solving separable variables and homogeneous differential equations",
-      "Solving first-order linear differential equations"
+      "Definition, order, and degree of a differential equation",
+      "General and particular solutions of a differential equation",
+      "Formation of a differential equation from a family of curves (eliminating constants)",
+      "Separation of variables method for solving first-order differential equations",
+      "Homogeneous differential equations: substitution $y = vx$ and solution",
+      "First-order linear differential equations: integrating factor ($I.F.$) and solution"
     ],
     tips: [
       "Degree is only defined when the differential equation can be written as a polynomial in derivatives. E.g., sin(dy/dx) has no defined degree.",
@@ -644,10 +693,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Angle Between Planes", formula: "cos(θ) = |A₁A₂ + B₁B₂ + C₁C₂| / [√(ΣA₁²) √(ΣA₂²)]" }
     ],
     concepts: [
-      "Direction cosines, direction ratios, and scalar/vector projection",
-      "Line equations in vector and Cartesian 3D representations",
-      "Skew lines shortest distance derivation",
-      "Coplanarity of lines and angles between lines and planes"
+      "Vectors and scalars, direction cosines/ratios, types of vectors, component form",
+      "Operations: addition, scalar multiplication, and position vector projection",
+      "Scalar (dot) product and vector (cross) product: algebraic properties and angle",
+      "Equation of a line in 3D space: vector and Cartesian forms, angle between lines",
+      "Shortest distance between two lines: skew lines and parallel lines formulas",
+      "Direction cosines and coordinate geometry of intersecting systems"
     ],
     tips: [
       "Two vectors are orthogonal if their dot product is zero, and collinear/parallel if their cross product is the zero vector.",
@@ -662,16 +713,20 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Expected Value (Mean)", formula: "E(X) = Σ x_i • p(x_i)" }
     ],
     concepts: [
-      "Conditional probability, multiplication theorem, and independent events",
-      "Total Probability Theorem and Bayes' Theorem application",
-      "Linear Programming Problem (LPP) mathematical formulation",
-      "Corner point method for finding optimal values in a bounded feasible region"
+      "Conditional probability and multiplication theorem on probability",
+      "Independent events, Bayes' theorem, and total probability theorem",
+      "Random variable, probability distribution, mean and variance",
+      "Linear Programming Problem (LPP): mathematical formulation and terminologies",
+      "Graphical method of solution for two-variable LPP: feasible and infeasible regions",
+      "Corner point method: finding optimal values of objective function"
     ],
     tips: [
       "Bayes' theorem is used when an event has occurred and you need to trace its probability back to a specific prior cause.",
       "In LPP, the optimal (maximum or minimum) values of the objective function are guaranteed to occur at the corner points of the feasible region."
     ]
   },
+
+  // Biology
   "Sexual Reproduction in Flowering Plants": {
     name: "Sexual Reproduction in Flowering Plants",
     formulas: [
@@ -679,10 +734,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Embryo sac structure", formula: "7-celled, 8-nucleate structure" }
     ],
     concepts: [
-      "Microsporogenesis and Megasporogenesis steps",
-      "Double fertilization: Syngamy (zygote) and Triple Fusion (endosperm)",
-      "Outbreeding devices to prevent self-pollination",
-      "Apomixis (seed production without fertilization) and Polyembryony"
+      "Structure of flower, pre-fertilization events: stamen, microsporangium, pollen grain",
+      "Pistil, megasporangium (ovule), and embryo sac development (megasporogenesis)",
+      "Pollination: types (autogamy, geitonogamy, xenogamy), agents, and outbreeding devices",
+      "Pollen-pistil interaction, double fertilization (syngamy and triple fusion)",
+      "Post-fertilization events: endosperm and embryo development",
+      "Seed and fruit development, apomixis, parthenocarpy, and polyembryony"
     ],
     tips: [
       "In angiosperms, the endosperm is triploid (3n) while the embryo is diploid (2n).",
@@ -696,10 +753,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Oogenesis yield", formula: "1 Primary Oocyte -> 1 Ovum + Polar Bodies" }
     ],
     concepts: [
-      "Male and female reproductive systems and gametogenesis",
-      "Menstrual cycle phases (Follicular, Luteal, Menstruation)",
-      "Fertilization, cleavage, blastocyst formation, and implantation",
-      "Parturition and lactation hormones (Oxytocin, Prolactin)"
+      "Male reproductive system: testes, accessory ducts, glands, and external genitalia",
+      "Female reproductive system: ovaries, oviducts, uterus, cervix, vagina, and mammary glands",
+      "Gametogenesis: sperms production (spermatogenesis) and egg production (oogenesis)",
+      "Menstrual cycle: hormonal regulation, follicular, ovulatory, luteal, and menstrual phases",
+      "Fertilization: acrosomal reaction, zygote formation, cleavage, and blastocyst formation",
+      "Implantation, pregnancy, embryonic development, placenta, parturition, and lactation"
     ],
     tips: [
       "LH surge triggers ovulation around day 14 of a standard 28-day menstrual cycle.",
@@ -712,10 +771,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Natural Rhythm Method", formula: "Avoid intercourse during days 10-17 of cycle" }
     ],
     concepts: [
-      "Contraceptive methods: Barrier, IUDs, Hormonal, Surgical",
-      "Sexually Transmitted Infections (STIs) and prevention",
-      "Assisted Reproductive Technologies (ART): IVF, ZIFT, GIFT",
-      "Amniocentesis: usage and statutory ban reasons"
+      "Reproductive health: problems, strategies, and population stabilization measures",
+      "Natural, barrier, and chemical contraceptive methods",
+      "Intrauterine Devices (IUDs), oral contraceptives, implants, and surgical methods (sterilization)",
+      "Medical Termination of Pregnancy (MTP): legality and clinical significance",
+      "Sexually Transmitted Infections (STIs): types, symptoms, prevention, and treatment",
+      "Infertility and Assisted Reproductive Technologies (ART): IVF, ET, ZIFT, GIFT, ICSI, AI"
     ],
     tips: [
       "Lippes loop is non-medicated, CuT/Cu7 are copper-releasing, and Progestasert is hormone-releasing IUD.",
@@ -730,10 +791,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Hardy-Weinberg Equilibrium", formula: "p² + 2pq + q² = 1" }
     ],
     concepts: [
-      "Mendel's Laws of Inheritance: Dominance, Segregation, Independent Assortment",
-      "Incomplete dominance, Co-dominance (ABO blood groups), Pleiotropy",
-      "Sex determination (XY, XO, ZW systems) and pedigree analysis",
-      "Chromosomal vs Mendelian disorders (Down's, Turner's, Hemophilia)"
+      "Mendel's experiments, laws of inheritance: dominance, segregation, independent assortment",
+      "Incomplete dominance, co-dominance (ABO blood grouping), and multiple alleles",
+      "Chromosomal theory of inheritance, linkage, recombination, and genetic mapping",
+      "Sex determination in humans, birds, and honey bees",
+      "Mutation, pedigree analysis, Mendelian disorders (hemophilia, sickle-cell, phenylketonuria)",
+      "Chromosomal disorders: Down's syndrome, Klinefelter's syndrome, Turner's syndrome"
     ],
     tips: [
       "Hemophilia and Color blindness are X-linked recessive disorders, whereas Sickle cell anemia is autosomal recessive.",
@@ -747,10 +810,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Chargaff's Rule", formula: "[A] + [G] = [T] + [C] or A/T = G/C = 1" }
     ],
     concepts: [
-      "DNA structure, packaging (nucleosome), and replication (semiconservative)",
-      "Transcription and translation processes in prokaryotes and eukaryotes",
-      "Genetic code properties (universal, degenerate, non-overlapping)",
-      "Regulation of gene expression (Lac Operon) and DNA fingerprinting"
+      "DNA structure, nucleosome packaging, search for genetic material (Griffith, Hershey-Chase)",
+      "Semiconservative DNA replication mechanism (Meselson-Stahl experiment)",
+      "Transcription: prokaryotic vs eukaryotic transcription, promoter, terminator, and RNA processing",
+      "Genetic code: characteristics, codon degeneracy, tRNA adapter molecule",
+      "Translation: activation of amino acids, initiation, elongation, and termination",
+      "Regulation of gene expression: Lac Operon model, Human Genome Project (HGP), DNA fingerprinting"
     ],
     tips: [
       "RNA polymerase transcribes DNA 5' to 3'. The codon AUG acts as both the start codon and codes for Methionine.",
@@ -763,10 +828,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Gene frequency change", formula: "p + q = 1 (allele frequency)" }
     ],
     concepts: [
-      "Origin of life (Oparin-Haldane, Miller's experiment)",
-      "Evidences of evolution: Homologous vs Analogous organs, Adaptive radiation",
-      "Darwin's Natural Selection vs Lamarckism and Mutation theory",
-      "Hardy-Weinberg equilibrium factors, Human evolution stages"
+      "Origin of life theories, chemical evolution (Oparin-Haldane and Urey-Miller experiment)",
+      "Paleontological, morphological, comparative anatomical (homology, analogy) evidences",
+      "Theories of evolution: Lamarckism, Darwin's natural selection, Mutation theory (de Vries)",
+      "Modern synthetic theory of evolution, Hardy-Weinberg principle (factors affecting)",
+      "Adaptive radiation (Darwin's finches, Australian marsupials)",
+      "Brief account of geological time scale, human evolution stages (Dryopithecus to Homo sapiens)"
     ],
     tips: [
       "Homologous organs show divergent evolution (common ancestry), while analogous organs show convergent evolution (common function).",
@@ -779,10 +846,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Antibody structure", formula: "H2L2 (2 heavy, 2 light chains)" }
     ],
     concepts: [
-      "Common human diseases: Typhoid, Malaria, Pneumonia, Amoebiasis",
-      "Innate vs Acquired immunity, B and T lymphocytes",
-      "Active vs Passive immunity, Allergy, Autoimmunity, AIDS, Cancer",
-      "Drug and alcohol abuse consequences"
+      "Common infectious diseases in humans: pathogens, modes of transmission (typhoid, malaria, etc.)",
+      "Life cycle of Plasmodium (malaria parasite)",
+      "Immunity: innate vs acquired, active vs passive, vaccination and immunization",
+      "Structure of antibody, cell-mediated vs humoral immune responses",
+      "Autoimmunity, allergies, AIDS (HIV replication cycle), and cancer (causes, diagnosis, treatment)",
+      "Drug, alcohol, and tobacco abuse: prevention and control measures"
     ],
     tips: [
       "Malaria sporozoites enter the human body via female Anopheles bite, reproduce in liver, then rupture RBCs releasing haemozoin.",
@@ -795,10 +864,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "BOD relationship", formula: "BOD ∝ Organic matter load" }
     ],
     concepts: [
-      "Microbes in household and industrial products (Curd, Bread, Toddy, Antibiotics)",
-      "Sewage treatment: Primary vs Secondary (flocs, activated sludge)",
-      "Biogas production mechanism and Methanogens",
-      "Microbes as biocontrol agents (Bacillus thuringiensis, Baculoviruses, Trichoderma)"
+      "Microbes in household food processing (curd, cheese, dough fermentation)",
+      "Industrial microbiology: fermented beverages, antibiotics, enzymes, and bioactive molecules",
+      "Sewage treatment: primary treatment (physical) and secondary biological treatment (flocs)",
+      "Biogas (methane) production: role of methanogenic bacteria (Methanobacterium)",
+      "Microbes as biocontrol agents: Bacillus thuringiensis, Trichoderma, Baculoviruses",
+      "Microbes as biofertilizers: Rhizobium, Azotobacter, Mycorrhiza, Cyanobacteria"
     ],
     tips: [
       "Cyclosporin A (immunosuppressant) is produced by Trichoderma polysporum, and Statins (cholesterol-lowering) by Monascus purpureus.",
@@ -811,10 +882,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "PCR Amplification", formula: "2^n copies (n = number of cycles)" }
     ],
     concepts: [
-      "Restriction enzymes: Endonucleases vs Exonucleases, sticky ends",
-      "Gel electrophoresis (Agarose, ethidium bromide staining)",
-      "Cloning vectors: plasmid pBR322 selectable markers, insertional inactivation",
-      "PCR steps: Denaturation (94°C), Annealing (54°C), Extension (72°C)"
+      "Core principles of biotechnology: genetic engineering and bioprocess engineering",
+      "Recombinant DNA technology tools: restriction enzymes (endonucleases, palindromes)",
+      "Gel electrophoresis for DNA separation, cloning vectors (plasmids, pBR322 marker genes)",
+      "Methods of introducing foreign DNA: competent host preparation, gene gun, microinjection",
+      "Processes of r-DNA technology: isolation of DNA, PCR amplification (steps)",
+      "Downstream processing, bioreactors (stirred-tank types) for large-scale production"
     ],
     tips: [
       "DNA is negatively charged, so it moves towards the positive electrode (anode) during agarose gel electrophoresis.",
@@ -827,10 +900,12 @@ export const TOPIC_RESOURCES: Record<string, TopicDetail> = {
       { label: "Bt Toxin activation", formula: "Alkaline pH of insect midgut" }
     ],
     concepts: [
-      "Pest-resistant plants: Bt cotton, RNA interference (RNAi) in tobacco plants",
-      "Genetically Engineered Insulin: A & B peptide chains disulfide bonds",
-      "Gene therapy: ADA deficiency permanent cure stages",
-      "Transgenic animals, Ethical issues, Biopiracy"
+      "Applications in agriculture: Bt cotton (mechanism of Bt toxin), RNA interference (RNAi)",
+      "Applications in medicine: genetically engineered insulin production",
+      "Gene therapy: treatment of Adenosine Deaminase (ADA) deficiency",
+      "Molecular diagnosis: PCR, ELISA, and recombinant DNA technology detection",
+      "Transgenic animals: production reasons, safety testing, and chemical testing",
+      "Ethical issues, patent laws, biopiracy (case of Basmati rice)"
     ],
     tips: [
       "ADA deficiency can be cured permanently if treated with gene therapy at early embryonic stages.",

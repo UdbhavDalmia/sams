@@ -8,7 +8,7 @@ import { GoogleGenAI } from "@google/genai";
 import { initializeApp as initAdminApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
-import { Student, Teacher, Doubt, ALL_TOPICS, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS } from "./src/types.ts";
+import { Student, Teacher, ALL_TOPICS, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS } from "./src/types.ts";
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({
@@ -28,7 +28,6 @@ app.use(express.json({ limit: "10mb" }));
 const DATA_DIR = path.join(process.cwd(), "data");
 const STUDENTS_DIR = path.join(DATA_DIR, "students");
 const TEACHERS_DIR = path.join(DATA_DIR, "teachers");
-const DOUBTS_FILE = path.join(DATA_DIR, "doubts.json");
 
 // Ensure directories exist
 [DATA_DIR, STUDENTS_DIR, TEACHERS_DIR].forEach(dir => {
@@ -339,15 +338,8 @@ async function getStudents(): Promise<Student[]> {
       });
 
       if (students.length > 0) {
-        // Apply defaults in-memory instead of writing to DB to save writes
         students.forEach((s) => {
-          if (!s.scores) s.scores = {};
-          if (!s.milestones) s.milestones = {};
-          ALL_TOPICS.forEach((t) => {
-            if (s.scores[t] === undefined && t in s.scores) {
-              s.scores[t] = 0;
-            }
-          });
+          sanitizeStudentProfile(s);
         });
 
         students.sort((a, b) => a.rollNo - b.rollNo);
@@ -370,8 +362,7 @@ async function getStudents(): Promise<Student[]> {
         for (const file of files) {
           if (file.endsWith(".json")) {
             const s = JSON.parse(fs.readFileSync(path.join(classDir, file), "utf8"));
-            if (!s.scores) s.scores = {};
-            if (!s.milestones) s.milestones = {};
+            sanitizeStudentProfile(s);
             students.push(s);
           }
         }
@@ -425,9 +416,7 @@ async function getStudentByRollNo(rollNo: number, classId: string = "xii-a"): Pr
       const doc = await db.collection(classId).doc(String(rollNo)).get();
       if (doc.exists) {
         const s = doc.data() as Student;
-        if (!s.scores) s.scores = {};
-        if (!s.milestones) s.milestones = {};
-        return s;
+        return sanitizeStudentProfile(s);
       }
       return null;
     } catch (err) {
@@ -439,11 +428,55 @@ async function getStudentByRollNo(rollNo: number, classId: string = "xii-a"): Pr
   const filePath = path.join(classDir, `${rollNo}.json`);
   if (fs.existsSync(filePath)) {
     const s = JSON.parse(fs.readFileSync(filePath, "utf8"));
-    if (!s.scores) s.scores = {};
-    if (!s.milestones) s.milestones = {};
-    return s;
+    return sanitizeStudentProfile(s);
   }
   return null;
+}
+
+function getTopicsForStudent(rollNo: number, classId: string): string[] {
+  if (classId === "xii-a") {
+    return [...CHEMISTRY_TOPICS, ...PHYSICS_TOPICS, ...MATHS_TOPICS];
+  } else if (classId === "xii-b") {
+    const isPCMB = [7, 14, 17].includes(rollNo);
+    if (isPCMB) {
+      return [...CHEMISTRY_TOPICS, ...PHYSICS_TOPICS, ...BIOLOGY_TOPICS, ...MATHS_TOPICS];
+    } else {
+      return [...CHEMISTRY_TOPICS, ...PHYSICS_TOPICS, ...BIOLOGY_TOPICS];
+    }
+  }
+  return [];
+}
+
+function sanitizeStudentProfile(student: Student): Student {
+  if (!student) return student;
+  const classId = student.classId || "xii-a";
+  const allowedTopics = getTopicsForStudent(student.rollNo, classId);
+  const allowedSet = new Set(allowedTopics);
+
+  if (!student.scores) student.scores = {};
+  if (!student.milestones) student.milestones = {};
+
+  // Remove any keys that are not allowed
+  Object.keys(student.scores).forEach((topic) => {
+    if (!allowedSet.has(topic)) {
+      delete student.scores[topic];
+    }
+  });
+
+  Object.keys(student.milestones).forEach((topic) => {
+    if (!allowedSet.has(topic)) {
+      delete student.milestones[topic];
+    }
+  });
+
+  // Ensure all allowed topics are initialized to 0
+  allowedTopics.forEach((t) => {
+    if (student.scores[t] === undefined) {
+      student.scores[t] = 0;
+    }
+  });
+
+  return student;
 }
 
 async function getStudentByEmail(email: string): Promise<Student | null> {
@@ -457,14 +490,7 @@ async function getStudentByEmail(email: string): Promise<Student | null> {
       let doc = !snapshotA.empty ? snapshotA.docs[0] : (!snapshotB.empty ? snapshotB.docs[0] : null);
       if (doc) {
         const s = doc.data() as Student;
-        if (!s.scores) s.scores = {};
-        if (!s.milestones) s.milestones = {};
-        ALL_TOPICS.forEach((t) => {
-          if (s.scores[t] === undefined) {
-            s.scores[t] = 0;
-          }
-        });
-        return s;
+        return sanitizeStudentProfile(s);
       }
       return null;
     } catch (err) {
@@ -472,7 +498,8 @@ async function getStudentByEmail(email: string): Promise<Student | null> {
     }
   }
   const students = await getStudents();
-  return students.find((s) => s.email && s.email.toLowerCase() === email.trim().toLowerCase()) || null;
+  const matched = students.find((s) => s.email && s.email.toLowerCase() === email.trim().toLowerCase()) || null;
+  return matched ? sanitizeStudentProfile(matched) : null;
 }
 
 async function saveStudent(student: Student): Promise<void> {
@@ -563,64 +590,6 @@ async function saveTeacher(teacher: Teacher): Promise<void> {
     console.error(`[Fallback] Failed to save teacher ${teacher.id} locally:`, writeErr);
   }
 }
-
-async function getDoubts(): Promise<Doubt[]> {
-  if (db) {
-    try {
-      const snapshot = await db.collection("doubts").get();
-      const doubts: Doubt[] = [];
-      snapshot.forEach((doc: any) => {
-        doubts.push(doc.data() as Doubt);
-      });
-      return doubts.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    } catch (err) {
-      console.error("[Firestore] Error reading doubts. Falling back to local file.", err);
-    }
-  }
-
-  // Local File Fallback
-  if (!fs.existsSync(DOUBTS_FILE)) {
-    try {
-      fs.writeFileSync(DOUBTS_FILE, JSON.stringify([], null, 2), "utf8");
-    } catch (writeErr) {
-      console.error("[Fallback] Failed to write initial doubts.json local file:", writeErr);
-    }
-    return [];
-  }
-  try {
-    return JSON.parse(fs.readFileSync(DOUBTS_FILE, "utf8"));
-  } catch (err) {
-    console.error("Error reading doubts file:", err);
-    return [];
-  }
-}
-
-async function saveDoubts(doubts: Doubt[]): Promise<void> {
-  if (db) {
-    try {
-      // Chunk batch operations
-      const batchSize = 100;
-      for (let i = 0; i < doubts.length; i += batchSize) {
-        const batch = db.batch();
-        const chunk = doubts.slice(i, i + batchSize);
-        chunk.forEach((d) => {
-          const docRef = db.collection("doubts").doc(d.id);
-          batch.set(docRef, d);
-        });
-        await batch.commit();
-      }
-      return;
-    } catch (err) {
-      console.error("[Firestore] Error saving doubts. Saving locally.", err);
-    }
-  }
-  try {
-    fs.writeFileSync(DOUBTS_FILE, JSON.stringify(doubts, null, 2), "utf8");
-  } catch (writeErr) {
-    console.error("[Fallback] Failed to write doubts.json local file:", writeErr);
-  }
-}
-
 // Teacher & Subject Authorization Helpers
 async function getSubjectForPasscode(passcode: any): Promise<"Chemistry" | "Physics" | "Mathematics" | "Biology" | null> {
   if (!passcode) return null;
@@ -956,87 +925,6 @@ app.post("/api/student/:roll_no/save-progress", async (req, res) => {
   res.json({ success: true, student });
 });
 
-// 5. Submit doubt (Student)
-app.post("/api/student/:roll_no/doubt", async (req, res) => {
-  const rollNo = parseInt(req.params.roll_no, 10);
-  const { topic, question, studentName } = req.body;
-
-  if (!topic || !question) {
-    return res.status(400).json({ error: "Topic and question are required" });
-  }
-
-  const doubts = await getDoubts();
-  const newDoubt: Doubt = {
-    id: Math.random().toString(36).substring(2, 9),
-    studentRollNo: rollNo,
-    studentName: studentName || "Student",
-    topic,
-    question,
-    answer: null,
-    createdAt: new Date().toISOString(),
-    answeredAt: null,
-  };
-
-  doubts.push(newDoubt);
-  await saveDoubts(doubts);
-
-  res.json({ success: true, doubt: newDoubt });
-});
-
-// 6. Get doubts for a specific student
-app.get("/api/student/:roll_no/doubts", async (req, res) => {
-  const rollNo = parseInt(req.params.roll_no, 10);
-  const doubts = await getDoubts();
-  const studentDoubts = doubts.filter((d) => d.studentRollNo === rollNo);
-  res.json(studentDoubts);
-});
-
-// 7. Get all doubts (Teacher only)
-app.get("/api/teacher/doubts", async (req, res) => {
-  const auth = req.headers["x-teacher-passcode"];
-  const teacherSubject = await getSubjectForPasscode(auth);
-  if (!teacherSubject) {
-    return res.status(403).json({ error: "Unauthorized" });
-  }
-  const allDoubts = await getDoubts();
-  const filteredDoubts = allDoubts.filter((d) => getSubjectForTopic(d.topic) === teacherSubject);
-  res.json(filteredDoubts);
-});
-
-// 8. Answer a doubt (Teacher only)
-app.post("/api/teacher/doubt/:id/answer", async (req, res) => {
-  const auth = req.headers["x-teacher-passcode"];
-  const teacherSubject = await getSubjectForPasscode(auth);
-  if (!teacherSubject) {
-    return res.status(403).json({ error: "Unauthorized" });
-  }
-
-  const doubtId = req.params.id;
-  const { answer } = req.body;
-
-  if (!answer) {
-    return res.status(400).json({ error: "Answer content cannot be empty" });
-  }
-
-  const doubts = await getDoubts();
-  const index = doubts.findIndex((d) => d.id === doubtId);
-
-  if (index === -1) {
-    return res.status(404).json({ error: "Doubt thread not found" });
-  }
-
-  const topicSubject = getSubjectForTopic(doubts[index].topic);
-  if (topicSubject !== teacherSubject) {
-    return res.status(403).json({ error: `You are only authorized to answer doubts for ${teacherSubject}` });
-  }
-
-  doubts[index].answer = answer;
-  doubts[index].answeredAt = new Date().toISOString();
-  await saveDoubts(doubts);
-
-  res.json({ success: true, doubt: doubts[index] });
-});
-
 // 9. Explain a Concept via Gemini 3.5-flash
 app.post("/api/gemini/explain", async (req, res) => {
   const { topic, question } = req.body;
@@ -1051,7 +939,7 @@ CRITICAL INSTRUCTION - STRICT TOPIC RELEVANCE:
 You must strictly validate if the student's question is directly related or relevant to the active context topic: "${topic || "the active study chapter"}".
 - If the question is NOT relevant to this topic (e.g., questions about irrelevant subjects, general off-topic chat, politics, coding, gaming, pop culture, or unrelated curriculum chapters), you MUST politely but firmly decline to answer.
 - Explain to the student that you are dedicated to helping them excel in "${topic || "the active study chapter"}" and can only answer questions directly relevant to this topic.
-- Gently prompt them to ask a relevant doubt or check the resources for this chapter.
+- Gently prompt them to ask a relevant question or check the resources for this chapter.
 
 MATHEMATICAL AND FORMULA FORMATTING:
 - To prevent malformed or distorted expressions, never use raw unicode superscripts/subscripts (e.g. ₀, ₁, ₂, ³, ⁴, x², Δ) or ASCII approximations in math formulas.
