@@ -110,10 +110,12 @@ if (fs.existsSync(firebaseConfigPath)) {
     };
 
     let databaseId = firebaseConfig.firestoreDatabaseId;
+    const hasServiceAccount = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT);
+    const hasGoogleCreds = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
 
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    if (hasServiceAccount) {
       try {
-        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT!);
         options.credential = cert(serviceAccount);
         console.log("[Firestore] Service account detected in environment variables. Using custom credentials.");
 
@@ -131,15 +133,18 @@ if (fs.existsSync(firebaseConfigPath)) {
       }
     }
 
-    const adminApp = initAdminApp(options);
-    db = getFirestore(adminApp, databaseId);
-    console.log(`[Firestore] Initialized successfully with Database: ${databaseId}`);
+    if (hasServiceAccount || hasGoogleCreds) {
+      const adminApp = initAdminApp(options);
+      db = getFirestore(adminApp, databaseId);
+      console.log(`[Firestore] Initialized successfully with Database: ${databaseId}`);
 
-    // Asynchronously trigger seeding
-    ensureFirestoreSeeded()
-      .catch((err) => {
-        console.error("[Firestore] Seeding error:", err);
-      });
+      ensureFirestoreSeeded()
+        .catch((err) => {
+          console.error("[Firestore] Seeding error:", err);
+        });
+    } else {
+      console.log("[Firestore] No Firebase service account or application credentials detected. Operating in local-only fallback mode.");
+    }
   } catch (err) {
     console.error("[Firestore] Initialization failed. Falling back to local storage.", err);
   }
@@ -313,7 +318,81 @@ async function ensureFirestoreSeeded() {
 // Caching mechanism for getStudents to prevent excessive reads
 let studentsCache: Student[] | null = null;
 let studentsCacheTime = 0;
+let teacherProfileCache: Map<string, { value: any; cachedAt: number }> = new Map();
 const CACHE_TTL = 60 * 1000; // 60 seconds
+const pendingStudentWrites = new Map<string, ReturnType<typeof setTimeout>>();
+
+function mergeData<T>(base: T, patch: Partial<T>): T {
+  if (!patch || typeof patch !== "object") return base;
+  if (!base || typeof base !== "object") return patch as T;
+
+  const merged = Array.isArray(base) ? [...base] : { ...(base as Record<string, unknown>) };
+  const mergedRecord = merged as Record<string, unknown>;
+
+  Object.entries(patch as Record<string, unknown>).forEach(([key, value]) => {
+    const currentValue = mergedRecord[key];
+
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      currentValue &&
+      typeof currentValue === "object" &&
+      !Array.isArray(currentValue)
+    ) {
+      mergedRecord[key] = mergeData(currentValue, value as Record<string, unknown>);
+    } else {
+      mergedRecord[key] = value;
+    }
+  });
+
+  return merged as T;
+}
+
+async function saveStudentPartial(student: Student, patch: Record<string, any>): Promise<void> {
+  studentsCache = null;
+  const classId = student.classId || "xii-a";
+  const existingStudent = await getStudentByRollNo(student.rollNo, classId);
+  const mergedStudent = mergeData(existingStudent || student, patch);
+
+  if (db) {
+    try {
+      await db.collection(classId).doc(String(student.rollNo)).set(mergedStudent, { merge: true });
+      return;
+    } catch (err) {
+      console.error(`[Firestore] Error partial-saving student ${student.rollNo}:`, err);
+    }
+  }
+
+  try {
+    const classDir = path.join(STUDENTS_DIR, classId);
+    if (!fs.existsSync(classDir)) fs.mkdirSync(classDir, { recursive: true });
+    fs.writeFileSync(path.join(classDir, `${student.rollNo}.json`), JSON.stringify(mergedStudent, null, 2), "utf8");
+  } catch (writeErr) {
+    console.error(`[Fallback] Failed to partial-save student ${student.rollNo} locally:`, writeErr);
+  }
+}
+
+async function queueStudentPatch(student: Student, patch: Record<string, any>, delay = 250): Promise<void> {
+  const key = `${student.classId || "xii-a"}:${student.rollNo}`;
+  const existingTimer = pendingStudentWrites.get(key);
+  if (existingTimer) clearTimeout(existingTimer);
+
+  return await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(async () => {
+      try {
+        await saveStudentPartial(student, patch);
+        resolve();
+      } catch (err) {
+        reject(err);
+      } finally {
+        pendingStudentWrites.delete(key);
+      }
+    }, delay);
+
+    pendingStudentWrites.set(key, timer);
+  });
+}
 
 // Asynchronous Data Managers (with robust fallbacks)
 async function getStudents(): Promise<Student[]> {
@@ -533,7 +612,7 @@ async function getTeachers(): Promise<Teacher[]> {
   if (db) {
     try {
       const snapshot = await db.collection("teachers").get();
-      snapshot.forEach(doc => teachers.push(doc.data() as Teacher));
+      snapshot.forEach((doc: any) => teachers.push(doc.data() as Teacher));
       if (teachers.length > 0) {
         teachersCache = teachers;
         teachersCacheTime = Date.now();
@@ -574,8 +653,30 @@ async function getTeacherByPasscode(passcode: string): Promise<Teacher | null> {
   return teachers.find((t) => t.passcodes.includes(cleanPass)) || null;
 }
 
+async function getTeacherProfile(passcode: string): Promise<any> {
+  const cacheKey = String(passcode).trim().toUpperCase();
+  const cached = teacherProfileCache.get(cacheKey);
+  if (cached && Date.now() - cached.cachedAt < CACHE_TTL) {
+    return cached.value;
+  }
+
+  const teacher = await getTeacherByPasscode(cacheKey);
+  const profile = teacher
+    ? {
+        name: teacher.name,
+        subject: teacher.subject,
+        email: teacher.email,
+        classes: teacher.classes,
+      }
+    : null;
+
+  teacherProfileCache.set(cacheKey, { value: profile, cachedAt: Date.now() });
+  return profile;
+}
+
 async function saveTeacher(teacher: Teacher): Promise<void> {
   teachersCache = null;
+  teacherProfileCache.clear();
   if (db) {
     try {
       await db.collection("teachers").doc(teacher.id).set(teacher);
@@ -811,14 +912,9 @@ app.get("/api/student/:roll_no", async (req, res) => {
 app.get("/api/teacher/profile", async (req, res) => {
   const auth = req.headers["x-teacher-passcode"];
   if (!auth) return res.status(401).json({ error: "Missing passcode" });
-  const teacher = await getTeacherByPasscode(String(auth));
-  if (!teacher) return res.status(404).json({ error: "Teacher not found" });
-  res.json({
-    name: teacher.name,
-    subject: teacher.subject,
-    email: teacher.email,
-    classes: teacher.classes
-  });
+  const profile = await getTeacherProfile(String(auth));
+  if (!profile) return res.status(404).json({ error: "Teacher not found" });
+  res.json(profile);
 });
 
 // 3. Fetch all students (Teacher only, checked via header)
@@ -857,13 +953,19 @@ app.post("/api/student/:roll_no/score", async (req, res) => {
   }
 
   student.scores[topic] = Number(score);
+  const patch: Record<string, any> = {
+    scores: { [topic]: Number(score) },
+  };
+
   if (milestones) {
     if (!student.milestones) {
       student.milestones = {};
     }
     student.milestones[topic] = milestones;
+    patch.milestones = { [topic]: milestones };
   }
-  await saveStudent(student);
+
+  await queueStudentPatch(student, patch, 180);
 
   res.json({ success: true, student });
 });
@@ -885,7 +987,7 @@ app.post("/api/student/:roll_no/email", async (req, res) => {
   }
 
   student.email = String(email).trim().toLowerCase();
-  await saveStudent(student);
+  await queueStudentPatch(student, { email: student.email }, 180);
 
   res.json({ success: true, student });
 });
@@ -916,12 +1018,23 @@ app.post("/api/student/:roll_no/save-progress", async (req, res) => {
     student.milestones[topic] = milestones;
   }
 
+  const patch: Record<string, any> = {};
+
   if (newScore !== oldScore) {
     student.scores[topic] = newScore;
+    patch.scores = { [topic]: newScore };
     logStudentActivity(student, "checklist", topic, `Progress changed from ${oldScore}% to ${newScore}% in '${topic}'`);
   }
 
-  await saveStudent(student);
+  if (milestones && Array.isArray(milestones)) {
+    patch.milestones = { [topic]: milestones };
+  }
+
+  if (student.recentSessions) {
+    patch.recentSessions = student.recentSessions;
+  }
+
+  await queueStudentPatch(student, patch, 220);
   res.json({ success: true, student });
 });
 
@@ -1184,6 +1297,24 @@ const isProduction = process.env.NODE_ENV === "production" ||
   (typeof __filename !== "undefined" && (__filename.endsWith("server.cjs") || __filename.includes("dist"))) ||
   (process.argv[1] && (process.argv[1].endsWith("server.cjs") || process.argv[1].includes("dist")));
 
+function startServer(port: number) {
+  const server = app.listen(port, "0.0.0.0", () => {
+    console.log(`Server active at http://localhost:${port}`);
+  });
+
+  server.on("error", (err: any) => {
+    if (err.code === "EADDRINUSE") {
+      const fallbackPort = port + 1;
+      console.warn(`[Server] Port ${port} is busy. Retrying on ${fallbackPort}...`);
+      startServer(fallbackPort);
+      return;
+    }
+
+    console.error("[Backend Start] Failed to start server:", err);
+    process.exit(1);
+  });
+}
+
 if (!isProduction) {
   createViteServer({
     server: { middlewareMode: true },
@@ -1191,16 +1322,11 @@ if (!isProduction) {
   })
     .then((vite) => {
       app.use(vite.middlewares);
-      app.listen(PORT, "0.0.0.0", () => {
-        console.log(`Development server active at http://localhost:${PORT}`);
-      });
+      startServer(PORT);
     })
     .catch((err) => {
       console.error("[Backend Start] Failed to initialize Vite dev server:", err);
-      // Fallback listening so the backend APIs can still be pinged/accessed
-      app.listen(PORT, "0.0.0.0", () => {
-        console.log(`Emergency backend-only server active at http://localhost:${PORT}`);
-      });
+      startServer(PORT);
     });
 } else {
   const distPath = path.join(process.cwd(), "dist");
@@ -1208,8 +1334,6 @@ if (!isProduction) {
   app.get("*", (req, res) => {
     res.sendFile(path.join(distPath, "index.html"));
   });
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Production server active on port ${PORT}`);
-  });
+  startServer(PORT);
 }
 

@@ -217,6 +217,13 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   });
   const totalStudents = subjectStudents.length;
 
+  const getScoreStatus = (score: number) => {
+    if (score >= 80) return { label: "Mastered", badge: "text-emerald-700 bg-emerald-50 border-emerald-200", bar: "bg-emerald-500" };
+    if (score >= 60) return { label: "Strong", badge: "text-sky-700 bg-sky-50 border-sky-200", bar: "bg-sky-500" };
+    if (score >= 40) return { label: "Developing", badge: "text-amber-700 bg-amber-50 border-amber-200", bar: "bg-amber-500" };
+    return { label: "Needs Attention", badge: "text-rose-700 bg-rose-50 border-rose-200", bar: "bg-rose-500" };
+  };
+
   const calculateStudentAvg = (s: Student) => {
     const scores = activeTopics.map(t => s.scores[t] || 0);
     if (scores.length === 0) return 0;
@@ -346,7 +353,8 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
           {[
             { id: "Chemistry", color: "text-amber-800 bg-amber-500/15" },
             { id: "Physics", color: "text-blue-800 bg-blue-500/15" },
-            { id: "Mathematics", color: "text-violet-800 bg-violet-500/15" }
+            { id: "Mathematics", color: "text-violet-800 bg-violet-500/15" },
+            { id: "Biology", color: "text-emerald-800 bg-emerald-500/15" }
           ].filter((sub) => sub.id === teacherDetails.subject).map((sub) => (
             <button
               key={sub.id}
@@ -441,25 +449,20 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
           <div className="overflow-y-auto max-h-[360px] pr-1 space-y-2 scrollbar-none">
             {topicAverages.map((t) => {
               const pct = t.avg;
-              let barColor = "bg-rose-400";
-              if (pct >= 70) barColor = "bg-emerald-500";
-              else if (pct >= 40) barColor = "bg-amber-400";
+              const tone = getScoreStatus(pct);
               return (
                 <div key={t.name} className="flex items-center gap-3 group">
-                  {/* Chapter name */}
                   <span className="text-[11px] font-semibold text-slate-600 w-52 shrink-0 truncate" title={t.name}>
                     {t.name}
                   </span>
-                  {/* Progress bar */}
                   <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                      className={`h-full rounded-full transition-all duration-500 ${tone.bar}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  {/* Percentage label */}
                   <span className={`text-[11px] font-black w-10 text-right shrink-0 ${
-                    pct >= 70 ? "text-emerald-600" : pct >= 40 ? "text-amber-600" : "text-rose-500"
+                    pct >= 80 ? "text-emerald-600" : pct >= 60 ? "text-sky-600" : pct >= 40 ? "text-amber-600" : "text-rose-500"
                   }`}>
                     {pct}%
                   </span>
@@ -573,31 +576,33 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
               <tbody className="divide-y divide-slate-100 bg-white">
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400 font-medium">
-                      No student records match this query in the {teacherDetails.classLabel} list.
+                    <td colSpan={6} className="px-6 py-14 text-center">
+                      <div className="mx-auto flex max-w-sm flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center">
+                        <div className="rounded-full bg-indigo-50 p-3 text-indigo-600">
+                          <Users className="h-5 w-5" />
+                        </div>
+                        <p className="text-sm font-black text-slate-700">No students match this view yet.</p>
+                        <p className="text-xs font-medium text-slate-500">Try a different name, roll number, or class filter to surface the right learners.</p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   filteredStudents.map((s) => {
                     const avg = calculateStudentAvg(s);
-                    let badgeColor = "text-slate-400 bg-slate-50 border-slate-100";
+                    const tone = getScoreStatus(avg);
+                    const badgeColor = tone.badge;
                     let stateLabel = "Not Started";
 
                     if (avg === 0) {
-                      badgeColor = "text-slate-400 bg-slate-50 border-slate-200";
                       stateLabel = "Not Commenced";
-                    } else if (avg > 0 && avg <= 30) {
-                      badgeColor = "text-rose-600 bg-rose-50 border-rose-100";
-                      stateLabel = "Incipient Mastery";
-                    } else if (avg > 30 && avg <= 69) {
-                      badgeColor = "text-amber-600 bg-amber-50 border-amber-100";
-                      stateLabel = "Developing Proficiency";
-                    } else if (avg > 69 && avg <= 99) {
-                      badgeColor = "text-emerald-600 bg-emerald-50 border-emerald-100";
-                      stateLabel = "Advanced Proficiency";
-                    } else if (avg === 100) {
-                      badgeColor = "text-purple-600 bg-purple-50 border-purple-100";
-                      stateLabel = "Comprehensive Mastery";
+                    } else if (avg < 40) {
+                      stateLabel = "Needs Attention";
+                    } else if (avg < 60) {
+                      stateLabel = "Developing";
+                    } else if (avg < 80) {
+                      stateLabel = "Strong";
+                    } else {
+                      stateLabel = "Mastered";
                     }
 
                     return (
@@ -623,7 +628,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                           <div className="flex items-center gap-3">
                             <span className="text-sm font-black text-slate-900">{avg}%</span>
                             <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0 hidden md:block">
-                              <div className="h-full bg-indigo-600 rounded-full" style={{ width: `${avg}%` }} />
+                              <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${avg}%` }} />
                             </div>
                           </div>
                         </td>
@@ -717,9 +722,10 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                     <History className="h-4.5 w-4.5 text-slate-400" /> Recent Study Sessions (Last 3)
                   </h4>
                   {(!selectedStudent.recentSessions || selectedStudent.recentSessions.length === 0) ? (
-                    <p className="text-xs font-semibold text-slate-400 italic bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
-                      No study sessions recorded yet.
-                    </p>
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
+                      <p className="text-sm font-black text-slate-700">No study sessions recorded yet.</p>
+                      <p className="mt-1 text-xs font-medium text-slate-500">A student’s first checklist update or quiz completion will appear here with a clear timeline.</p>
+                    </div>
                   ) : (
                     <div className="space-y-3">
                       {selectedStudent.recentSessions.map((session, sIdx) => {
