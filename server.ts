@@ -832,67 +832,14 @@ app.post("/api/login-google", async (req, res) => {
 
   return res.status(404).json({
     error: `No user found with the registered Gmail: ${email}`,
-    needsLinking: true,
+    needsLinking: false,
   });
 });
 
-// 1.6 Google Account Self-Linking
+// 1.6 Google Account Self-Linking (Disabled)
 app.post("/api/link-google-account", async (req, res) => {
-  const { email, rollNo, phone, passcode, role, classId } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: "Email is required" });
-  }
-
-  if (role === "teacher") {
-    if (!passcode) {
-      return res.status(400).json({ error: "Passcode is required to link a teacher account" });
-    }
-    const cleanPass = String(passcode).trim().toUpperCase();
-    const teacher = await getTeacherByPasscode(cleanPass);
-    if (!teacher) {
-      return res.status(404).json({ error: "Invalid teacher passcode" });
-    }
-    
-    // Check if email already linked
-    const existing = await getTeacherByEmail(email);
-    if (existing && existing.id !== teacher.id) {
-      return res.status(400).json({ error: `The email ${email} is already linked to ${existing.name}` });
-    }
-
-    teacher.email = email;
-    await saveTeacher(teacher);
-    return res.json({ success: true, role: "teacher", name: teacher.name, passcode: teacher.passcodes[0] });
-  }
-
-  if (!rollNo || !phone) {
-    return res.status(400).json({ error: "Roll number and phone number are required" });
-  }
-
-  const numRollNo = parseInt(rollNo, 10);
-  const student = await getStudentByRollNo(numRollNo, classId || "xii-a");
-
-  if (!student) {
-    return res.status(404).json({ error: `Student with Roll No. ${numRollNo} not found` });
-  }
-
-  const cleanPhoneInput = String(phone).trim();
-  const dbPhone = String(student.phone).trim();
-  const last4Db = dbPhone.slice(-4);
-
-  if (cleanPhoneInput === dbPhone || cleanPhoneInput === last4Db) {
-    // Check if this email is already linked to another student
-    const existing = await getStudentByEmail(email);
-    if (existing && existing.rollNo !== numRollNo) {
-      return res.status(400).json({ error: `The email ${email} is already linked to ${existing.name}` });
-    }
-
-    student.email = email;
-    await saveStudent(student);
-    return res.json({ success: true, role: "student", student });
-  }
-
-  return res.status(401).json({
-    error: "Verification failed. Enter the correct registered phone number or its last 4 digits for this roll number.",
+  return res.status(403).json({
+    error: "Google account self-linking is disabled. Please contact your teacher/administrator to register your email.",
   });
 });
 

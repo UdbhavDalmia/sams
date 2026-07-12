@@ -1507,10 +1507,20 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-[10px] font-bold text-slate-900 dark:text-slate-400">
                       <span>Progression</span>
-                      <span className="text-indigo-600 font-extrabold">{score}%</span>
+                      <span className={`font-extrabold ${
+                        score >= 80 ? "text-emerald-600 dark:text-emerald-400" :
+                        score >= 60 ? "text-sky-600 dark:text-sky-400" :
+                        score >= 40 ? "text-amber-600 dark:text-amber-400" :
+                        "text-rose-600 dark:text-rose-400"
+                      }`}>{score}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${barColor}`} style={{ width: `${score}%` }} />
+                      <div className={`h-full rounded-full transition-all duration-300 ${
+                        score >= 80 ? "bg-emerald-500" :
+                        score >= 60 ? "bg-sky-500" :
+                        score >= 40 ? "bg-amber-500" :
+                        "bg-rose-500"
+                      }`} style={{ width: `${score}%` }} />
                     </div>
                   </div>
                 </button>

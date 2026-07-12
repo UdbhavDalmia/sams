@@ -4,49 +4,6 @@ SAMS (Student Academic Monitoring System) is a modern, full-stack tutoring and a
 
 ---
 
-## 🛠️ Architecture & System Design
-
-SAMS is designed with a decoupled React-based frontend and an Express-based Node.js backend. It supports **dual-mode database configurations** (Firestore + Local JSON Fallback) for local offline testing and easy cloud deployment.
-
-```mermaid
-graph TD
-    subgraph Client [React SPA + Tailwind CSS]
-        UI[Student / Teacher Dashboard]
-        SSE_Reader[SSE Stream Reader]
-        Quiz_Logic[Adaptive Quiz State]
-        Achievements[Achievements Engine]
-    end
-
-    subgraph Server [Express Backend + Node.js]
-        API[Express REST API]
-        Auth[Auth Verification Engine]
-        Gemini[Gemini Client - @google/genai]
-        Data_Manager[Data Sync Engine]
-    end
-
-    subgraph Database Layer
-        Firestore[(Google Cloud Firestore)]
-        JSON_DB[(Local JSON Files - data/)]
-    end
-
-    subgraph External Services
-        Gemini_API[Gemini 2.5/3.1 Models]
-        Google_Auth[Google OAuth 2.0]
-    end
-
-    UI <--> API
-    SSE_Reader <--> API
-    API <--> Auth
-    Auth <--> Google_Auth
-    API <--> Gemini
-    Gemini <--> Gemini_API
-    API <--> Data_Manager
-    Data_Manager <--> Firestore
-    Data_Manager <--> JSON_DB
-```
-
----
-
 ## 🔑 Key Features
 
 ### 1. Student Portal
@@ -57,7 +14,6 @@ graph TD
 *   **Achievements System:** Client-side achievements engine calculating milestones, subject performance, and quiz completions to award **Bronze, Silver, Gold, and Platinum** badges.
 
 ### 2. Teacher Portal
-*   **Secure Access:** Multi-account authentication via custom subject passcodes (e.g., `CHEM12A` for Chemistry) or Google account authentication.
 *   **Class Selection:** Dashboard support for managing multiple classes (e.g., `XII-A` and `XII-B`).
 *   **Performance Monitoring:** Detailed academic registries featuring completion bars, subject averages, and individual profiles for all students.
 
@@ -214,76 +170,3 @@ All requests and responses use JSON bodies, except streaming endpoints which uti
 | `/api/gemini/chatbot-stream` | `POST` | None | `{ messages: Array<{ role, text }> }` | *SSE Stream of tokens* (`data: {"text": "..."}`) | [Gemini API] Starts real-time streaming SSE chatbot conversation. |
 | `/api/student/:roll_no/quiz-state` | `POST` | None | `{ quizState, completed, subjectHint }` | `{ success: true, student }` | Saves active quiz state or clears it on completion while incrementing stats. |
 | `/api/health` | `GET` | None | None | `{ status, database: { mode, isConfigured, isHealthy }, ... }` | Diagnostic report of uptime, Firestore connection health, and memory footprint. |
-
----
-
-## 🛠️ Installation & Local Setup
-
-### Prerequisites
-*   Node.js (v18+)
-*   NPM (v9+)
-*   A Gemini API Key (obtain from [Google AI Studio](https://aistudio.google.com/))
-
-### Steps
-
-1.  **Clone the Repository and install dependencies:**
-    ```bash
-    npm install
-    ```
-
-2.  **Environment Variables Config:**
-    Create a `.env` file in the root directory (based on `.env.local` templates):
-    ```env
-    GEMINI_API_KEY=your_gemini_api_key_here
-    PORT=3000
-    # Optional: Set in server hosting environments to connect securely to Firestore using a Service Account JSON
-    # FIREBASE_SERVICE_ACCOUNT={"type": "service_account", ...}
-    ```
-
-3.  **Firebase Client Setup (Optional):**
-    For database persistence on Google Cloud, create `firebase-applet-config.json` at the root of the project:
-    ```json
-    {
-      "projectId": "your-project-id",
-      "appId": "your-app-id",
-      "apiKey": "your-api-key",
-      "authDomain": "your-project-id.firebaseapp.com",
-      "firestoreDatabaseId": "(default)",
-      "storageBucket": "your-project-id.firebasestorage.app",
-      "messagingSenderId": "your-sender-id"
-    }
-    ```
-    *If this file is not found, the server automatically boots in local file fallback mode.*
-
-4.  **Run Development Server:**
-    To launch the Vite development assets and Express API server simultaneously:
-    ```bash
-    npm run dev
-    ```
-    Open [http://localhost:3000](http://localhost:3000) in your browser.
-
----
-
-## 📦 Building and Deployment
-
-To compile and optimize the client-side SPA bundle and package the server application for production hosting (such as Render, Heroku, or AWS):
-
-1.  **Compile Assets:**
-    ```bash
-    npm run build
-    ```
-    This script executes two core routines:
-    *   `vite build`: Bundles the React frontend application into optimized static assets under the `dist/` directory.
-    *   `esbuild server.ts`: Bundles the backend Express server into a standalone module located at `dist/server.cjs`.
-
-2.  **Start Production Server:**
-    ```bash
-    npm run start
-    ```
-    Runs the compiled backend production file (`node dist/server.cjs`) which hosts the static frontend files and services the REST/SSE endpoints.
-
-3.  **Clean Workspace:**
-    ```bash
-    npm run clean
-    ```
-    Removes generated compile targets and temporary server configurations.

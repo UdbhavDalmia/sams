@@ -8,7 +8,7 @@ interface SAMSLogoProps {
 export default function SAMSLogo({ className = "", size = 20 }: SAMSLogoProps) {
   return (
     <svg
-      className={className}
+      className={`inline-block align-middle shrink-0 ${className}`}
       width={size}
       height={size}
       fill="none"

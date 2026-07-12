@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Lock, User, ShieldAlert, Award, GraduationCap, X, CheckCircle2, AlertOctagon } from "lucide-react";
 import { fetchWithRetry } from "../lib/fetch";
@@ -20,19 +20,12 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
 
   // Login success state
   const [loginSuccess, setLoginSuccess] = useState<{ name: string } | null>(null);
-  const [countdown, setCountdown] = useState(3);
 
   // Unauthorized state (for Google login with unregistered email)
   const [unauthorized, setUnauthorized] = useState<{ email: string } | null>(null);
 
   // Google Login states
   const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [googleEmailInput, setGoogleEmailInput] = useState("");
-  const [isLinkingStep, setIsLinkingStep] = useState(false);
-  const [linkRollNo, setLinkRollNo] = useState("");
-  const [linkPhone, setLinkPhone] = useState("");
-  const [linkClassId, setLinkClassId] = useState("xii-a");
-  const [linkPasscode, setLinkPasscode] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
 
@@ -87,13 +80,6 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
         body: JSON.stringify({ email: user.email, idToken }),
       });
       const data = await res.json();
-      if (res.status === 404 && data.needsLinking) {
-        setLoginSuccess(null);
-        setGoogleEmailInput(user.email);
-        setIsLinkingStep(true);
-        setShowGoogleModal(true);
-        return;
-      }
       if (res.status === 403 || res.status === 404) {
         setLoginSuccess(null);
         // Unregistered email — show full-screen unauthorized
@@ -111,32 +97,6 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
         setGoogleError(err.message);
       }
       setShowGoogleModal(true);
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleGoogleLinkSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setGoogleError(null);
-    setGoogleLoading(true);
-    
-    // Show verifying overlay immediately
-    setLoginSuccess({ name: googleEmailInput });
-
-    try {
-      const res = await fetchWithRetry("/api/link-google-account", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, rollNo: linkRollNo, phone: linkPhone, passcode: linkPasscode, email: googleEmailInput, classId: linkClassId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Linking failed");
-      setShowGoogleModal(false);
-      handleLoginSuccess(data);
-    } catch (err: any) {
-      setLoginSuccess(null);
-      setGoogleError(err.message);
     } finally {
       setGoogleLoading(false);
     }
@@ -478,63 +438,16 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
                   <span>{googleError}</span>
                 </div>
               )}
-              {isLinkingStep ? (
-                <form onSubmit={handleGoogleLinkSubmit} className="space-y-4">
-                  <div className="p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-2xl text-xs leading-relaxed">
-                    <p className="font-bold text-slate-800 mb-1">Link Google Email to SAMS</p>
-                    <span className="font-mono text-indigo-700 font-extrabold">{googleEmailInput}</span> is not linked to {role === "student" ? "student" : "staff"} data. Enter your {role === "student" ? "Roll and Phone" : "Staff Passcode"} to verify and link instantly.
-                  </div>
-                  {role === "student" ? (
-                    <>
-                      <div>
-                        <label htmlFor="linkClassId" className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Verify Class</label>
-                        <select
-                          id="linkClassId"
-                          value={linkClassId}
-                          onChange={(e) => setLinkClassId(e.target.value)}
-                          className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 cursor-pointer font-medium"
-                        >
-                          <option value="xii-a">XII-A (PCM)</option>
-                          <option value="xii-b">XII-B (PCB / PCMB)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label htmlFor="linkRollNo" className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Verify Roll Number</label>
-                        <input id="linkRollNo" type="number" required min="1" max={linkClassId === "xii-a" ? "37" : "18"} placeholder="e.g. 5" value={linkRollNo} onChange={(e) => setLinkRollNo(e.target.value)}
-                          className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800" />
-                      </div>
-                      <div>
-                        <label htmlFor="linkPhone" className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Verify Phone (or last 4 digits)</label>
-                        <input id="linkPhone" type="password" required placeholder="e.g. 4362" value={linkPhone} onChange={(e) => setLinkPhone(e.target.value)}
-                          className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800" />
-                      </div>
-                    </>
-                  ) : (
-                    <div>
-                      <label htmlFor="linkPasscode" className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Verify Staff Passcode</label>
-                      <input id="linkPasscode" type="password" required placeholder="Enter Passcode" value={linkPasscode} onChange={(e) => setLinkPasscode(e.target.value)}
-                        className="block w-full mt-1.5 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800" />
-                    </div>
-                  )}
-                  <div className="flex gap-3 pt-2">
-                    <button type="button" onClick={() => setIsLinkingStep(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">Back</button>
-                    <button type="submit" disabled={googleLoading} className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer">
-                      {googleLoading ? "Linking..." : "Link & Sign In"}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div className="space-y-4 text-center py-2">
-                  <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto text-rose-500">
-                    <ShieldAlert className="h-6 w-6" />
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-800">Google Sign-in Error</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">{googleError || "An unexpected error occurred during Google Sign-in."}</p>
-                  <button type="button" onClick={() => setShowGoogleModal(false)} className="w-full mt-2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer">
-                    Close
-                  </button>
+              <div className="space-y-4 text-center py-2">
+                <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mx-auto text-rose-500">
+                  <ShieldAlert className="h-6 w-6" />
                 </div>
-              )}
+                <h4 className="text-sm font-bold text-slate-800">Google Sign-in Error</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">{googleError || "An unexpected error occurred during Google Sign-in."}</p>
+                <button type="button" onClick={() => setShowGoogleModal(false)} className="w-full mt-2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                  Close
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
