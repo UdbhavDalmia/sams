@@ -7,6 +7,20 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Rebranding purplish blue (indigo) to steel blue / navy blue theme */
+  --color-indigo-50: #eaf4fc;
+  --color-indigo-100: #d6e8f7;
+  --color-indigo-200: #aed1f0;
+  --color-indigo-300: #88b0d6;
+  --color-indigo-400: #5d92c2;
+  --color-indigo-505: #3b6b95; /* Prevent typos */
+  --color-indigo-500: #3b6b95;
+  --color-indigo-600: #2c5375;
+  --color-indigo-700: #1f3d57;
+  --color-indigo-800: #162c3f;
+  --color-indigo-900: #0f2230;
+  --color-indigo-950: #0a1620;
 }
 
 /* Glassmorphism custom utilities */

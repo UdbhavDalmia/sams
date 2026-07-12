@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Student, TopicName, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS, ALL_TOPICS, getStudentSubjects } from "../types";
 import { fetchWithRetry } from "../lib/fetch";
+import SAMSLogo from "./SAMSLogo";
 
 interface TeacherViewProps {
   passcode: string;
@@ -308,21 +309,17 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   };
 
   return (
-    <div id="teacher-view-container" className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col">
+    <div id="teacher-view-container" className="min-h-screen bg-[#eaf4fc] font-sans text-slate-900 flex flex-col">
       {/* Sleek Navigation Bar */}
       <nav id="teacher-nav-bar" className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="bg-indigo-600 w-10 h-10 rounded-xl flex items-center justify-center shadow-sm shadow-indigo-600/10">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </div>
-          <span className="font-bold text-xl tracking-tight text-slate-900">SAMS <span className="text-indigo-600">Analytics</span></span>
+          <SAMSLogo size={36} />
+          <span className="font-bold text-xl tracking-tight text-[#0f2d4a]">SAMS <span className="text-[#3b6b95]">Analytics</span></span>
         </div>
 
         <div className="flex flex-wrap items-center gap-4 md:gap-6 justify-center sm:justify-end">
-          <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">
-            <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">Teacher Terminal</span>
+          <div className="flex items-center gap-2 bg-blue-50/50 px-3 py-1.5 rounded-full border border-blue-200/40">
+            <span className="text-xs font-semibold text-[#3b6b95] uppercase tracking-wider">Teacher Terminal</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -330,7 +327,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
               <p className="text-xs font-medium text-slate-500 uppercase leading-none mb-1">{teacherDetails.role}</p>
               <p className="text-sm font-bold text-slate-800 leading-none">{teacherDetails.name}</p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-indigo-50 border-2 border-indigo-100 shadow-sm flex items-center justify-center font-bold text-indigo-600 text-xs uppercase" title={teacherDetails.name}>
+            <div className="w-10 h-10 rounded-full bg-blue-50/50 border-2 border-blue-200/40 shadow-sm flex items-center justify-center font-bold text-[#3b6b95] text-xs uppercase" title={teacherDetails.name}>
               {teacherDetails.initials}
             </div>
             <button

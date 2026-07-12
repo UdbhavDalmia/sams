@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Lock, User, ShieldAlert, Award, GraduationCap, X, CheckCircle2, AlertOctagon } from "lucide-react";
+import { Lock, User, ShieldAlert, Award, GraduationCap, X, AlertOctagon } from "lucide-react";
 import { fetchWithRetry } from "../lib/fetch";
 import { signInWithGoogle } from "../lib/firebase";
+import { gsap, useGSAP } from "../lib/gsap";
 import SAMSLogo from "./SAMSLogo";
+import LoginSuccessOverlay from "./LoginSuccessOverlay";
 
 interface LoginPortalProps {
   onLoginSuccess: (session: { role: "student" | "teacher"; student?: any; name?: string }) => void;
@@ -102,49 +104,63 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
     }
   };
 
+  // GSAP-powered floating ambient orbs (replaces static CSS pulse)
+  const portalRef = useRef<HTMLDivElement>(null);
+  useGSAP(
+    () => {
+      const orbs = gsap.utils.toArray<HTMLElement>(".login-orb");
+      orbs.forEach((orb, i) => {
+        gsap.to(orb, {
+          x: gsap.utils.random(-40, 40),
+          y: gsap.utils.random(-40, 40),
+          scale: gsap.utils.random(1.05, 1.25),
+          duration: gsap.utils.random(4, 7),
+          ease: "sine.inOut",
+          repeat: -1,
+          yoyo: true,
+          delay: i * 0.4,
+        });
+      });
+    },
+    { scope: portalRef }
+  );
+
+  // GSAP sliding pill behind the active role tab
+  const roleTabContainerRef = useRef<HTMLDivElement>(null);
+  const studentTabRef = useRef<HTMLButtonElement>(null);
+  const teacherTabRef = useRef<HTMLButtonElement>(null);
+  const rolePillRef = useRef<HTMLDivElement>(null);
+  useGSAP(
+    () => {
+      const container = roleTabContainerRef.current;
+      const pill = rolePillRef.current;
+      if (!container || !pill) return;
+      const active = role === "student" ? studentTabRef.current : teacherTabRef.current;
+      if (!active) return;
+      const cRect = container.getBoundingClientRect();
+      const bRect = active.getBoundingClientRect();
+      const borderLeft = parseFloat(getComputedStyle(container).borderLeftWidth) || 0;
+      gsap.to(pill, {
+        x: bRect.left - cRect.left - borderLeft,
+        width: bRect.width,
+        duration: 0.45,
+        ease: "power3.out",
+      });
+    },
+    { dependencies: [role], scope: portalRef }
+  );
+
+  // GSAP glass panel entrance
+  useGSAP(
+    () => {
+      gsap.from(".glass-panel", { y: 28, opacity: 0, duration: 0.7, ease: "power3.out", delay: 0.1 });
+    },
+    { scope: portalRef }
+  );
+
   // ─── LOGIN SUCCESS OVERLAY ────────────────────────────────────────────────
   if (loginSuccess) {
-    return (
-      <div className="min-h-screen bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 flex flex-col items-center justify-center font-sans text-white p-6">
-        <motion.div
-          initial={{ scale: 0.7, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 260, damping: 20 }}
-          className="flex flex-col items-center gap-6 text-center max-w-sm"
-        >
-          {/* Animated check ring */}
-          <div className="relative">
-            <div className="w-24 h-24 rounded-full bg-indigo-500/20 border-2 border-indigo-500/40 flex items-center justify-center">
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: "spring", stiffness: 300 }}>
-                <CheckCircle2 className="h-12 w-12 text-indigo-400" />
-              </motion.div>
-            </div>
-            {/* Pulse ring */}
-            <div className="absolute inset-0 rounded-full border-2 border-indigo-400/30 animate-ping" />
-          </div>
-
-          <div>
-            <h1 className="text-3xl font-black tracking-tight">Logging In</h1>
-            <p className="text-indigo-300 mt-2 font-semibold text-base">Preparing study session for {loginSuccess.name}...</p>
-          </div>
-
-          <p className="text-slate-400 text-sm font-medium">
-            Verifying credentials & loading dashboard...
-          </p>
-
-          <div className="w-48 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-indigo-500 rounded-full"
-              initial={{ width: "0%" }}
-              animate={{ width: ["0%", "100%", "0%"] }}
-              transition={{ duration: 2, ease: "easeInOut", repeat: Infinity }}
-            />
-          </div>
-
-          <p className="text-xs text-slate-500 font-medium">Please wait, dashboard loading</p>
-        </motion.div>
-      </div>
-    );
+    return <LoginSuccessOverlay name={loginSuccess.name} />;
   }
 
   // ─── UNAUTHORIZED SCREEN ─────────────────────────────────────────────────
@@ -164,10 +180,8 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
 
           {/* SAMS branding */}
           <div className="flex items-center gap-2">
-            <div className="bg-indigo-600 p-2 rounded-xl">
-              <SAMSLogo size={18} className="text-white" />
-            </div>
-            <span className="text-sm font-bold tracking-widest text-indigo-300 uppercase">SAMS Analytics</span>
+            <SAMSLogo size={32} />
+            <span className="text-sm font-bold tracking-widest text-[#3b6b95] uppercase">SAMS Analytics</span>
           </div>
 
           <div>
@@ -217,21 +231,19 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
 
   // ─── MAIN LOGIN FORM ─────────────────────────────────────────────────────
   return (
-    <div id="login-portal-container" className="min-h-screen bg-gradient-to-tr from-slate-100 via-indigo-50/40 to-cyan-50/60 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
+    <div id="login-portal-container" ref={portalRef} className="min-h-screen bg-gradient-to-tr from-[#eaf4fc] via-[#f0f7ff]/40 to-cyan-50/30 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
       {/* Animated Glowing Ambient Orbs */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-200/30 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-cyan-200/30 rounded-full blur-[140px] animate-pulse" style={{ animationDelay: "2.5s" }} />
-        <div className="absolute top-[40%] left-[30%] w-[350px] h-[350px] bg-emerald-100/20 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "5s" }} />
+        <div className="login-orb absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#a5cbf7]/30 rounded-full blur-[120px]" />
+        <div className="login-orb absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-cyan-200/20 rounded-full blur-[140px]" />
+        <div className="login-orb absolute top-[40%] left-[30%] w-[350px] h-[350px] bg-emerald-100/10 rounded-full blur-[100px]" />
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md z-10">
         <div className="flex justify-center items-center gap-3">
-          <div className="bg-indigo-600 p-2.5 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
-            <SAMSLogo size={24} className="text-white" />
-          </div>
-          <span className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 font-display">
-            SAMS <span className="text-indigo-600">Analytics</span>
+          <SAMSLogo size={42} />
+          <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#0f2d4a] dark:text-white font-display">
+            SAMS <span className="text-[#3b6b95]">Analytics</span>
           </span>
         </div>
         <h2 className="mt-4 text-center text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display px-2">
@@ -243,24 +255,27 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
       </div>
 
       <div className="mt-6 sm:mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10">
-        <div className="glass-panel py-6 px-5 sm:py-8 shadow-2xl shadow-indigo-950/5 rounded-[2rem] sm:rounded-[2.5rem] sm:px-10">
+        <div className="glass-panel py-6 px-5 sm:py-8 shadow-2xl shadow-[#3b6b95]/5 rounded-[2rem] sm:rounded-[2.5rem] sm:px-10">
           {/* Role Tabs */}
-          <div className="flex bg-slate-50/80 p-1.5 rounded-[1.5rem] mb-6 sm:mb-8 border border-slate-200/50">
+          <div ref={roleTabContainerRef} className="relative flex bg-slate-50/80 p-1.5 rounded-[1.5rem] mb-6 sm:mb-8 border border-slate-200/50">
+            <div ref={rolePillRef} className="absolute left-0 top-1.5 bottom-1.5 rounded-xl bg-indigo-600 pointer-events-none" style={{ width: 0 }} />
             <button
+              ref={studentTabRef}
               id="student-role-tab"
               onClick={() => { setRole("student"); setError(null); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all cursor-pointer ${
-                role === "student" ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/15" : "text-slate-500 hover:text-slate-800"
+              className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-colors cursor-pointer ${
+                role === "student" ? "text-white" : "text-slate-500 hover:text-slate-800"
               }`}
             >
               <GraduationCap className="h-4 w-4 shrink-0" />
               Student Portal
             </button>
             <button
+              ref={teacherTabRef}
               id="teacher-role-tab"
               onClick={() => { setRole("teacher"); setError(null); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-all cursor-pointer ${
-                role === "teacher" ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/15" : "text-slate-500 hover:text-slate-800"
+              className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-colors cursor-pointer ${
+                role === "teacher" ? "text-white" : "text-slate-500 hover:text-slate-800"
               }`}
             >
               <ShieldAlert className="h-4 w-4 shrink-0" />

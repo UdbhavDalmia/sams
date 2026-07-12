@@ -33,7 +33,9 @@ import { Student, ActiveQuizState, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPIC
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { fetchWithRetry } from "../lib/fetch";
+import { gsap } from "../lib/gsap";
 import SAMSLogo from "./SAMSLogo";
+import AnimatedCounter from "./AnimatedCounter";
 
 // Dynamic translation map for standard topic formulas into beautiful textbook LaTeX
 const FORMULA_LATEX_MAP: Record<string, string> = {
@@ -146,20 +148,20 @@ const MathRenderer: React.FC<{ math: string; block?: boolean }> = ({ math, block
 const parseBoldAndMathInline = (text: string): React.ReactNode[] => {
   // Split by inline math ($...$) first
   const parts = text.split(/(\$[\s\S]*?\$)/g);
-  
+
   return parts.map((part, index) => {
     if (part.startsWith("$") && part.endsWith("$")) {
       const math = part.slice(1, -1).trim();
       return <MathRenderer key={`math-${index}`} math={math} block={false} />;
     }
-    
+
     // For non-math, parse bold text (**...**)
     const boldParts = part.split(/(\*\*[\s\S]*?\*\*)/g);
     return boldParts.map((bPart, bIndex) => {
       if (bPart.startsWith("**") && bPart.endsWith("**")) {
         return <strong key={`bold-${index}-${bIndex}`} className="font-extrabold text-slate-900 dark:text-white">{bPart.slice(2, -2)}</strong>;
       }
-      
+
       // Parse inline code blocks (`...`)
       const codeParts = bPart.split(/(`[\s\S]*?`)/g);
       return codeParts.map((cPart, cIndex) => {
@@ -178,10 +180,10 @@ const parseBoldAndMathInline = (text: string): React.ReactNode[] => {
 
 const parseMarkdownAndMath = (text: string) => {
   if (!text) return null;
-  
+
   // Split by block math $$...$$
   const parts = text.split(/(\$\$[\s\S]*?\$\$)/g);
-  
+
   return parts.map((part, index) => {
     if (part.startsWith("$$") && part.endsWith("$$")) {
       const math = part.slice(2, -2).trim();
@@ -191,7 +193,7 @@ const parseMarkdownAndMath = (text: string) => {
         </div>
       );
     }
-    
+
     // For non-block-math parts, parse paragraph blocks
     const paragraphs = part.split(/\n\n+/);
     return (
@@ -199,7 +201,7 @@ const parseMarkdownAndMath = (text: string) => {
         {paragraphs.map((p, pIdx) => {
           const trimmed = p.trim();
           if (!trimmed) return null;
-          
+
           // Check for headings
           if (trimmed.startsWith("### ")) {
             return (
@@ -222,7 +224,7 @@ const parseMarkdownAndMath = (text: string) => {
               </h2>
             );
           }
-          
+
           // Check for lists
           if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.match(/^\d+\.\s/)) {
             const listLines = trimmed.split("\n");
@@ -256,7 +258,7 @@ const parseMarkdownAndMath = (text: string) => {
               </div>
             );
           }
-          
+
           // Standard text paragraph - replace single newlines inside standard text with a space
           const cleanText = trimmed.replace(/\n+/g, " ");
           return (
@@ -363,6 +365,7 @@ const triggerConfetti = () => {
 export default function StudentView({ student: initialStudent, onLogout }: StudentViewProps) {
   const [student, setStudent] = useState<Student>(initialStudent);
   const [selectedTopic, setSelectedTopic] = useState<TopicName | null>(null);
+  const [showProfilePopup, setShowProfilePopup] = useState(false);
 
   const studentSubjects = getStudentSubjects(student.scores);
   // Subject Navigation Tab
@@ -400,6 +403,12 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   const [chatbotLoading, setChatbotLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // GSAP animation refs
+  const studentRootRef = useRef<HTMLDivElement>(null);
+  const gaugeTextRef = useRef<SVGTextElement>(null);
+  const quizCardRef = useRef<HTMLDivElement>(null);
+  const darkToggleRef = useRef<HTMLButtonElement>(null);
+
   // Selected Mobile Achievement for interactive description details
   const [selectedMobileAchievement, setSelectedMobileAchievement] = useState<string | null>(null);
 
@@ -408,6 +417,18 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
   // Global Dark Mode state
   const [darkMode, setDarkMode] = useState(false);
+
+  // Lock background page scrolling while the Chapter Companion drawer or
+  // the Profile card is open so they stay anchored to the visible window
+  useEffect(() => {
+    const overlayOpen = selectedTopic !== null || showProfilePopup;
+    if (!overlayOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [selectedTopic, showProfilePopup]);
 
   // Milestones local checklist states
   const [localMilestones, setLocalMilestones] = useState<boolean[]>([false, false, false, false]);
@@ -469,15 +490,15 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
         : (activeSubject === "Chemistry"
           ? CHEMISTRY_TOPICS
           : getStudentSubjects(student.scores).reduce((acc, sub) => {
-              if (sub === "Chemistry") return [...acc, ...CHEMISTRY_TOPICS];
-              if (sub === "Physics") return [...acc, ...PHYSICS_TOPICS];
-              if (sub === "Mathematics") return [...acc, ...MATHS_TOPICS];
-              if (sub === "Biology") return [...acc, ...BIOLOGY_TOPICS];
-              return acc;
-            }, [] as string[]) as TopicName[]
-          )
+            if (sub === "Chemistry") return [...acc, ...CHEMISTRY_TOPICS];
+            if (sub === "Physics") return [...acc, ...PHYSICS_TOPICS];
+            if (sub === "Mathematics") return [...acc, ...MATHS_TOPICS];
+            if (sub === "Biology") return [...acc, ...BIOLOGY_TOPICS];
+            return acc;
+          }, [] as string[]) as TopicName[]
         )
-      )) as string[];
+      )
+    )) as string[];
 
   // Sync quizTopic to first available chapter if current is not in active topics
   useEffect(() => {
@@ -502,6 +523,23 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   useEffect(() => {
     syncStudentData();
   }, [student.rollNo]);
+
+  // GSAP: quiz answer feedback (pulse on correct, shake on wrong)
+  useEffect(() => {
+    if (!showFeedback || !quizCardRef.current || !currentQuestion) return;
+    const card = quizCardRef.current;
+    if (selectedAnswer === currentQuestion.answerIndex) {
+      gsap.fromTo(card, { scale: 0.97 }, { scale: 1, duration: 0.45, ease: "back.out(2.2)" });
+    } else {
+      gsap.fromTo(card, { x: -10 }, { x: 0, duration: 0.6, ease: "elastic.out(1, 0.3)" });
+    }
+  }, [showFeedback]);
+
+  // GSAP: dark mode crossfade flash on toggle
+  useEffect(() => {
+    if (!studentRootRef.current) return;
+    gsap.fromTo(studentRootRef.current, { opacity: 0.35 }, { opacity: 1, duration: 0.45, ease: "power2.out" });
+  }, [darkMode]);
 
   // Synchronize student state to localStorage to keep the session cache updated
   useEffect(() => {
@@ -553,6 +591,23 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     ? Math.round(topicKeys.reduce((sum, k) => sum + (student.scores[k] || 0), 0) / topicKeys.length)
     : 0;
 
+  // GSAP: animate the gauge percentage counter
+  useEffect(() => {
+    if (!gaugeTextRef.current) return;
+    const obj = { v: 0 };
+    const tween = gsap.to(obj, {
+      v: overallAvg,
+      duration: 1.2,
+      ease: "power2.out",
+      onUpdate: () => {
+        if (gaugeTextRef.current) gaugeTextRef.current.textContent = `${Math.round(obj.v)}%`;
+      },
+    });
+    return () => {
+      tween.kill();
+    };
+  }, [overallAvg]);
+
   // Calculate individual subject averages
   const chemScores = CHEMISTRY_TOPICS.map(t => student.scores[t] || 0);
   const chemAvg = chemScores.length > 0 ? Math.round(chemScores.reduce((sum, v) => sum + v, 0) / chemScores.length) : 0;
@@ -569,7 +624,10 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   // Syllabus Coverage and Completion Counts
   const totalTopicsCount = topicKeys.length;
   const studiedTopicsCount = (Object.values(student.scores) as number[]).filter(score => score > 0).length;
-  const completedTopicsCount = (Object.values(student.scores) as number[]).filter(score => score >= 75).length;
+  const completedChaptersCount = (Object.values(student.scores) as number[]).filter(score => score === 100).length;
+  const justThereChaptersCount = (Object.values(student.scores) as number[]).filter(score => score >= 67 && score < 100).length;
+  const inProgressChaptersCount = (Object.values(student.scores) as number[]).filter(score => score >= 34 && score < 67).length;
+  const justStartedChaptersCount = (Object.values(student.scores) as number[]).filter(score => score < 34).length;
 
   const getInitials = (name: string) => {
     if (!name) return "ST";
@@ -641,7 +699,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
   const cancelPrefetch = () => {
     if (prefetchRef.current) {
-      try { prefetchRef.current.controller.abort(); } catch {}
+      try { prefetchRef.current.controller.abort(); } catch { }
       prefetchRef.current = null;
     }
   };
@@ -928,7 +986,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                   { role: "assistant" as const, text: accumulated },
                 ]);
               }
-            } catch {}
+            } catch { }
           }
         }
       }
@@ -953,9 +1011,9 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
       gold: earned ? "text-yellow-400" : "text-slate-400",
       platinum: earned ? "text-cyan-400 animate-pulse" : "text-slate-400",
     };
-    
+
     const colorClass = tierColors[tier] || "text-slate-400";
-    
+
     switch (id) {
       case "first_steps":
         return <Star className={`${className} ${colorClass}`} />;
@@ -1014,9 +1072,9 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
         icon: "📘",
         tier: "bronze",
         earned: (studentSubjects.includes("Chemistry") && chemAvg >= 10) ||
-                (studentSubjects.includes("Physics") && physAvg >= 10) ||
-                (studentSubjects.includes("Mathematics") && mathAvg >= 10) ||
-                (studentSubjects.includes("Biology") && bioAvg >= 10)
+          (studentSubjects.includes("Physics") && physAvg >= 10) ||
+          (studentSubjects.includes("Mathematics") && mathAvg >= 10) ||
+          (studentSubjects.includes("Biology") && bioAvg >= 10)
       },
       { id: "on_track", title: "On Track", desc: "Overall average ≥ 25%", icon: "🎯", tier: "silver", earned: overallAvg >= 25 },
       { id: "half_way", title: "Half Way There", desc: "Overall average ≥ 50%", icon: "🏃", tier: "silver", earned: overallAvg >= 50 },
@@ -1092,25 +1150,27 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
 
   return (
-    <div id="student-view-container" className={`min-h-screen transition-all duration-300 font-sans flex flex-col ${darkMode ? "bg-slate-950 text-slate-100 dark" : "bg-slate-50 text-slate-900"}`}>
+    <div id="student-view-container" ref={studentRootRef} className={`min-h-screen transition-colors duration-300 font-sans flex flex-col ${darkMode ? "bg-slate-950 text-slate-100 dark" : "bg-[#eaf4fc] text-slate-900"}`}>
 
       {/* Pristine Glass Header */}
       <header className={`px-6 py-4 flex justify-between items-center border-b shrink-0 z-10 transition-colors duration-300 ${darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"}`}>
         <div className="flex items-center gap-3">
-          <div className="bg-indigo-600 p-2 rounded-xl flex items-center justify-center shadow-md shadow-indigo-600/10">
-            <SAMSLogo size={20} className="text-white" />
-          </div>
-          <span className="font-bold text-lg tracking-tight">
-            SAMS <span className="text-indigo-600">Analytics</span>
+          <SAMSLogo size={32} />
+          <span className="font-bold text-lg tracking-tight text-[#0f2d4a] dark:text-white">
+            SAMS <span className="text-[#3b6b95]">Analytics</span>
           </span>
         </div>
 
         <div className="flex items-center gap-4">
           {/* Global Dark Mode Switcher */}
           <button
+            ref={darkToggleRef}
             onClick={() => {
               setDarkMode(!darkMode);
               playChime(!darkMode);
+              if (darkToggleRef.current) {
+                gsap.fromTo(darkToggleRef.current, { rotate: -120, scale: 0.6 }, { rotate: 0, scale: 1, duration: 0.5, ease: "back.out(2)" });
+              }
             }}
             className={`p-2.5 rounded-xl border transition-all ${darkMode ? "bg-slate-800 border-slate-700 text-yellow-400" : "bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-800"
               }`}
@@ -1120,12 +1180,16 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
           </button>
 
           {/* Student Status Profile Badge */}
-          <div className="flex items-center gap-3">
+          <div
+            onClick={() => setShowProfilePopup(true)}
+            className="flex items-center gap-3 cursor-pointer hover:opacity-85 active:scale-95 transition-all group"
+            title="View Academic Profile"
+          >
             <div className="text-right hidden sm:block">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-400">Class {(student.classId || "xii-a").toUpperCase()} Roll {student.rollNo}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-400 group-hover:text-indigo-500 transition-colors">Class {(student.classId || "xii-a").toUpperCase()} Roll {student.rollNo}</p>
               <p className="text-xs font-extrabold">{student.name}</p>
             </div>
-            <div className="w-9 h-9 rounded-full bg-indigo-600 text-white font-extrabold flex items-center justify-center text-xs tracking-tight shadow-md shadow-indigo-600/10 uppercase">
+            <div className="w-9 h-9 rounded-full bg-indigo-600 text-white font-extrabold flex items-center justify-center text-xs tracking-tight shadow-md shadow-indigo-600/10 uppercase transition-transform group-hover:scale-105">
               {getInitials(student.name)}
             </div>
             <button
@@ -1140,76 +1204,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
         </div>
       </header>
 
-      {/* Formal Student Profile & Academic Contacts Bar */}
-      <div className={`px-4 sm:px-6 py-3 border-b text-[11px] font-bold transition-colors duration-300 ${darkMode ? "bg-slate-900/40 border-slate-800/80 text-slate-300" : "bg-slate-100/50 border-slate-200 text-slate-800"
-        }`}>
-        {/* Top row: Name, Roll, Mobile, Email */}
-        <div className="flex flex-wrap gap-x-6 gap-y-1.5 items-center justify-center">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-900 dark:text-slate-400">Student Name:</span>
-            <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{student.name}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-slate-900 dark:text-slate-400">Roll No:</span>
-            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-black">{student.rollNo}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-slate-900 dark:text-slate-400">Mobile No:</span>
-            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-extrabold">{student.phone}</span>
-          </div>
-          {student.email && (
-            <div className="flex items-center gap-2">
-              <span className="text-slate-900 dark:text-slate-400">Email:</span>
-              <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">{student.email}</span>
-            </div>
-          )}
-        </div>
-        {/* Second row: Faculty - always on its own line so it doesn't break awkwardly */}
-        <div className="flex flex-wrap items-center justify-center gap-1 mt-1.5 text-center text-xs">
-          <span className="text-slate-900 dark:text-slate-400 font-medium">Class Faculty:</span>
-          {(() => {
-            const facultyList: React.ReactNode[] = [];
-            if (studentSubjects.includes("Chemistry")) {
-              facultyList.push(
-                <span key="chem" className="text-indigo-600 dark:text-indigo-400 font-semibold">
-                  Pradeep Gusain (Chem)
-                </span>
-              );
-            }
-            if (studentSubjects.includes("Physics")) {
-              facultyList.push(
-                <span key="phy" className="text-indigo-600 dark:text-indigo-400 font-semibold">
-                  Narendra Kumar (Phy)
-                </span>
-              );
-            }
-            if (studentSubjects.includes("Mathematics")) {
-              facultyList.push(
-                <span key="math" className="text-indigo-600 dark:text-indigo-400 font-semibold">
-                  Tarun Makkar (Maths)
-                </span>
-              );
-            }
-            if (studentSubjects.includes("Biology")) {
-              facultyList.push(
-                <span key="bio" className="text-indigo-600 dark:text-indigo-400 font-semibold">
-                  Manishi Chawla (Bio)
-                </span>
-              );
-            }
-            const elements: React.ReactNode[] = [];
-            facultyList.forEach((fac, idx) => {
-              elements.push(fac);
-              if (idx < facultyList.length - 1) {
-                elements.push(
-                  <span key={`bullet-${idx}`} className="text-slate-400 dark:text-slate-600 hidden sm:inline">•</span>
-                );
-              }
-            });
-            return elements;
-          })()}
-        </div>
-      </div>
+
 
       {/* ── MOBILE: Achievements relative wrapper container ── */}
       <div className="relative lg:hidden">
@@ -1223,11 +1218,10 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
               <button
                 key={a.id}
                 onClick={() => setSelectedMobileAchievement(prev => prev === a.id ? null : a.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold shrink-0 transition-all cursor-pointer ${
-                  a.earned
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold shrink-0 transition-all cursor-pointer ${a.earned
                     ? tierBg[a.tier]
                     : darkMode ? "bg-slate-800/40 border-slate-700/30 opacity-35" : "bg-slate-100 border-slate-200 opacity-40"
-                } ${selectedMobileAchievement === a.id ? "ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-slate-950" : ""}`}
+                  } ${selectedMobileAchievement === a.id ? "ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-slate-950" : ""}`}
               >
                 <span>{getAchievementIcon(a.id, a.tier, a.earned, "h-3.5 w-3.5")}</span>
                 <span className={darkMode ? "text-slate-200" : "text-slate-700"}>{a.title}</span>
@@ -1241,7 +1235,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
           {selectedMobileAchievement && (() => {
             const activeAch = achievements.find((a) => a.id === selectedMobileAchievement);
             if (!activeAch) return null;
-            
+
             const requirementHints: Record<string, string> = {
               first_steps: "Start studying and record preparation score > 0% on any syllabus chapter.",
               quiz_warrior: "Complete at least one full adaptive AI Quiz session (5 rounds) in any topic.",
@@ -1258,23 +1252,21 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
               sams_scholar: "Maintain an outstanding cumulative overall syllabus preparation index of 90% or higher.",
               jee_ready: "Achieve and maintain a subject average of 80% or higher in Chemistry, Physics, and Maths.",
             };
-            
+
             return (
               <motion.div
                 initial={{ opacity: 0, y: -8, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.96 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                className={`absolute left-4 right-4 mt-1 p-4 rounded-2xl border shadow-2xl z-50 text-xs transition-all duration-300 ${
-                  darkMode ? "bg-slate-900 border-slate-800 text-slate-100 shadow-slate-950/90" : "bg-white border-indigo-100 text-slate-850 shadow-indigo-950/15"
-                }`}
+                className={`absolute left-4 right-4 mt-1 p-4 rounded-2xl border shadow-2xl z-50 text-xs transition-all duration-300 ${darkMode ? "bg-slate-900 border-slate-800 text-slate-100 shadow-slate-950/90" : "bg-white border-indigo-100 text-slate-850 shadow-indigo-950/15"
+                  }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${
-                    activeAch.earned
+                  <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${activeAch.earned
                       ? (darkMode ? "bg-indigo-500/15 border border-indigo-500/20" : "bg-indigo-50 border border-indigo-100")
                       : (darkMode ? "bg-slate-800/60 border-slate-700/40" : "bg-slate-100 border border-slate-200")
-                  }`}>
+                    }`}>
                     {getAchievementIcon(activeAch.id, activeAch.tier, activeAch.earned, "h-5 w-5")}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -1295,11 +1287,10 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                     <p className="mt-1 text-slate-500 dark:text-slate-355 font-bold leading-relaxed">
                       {activeAch.desc}
                     </p>
-                    <div className={`mt-2.5 p-2 rounded-lg border text-[10px] font-bold leading-relaxed ${
-                      activeAch.earned
+                    <div className={`mt-2.5 p-2 rounded-lg border text-[10px] font-bold leading-relaxed ${activeAch.earned
                         ? (darkMode ? "bg-emerald-950/25 border-emerald-900/35 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-700")
                         : (darkMode ? "bg-slate-800/30 border-slate-700/20 text-slate-400" : "bg-slate-100 border-slate-200 text-slate-600")
-                    }`}>
+                      }`}>
                       {activeAch.earned ? (
                         <span className="flex items-center gap-1">🏆 <strong>Earned:</strong> Requirement met! Keep going.</span>
                       ) : (
@@ -1340,17 +1331,15 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
             {achievements.map((a) => (
               <div
                 key={a.id}
-                className={`flex items-start gap-3 p-3 rounded-2xl border transition-all ${
-                  a.earned
+                className={`flex items-start gap-3 p-3 rounded-2xl border transition-all ${a.earned
                     ? tierBg[a.tier]
                     : darkMode ? "bg-slate-800/20 border-slate-800/40 opacity-40" : "bg-slate-50 border-slate-100 opacity-50"
-                }`}
+                  }`}
               >
-                <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${
-                  a.earned
+                <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${a.earned
                     ? (darkMode ? "bg-indigo-500/15 border border-indigo-500/20" : "bg-indigo-50 border border-indigo-100")
                     : (darkMode ? "bg-slate-850 border border-slate-800" : "bg-slate-100 border border-slate-200/60")
-                }`}>
+                  }`}>
                   {getAchievementIcon(a.id, a.tier, a.earned, "h-4 w-4")}
                 </div>
                 <div className="min-w-0">
@@ -1369,465 +1358,579 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
           </div>
         </aside>
 
-      {/* Main Student Hub Content */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
+        {/* Main Student Hub Content */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
 
-        {/* Top Highlight Welcome Grid */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Card 1: Curriculum Coverage Profile */}
-          <div className={`p-6 rounded-[2rem] border transition-all duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200/60 shadow-sm shadow-slate-100"
-            }`}>
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-800 dark:text-slate-400">Class XII Syllabus profile</span>
-            <h3 className="text-xl font-extrabold mt-1 tracking-tight text-indigo-700 dark:text-indigo-400">Curriculum Coverage</h3>
-
-            <div className="mt-4 space-y-3">
-              <div className="flex justify-between items-center text-xs font-semibold">
-                <span className="text-slate-900 dark:text-slate-300">Studied Chapters</span>
-                <span className="font-black text-slate-900 dark:text-slate-100">{studiedTopicsCount} / {totalTopicsCount}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs font-semibold">
-                <span className="text-slate-900 dark:text-slate-300">Completed (≥75% prep)</span>
-                <span className="font-black text-slate-900 dark:text-slate-100">{completedTopicsCount} / {totalTopicsCount}</span>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid gap-1 text-[10px] text-center font-extrabold text-slate-900 dark:text-slate-400"
-                   style={{ gridTemplateColumns: `repeat(${studentSubjects.length}, minmax(0, 1fr))` }}>
-                {studentSubjects.map((sub) => {
-                  const avg = sub === "Chemistry" ? chemAvg : sub === "Physics" ? physAvg : sub === "Mathematics" ? mathAvg : bioAvg;
-                  return (
-                    <div key={sub}>
-                      <span className="block text-slate-900 dark:text-slate-200 font-black text-xs">{avg}%</span>
-                      {sub}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Card 2: Cumulative Syllabus Mastery */}
-          <div className={`p-6 rounded-[2rem] border transition-all duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200/60 shadow-sm shadow-slate-100"
-            }`}>
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-800 dark:text-slate-400">Cumulative preparation rating</span>
-            <div className="flex items-baseline gap-2 mt-4">
-              <span className="text-5xl font-black text-indigo-700 dark:text-indigo-400">{overallAvg}%</span>
-              <span className="text-xs text-slate-900 dark:text-slate-300 font-bold uppercase">Overall Index</span>
-            </div>
-
-            {/* Dynamic visual progress gauge */}
-            <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full mt-4 overflow-hidden">
-              <div className="h-full bg-indigo-600 transition-all duration-500 rounded-full" style={{ width: `${overallAvg}%` }} />
-            </div>
-
-            <p className="text-[11px] text-slate-900 dark:text-slate-300 mt-4 leading-relaxed font-semibold">
-              Average preparation level compiled across milestones, assessments, and revision lists.
-            </p>
-          </div>
-        </section>
-
-        {/* Dynamic Subject Nav tabs */}
-        <section className={`flex flex-col sm:flex-row p-2 rounded-[2rem] border transition-colors duration-300 items-stretch sm:items-center justify-between gap-2 w-full ${darkMode ? "bg-slate-900 border-slate-800" : "bg-[#f1f5f9] border-slate-200/80"
-          }`}>
-          {studentSubjects.map((sub) => {
-            const isSelected = activeSubject === sub;
-            const unitCount = sub === "Chemistry" ? CHEMISTRY_TOPICS.length : sub === "Physics" ? PHYSICS_TOPICS.length : sub === "Mathematics" ? MATHS_TOPICS.length : BIOLOGY_TOPICS.length;
-
-            return (
-              <button
-                key={sub}
-                onClick={() => setActiveSubject(sub as any)}
-                className={`flex-1 flex items-center justify-center gap-2.5 py-3 sm:py-4 px-4 sm:px-6 rounded-2xl font-black text-sm md:text-base transition-all duration-200 cursor-pointer ${isSelected
-                  ? darkMode
-                    ? "bg-slate-950 border-2 border-slate-200 text-white shadow-md"
-                    : "bg-white border-[2.5px] border-black text-indigo-700 shadow-sm"
-                  : darkMode
-                    ? "bg-transparent border-[2.5px] border-transparent text-slate-400 hover:text-slate-200"
-                    : "bg-transparent border-[2.5px] border-transparent text-slate-900 hover:text-black font-black"
-                  }`}
-              >
-                <span className="tracking-tight">{sub}</span>
-                <span className={`text-[10px] md:text-xs font-mono font-bold px-2 py-0.5 rounded-full shrink-0 transition-colors ${isSelected
-                  ? darkMode
-                    ? "bg-indigo-950 text-indigo-300"
-                    : "bg-indigo-100/60 text-indigo-700"
-                  : darkMode
-                    ? "bg-slate-800 text-slate-500"
-                    : "bg-slate-200 text-slate-900 font-extrabold"
-                  }`}>
-                  {unitCount} Units
-                </span>
-              </button>
-            );
-          })}
-        </section>
-
-        {/* Active Subject Progress Unit Cards */}
-        <section className="space-y-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 dark:border-slate-800/80 pb-4">
-            <div className="space-y-1">
-              <h2 className="text-2xl md:text-3xl font-black tracking-tight text-black dark:text-white" style={{ color: darkMode ? '#ffffff' : '#000000' }}>
-                {activeSubject} Syllabus
-              </h2>
-              <p className="text-xs md:text-sm text-slate-900 dark:text-slate-400 font-medium">
-                Monitor evaluation benchmarks across core curricular units.
-              </p>
-            </div>
-            <div className={`px-4 py-2 rounded-2xl border flex items-center gap-2 shrink-0 ${darkMode ? "bg-slate-900 border-slate-800 text-slate-300" : "bg-indigo-50/50 border-indigo-100/50 text-indigo-950"
+          {/* Top Highlight Welcome Grid */}
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Card 1: Curriculum Coverage Summary */}
+            <div className={`p-6 rounded-[2rem] border transition-all duration-300 flex flex-col justify-between ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200/60 shadow-sm"
               }`}>
-              <Award className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-              <span className="text-xs font-extrabold">Subject Average Prep:</span>
-              <span className="text-xs font-black font-mono text-indigo-600 dark:text-indigo-400">{activeSubjectAvg}%</span>
-            </div>
-          </div>
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-black tracking-tight text-[#0f2d4a] dark:text-white font-display">
+                    Curriculum Coverage Summary
+                  </h3>
+                </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {activeTopics.map((topic) => {
-              const score = student.scores[topic] || 0;
-              const { code, colorClass, barColor } = getTopicAbbreviation(topic);
-              return (
-                <button
-                  key={topic}
-                  onClick={() => {
-                    setSelectedTopic(topic);
-                    setActiveTab("cheat");
-                  }}
-                  className={`p-4 rounded-3xl border text-left transition-all hover:scale-[1.02] cursor-pointer hover:shadow-lg flex flex-col justify-between h-40 ${darkMode ? "bg-slate-900 border-slate-800 hover:border-slate-700" : "bg-white border-slate-200/60 hover:border-slate-300"
-                    }`}
-                >
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <div className={`w-9 h-9 rounded-xl font-black flex items-center justify-center text-xs tracking-wider shadow-sm ${colorClass}`}>
-                        {code}
-                      </div>
-                      <span className="text-[10px] font-mono font-black text-slate-900 dark:text-slate-400 uppercase">Roll No {student.rollNo}</span>
-                    </div>
-                    <h4 className="text-xs font-extrabold line-clamp-2 leading-snug">{topic}</h4>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-900 dark:text-slate-400">
-                      <span>Progression</span>
-                      <span className={`font-extrabold ${
-                        score >= 80 ? "text-emerald-600 dark:text-emerald-400" :
-                        score >= 60 ? "text-sky-600 dark:text-sky-400" :
-                        score >= 40 ? "text-amber-600 dark:text-amber-400" :
-                        "text-rose-600 dark:text-rose-400"
-                      }`}>{score}%</span>
+                <div className="space-y-4">
+                  {/* 1. Completed Chapters (100%) */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-[11px] font-bold text-slate-700 dark:text-slate-400">
+                      <span>Completed Chapters (100% Prep)</span>
+                      <span className="font-black font-mono">({completedChaptersCount}/{totalTopicsCount})</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-300 ${
-                        score >= 80 ? "bg-emerald-500" :
-                        score >= 60 ? "bg-sky-500" :
-                        score >= 40 ? "bg-amber-500" :
-                        "bg-rose-500"
-                      }`} style={{ width: `${score}%` }} />
+                      <div
+                        className="h-full bg-emerald-500 transition-all duration-500 rounded-full"
+                        style={{ width: `${(completedChaptersCount / totalTopicsCount) * 100}%` }}
+                      />
                     </div>
                   </div>
+
+                  {/* 2. Just There (67-99%) */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-[11px] font-bold text-slate-700 dark:text-slate-400">
+                      <span>Just There (67-99% Prep)</span>
+                      <span className="font-black font-mono">({justThereChaptersCount}/{totalTopicsCount})</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-500 transition-all duration-500 rounded-full"
+                        style={{ width: `${(justThereChaptersCount / totalTopicsCount) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 3. In Progress (34-66%) */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-[11px] font-bold text-slate-700 dark:text-slate-400">
+                      <span>In Progress (34-66% Prep)</span>
+                      <span className="font-black font-mono">({inProgressChaptersCount}/{totalTopicsCount})</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-amber-500 transition-all duration-500 rounded-full"
+                        style={{ width: `${(inProgressChaptersCount / totalTopicsCount) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 4. To Be Started / Just Started (<34%) */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-[11px] font-bold text-slate-700 dark:text-slate-400">
+                      <span>To Be Started / Just Started (&lt;34% Prep)</span>
+                      <span className="font-black font-mono">({justStartedChaptersCount}/{totalTopicsCount})</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-rose-500 transition-all duration-500 rounded-full"
+                        style={{ width: `${(justStartedChaptersCount / totalTopicsCount) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Preparation Rating */}
+            <div className={`p-6 rounded-[2rem] border transition-all duration-300 flex flex-col justify-between ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200/60 shadow-sm"
+              }`}>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-lg font-black tracking-tight text-[#0f2d4a] dark:text-white font-display">
+                    Preparation Rating
+                  </h3>
+                  {(() => {
+                    let badgeColors = "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-300";
+                    let label = "Mastered";
+                    let Icon = TrendingUp;
+
+                    if (overallAvg >= 80) {
+                      badgeColors = "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-300";
+                      label = "Mastered";
+                      Icon = TrendingUp;
+                    } else if (overallAvg >= 60) {
+                      badgeColors = "bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-900/40 text-sky-700 dark:text-sky-300";
+                      label = "Strong";
+                      Icon = TrendingUp;
+                    } else if (overallAvg >= 40) {
+                      badgeColors = "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-300";
+                      label = "Developing";
+                      Icon = TrendingUp;
+                    } else {
+                      badgeColors = "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/40 text-rose-700 dark:text-rose-300";
+                      label = "Critical";
+                      Icon = Zap;
+                    }
+
+                    return (
+                      <span className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-wider ${badgeColors}`}>
+                        <Icon className="h-3 w-3 shrink-0" /> {label}
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                {/* Dynamic visual semi-circular progress gauge */}
+                <div className="flex flex-col items-center justify-center relative py-2">
+                  <svg viewBox="0 0 180 90" className="w-full max-w-[185px] h-auto overflow-visible">
+                    {/* Gauge Background Trail */}
+                    <path
+                      d="M 20 80 A 70 70 0 0 1 160 80"
+                      stroke={darkMode ? "#1e293b" : "#f1f5f9"}
+                      strokeWidth="12"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                    {/* Gauge Progress Path */}
+                    <path
+                      d="M 20 80 A 70 70 0 0 1 160 80"
+                      stroke="#10b981"
+                      strokeWidth="12"
+                      strokeLinecap="round"
+                      fill="none"
+                      strokeDasharray="220"
+                      strokeDashoffset={220 - (220 * overallAvg) / 100}
+                      className="transition-all duration-1000 ease-out"
+                    />
+                    {/* Gauge Inner Text Overlay (Responsive inside SVG) */}
+                    <text
+                      ref={gaugeTextRef}
+                      x="90"
+                      y="58"
+                      textAnchor="middle"
+                      className="fill-[#0f2d4a] dark:fill-white font-black text-2xl font-display"
+                    >
+                      {overallAvg}%
+                    </text>
+                    <text
+                      x="90"
+                      y="74"
+                      textAnchor="middle"
+                      className="fill-slate-400 dark:fill-slate-500 font-black text-[7.5px] uppercase tracking-widest font-sans"
+                    >
+                      Overall Prep Index
+                    </text>
+                  </svg>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 text-center leading-relaxed font-semibold min-h-[32px] flex items-center justify-center">
+                {overallAvg >= 90
+                  ? "Outstanding preparation! You have achieved mastery across almost all key topics. Keep reviewing milestone tasks to maintain your top rank."
+                  : overallAvg >= 75
+                    ? "Great progress! You are showing a solid grasp of most chapters. Focus on clarifying minor doubts in chapters under review to achieve complete mastery."
+                    : overallAvg >= 50
+                      ? "Steady progress! You have completed a good portion of the syllabus. Focus on moving your 'In Progress' chapters into high prep to boost your score."
+                      : "Action required: Several core chapters need your attention. Prioritize completing study guides and attempt revision quizzes to build up your preparation."}
+              </p>
+            </div>
+          </section>
+
+          {/* Dynamic Subject Nav tabs */}
+          <section className={`flex flex-col sm:flex-row p-2 rounded-[2rem] border transition-colors duration-300 items-stretch sm:items-center justify-between gap-2 w-full ${darkMode ? "bg-slate-900 border-slate-800" : "bg-[#f1f5f9] border-slate-200/80"
+            }`}>
+            {studentSubjects.map((sub) => {
+              const isSelected = activeSubject === sub;
+              const unitCount = sub === "Chemistry" ? CHEMISTRY_TOPICS.length : sub === "Physics" ? PHYSICS_TOPICS.length : sub === "Mathematics" ? MATHS_TOPICS.length : BIOLOGY_TOPICS.length;
+
+              return (
+                <button
+                  key={sub}
+                  onClick={() => setActiveSubject(sub as any)}
+                  className={`flex-1 flex items-center justify-center gap-2.5 py-3 sm:py-4 px-4 sm:px-6 rounded-2xl font-black text-sm md:text-base transition-all duration-200 cursor-pointer ${isSelected
+                    ? darkMode
+                      ? "bg-slate-950 border-2 border-slate-200 text-white shadow-md"
+                      : "bg-white border-[2.5px] border-black text-indigo-700 shadow-sm"
+                    : darkMode
+                      ? "bg-transparent border-[2.5px] border-transparent text-slate-400 hover:text-slate-200"
+                      : "bg-transparent border-[2.5px] border-transparent text-slate-900 hover:text-black font-black"
+                    }`}
+                >
+                  <span className="tracking-tight">{sub}</span>
+                  <span className={`text-[10px] md:text-xs font-mono font-bold px-2 py-0.5 rounded-full shrink-0 transition-colors ${isSelected
+                    ? darkMode
+                      ? "bg-indigo-950 text-indigo-300"
+                      : "bg-indigo-100/60 text-indigo-700"
+                    : darkMode
+                      ? "bg-slate-800 text-slate-500"
+                      : "bg-slate-200 text-slate-900 font-extrabold"
+                    }`}>
+                    {unitCount} Units
+                  </span>
                 </button>
               );
             })}
-          </div>
-        </section>
+          </section>
 
-        {/* Adaptive AI Quiz Panel */}
-        <section className={`p-6 rounded-[2rem] border relative overflow-hidden transition-all duration-300 ${darkMode
-          ? "bg-slate-900/60 border-slate-800 text-white"
-          : "bg-white border-slate-200/80 shadow-md shadow-slate-100 text-slate-900"}`}>
-          <div className={`absolute inset-0 pointer-events-none z-0 ${darkMode
-            ? "bg-gradient-to-br from-indigo-950/10 via-slate-950/30 to-cyan-950/10"
-            : "bg-gradient-to-br from-indigo-50/20 via-white to-sky-50/20"}`} />
-
-          <div className="relative z-10 space-y-6">
-            {!quizStarted ? (
-              /* Pre-Quiz Selection */
-              <div className="max-w-2xl space-y-4">
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${darkMode
-                    ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/20"
-                    : "bg-indigo-50 text-indigo-600 border-indigo-100"}`}>
-                    Adaptive AI Quiz
-                  </span>
-                </div>
-                <h3 className={`text-2xl font-black font-display ${darkMode ? "text-white" : "text-slate-900"}`}>
-                  Adaptive Assessment Session
-                </h3>
-                <p className={`text-sm leading-relaxed font-semibold ${darkMode ? "text-indigo-200" : "text-slate-700"}`}>
-                  5 questions, one at a time. Difficulty adjusts based on your answers — correct gets harder, wrong gets easier. Full performance report at the end.
+          {/* Active Subject Progress Unit Cards */}
+          <section className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/60 dark:border-slate-800/80 pb-4">
+              <div className="space-y-1">
+                <h2 className="text-2xl md:text-3xl font-black tracking-tight text-black dark:text-white" style={{ color: darkMode ? '#ffffff' : '#000000' }}>
+                  {activeSubject} Syllabus
+                </h2>
+                <p className="text-xs md:text-sm text-slate-900 dark:text-slate-400 font-medium">
+                  Monitor evaluation benchmarks across core curricular units.
                 </p>
-
-                {quizError && (
-                  <div className="p-3 bg-rose-950/60 border border-rose-900/40 text-rose-300 rounded-xl flex items-center gap-2 text-sm font-semibold">
-                    <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                    <span>{quizError}</span>
-                  </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-3 items-stretch sm:items-end">
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <label className={`block text-xs font-black uppercase tracking-wider ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
-                      Select Topic
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={quizTopic}
-                        onChange={(e) => setQuizTopic(e.target.value)}
-                        className={`w-full border rounded-xl pl-4 pr-10 py-3 text-base font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer appearance-none ${darkMode
-                          ? "bg-slate-950 text-white border-slate-800"
-                          : "bg-slate-50 text-slate-900 border-slate-200"}`}
-                      >
-                        {activeTopics.map((chap) => (
-                          <option key={chap} value={chap}>{chap}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleStartQuiz}
-                    disabled={quizLoading}
-                    className={`font-extrabold text-sm px-6 py-3.5 rounded-xl transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2 min-w-[180px] ${darkMode
-                      ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white"
-                      : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white"}`}
-                  >
-                    {quizLoading ? (
-                      <><Loader className="w-4 h-4 animate-spin" /> Generating...</>
-                    ) : (
-                      <><Zap className="w-4 h-4" /> Start Quiz</>
-                    )}
-                  </button>
-                </div>
               </div>
-            ) : quizFinished && quizState ? (
-              /* Performance Report */
-              <div className="space-y-6 max-w-2xl">
-                <div className="text-center space-y-2">
-                  <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${darkMode ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border-emerald-100"}`}>
-                    Session Complete
-                  </span>
-                  <h3 className={`text-2xl font-black ${darkMode ? "text-white" : "text-slate-900"}`}>
-                    Performance Report
-                  </h3>
-                  <p className={`text-sm font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                    Topic: {quizState.topic}
-                  </p>
-                </div>
+              <div className={`px-4 py-2 rounded-2xl border flex items-center gap-2 shrink-0 ${darkMode ? "bg-slate-900 border-slate-800 text-slate-300" : "bg-indigo-50/50 border-indigo-100/50 text-indigo-950"
+                }`}>
+                <Award className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                <span className="text-xs font-extrabold">Subject Average Prep:</span>
+                <span className="text-xs font-black font-mono text-indigo-600 dark:text-indigo-400"><AnimatedCounter value={activeSubjectAvg} suffix="%" /></span>
+              </div>
+            </div>
 
-                {/* Score card */}
-                <div className={`p-5 rounded-2xl border text-center ${darkMode ? "bg-slate-800/60 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
-                  <div className="flex items-center justify-center gap-4">
-                    <span className="text-6xl font-black text-indigo-600">{quizState.correctCount}</span>
-                    <div className="text-left">
-                      <p className={`text-xs font-bold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-slate-500"}`}>out of 5</p>
-                      <p className={`text-sm font-extrabold ${darkMode ? "text-slate-200" : "text-slate-700"}`}>
-                        {quizState.correctCount === 5 ? "🏆 Perfect!" : quizState.correctCount >= 4 ? "🌟 Excellent!" : quizState.correctCount >= 3 ? "👍 Good work" : quizState.correctCount >= 2 ? "📚 Keep practicing" : "💪 Don't give up!"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={`h-2 rounded-full mt-4 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}>
-                    <div className={`h-full rounded-full transition-all duration-700 ${quizState.correctCount >= 4 ? "bg-emerald-500" : quizState.correctCount >= 3 ? "bg-amber-500" : "bg-rose-500"}`}
-                      style={{ width: `${(quizState.correctCount / 5) * 100}%` }} />
-                  </div>
-                </div>
-
-                {/* Difficulty progression */}
-                <div>
-                  <p className={`text-xs font-black uppercase tracking-wider mb-2 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Question Breakdown</p>
-                  <div className="space-y-2">
-                    {quizState.history.map((h, i) => (
-                      <div key={i} className={`flex items-start gap-3 p-3 rounded-xl border ${darkMode ? "bg-slate-800/40 border-slate-700/40" : "bg-slate-50 border-slate-100"}`}>
-                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 mt-0.5 ${h.correct ? (darkMode ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-700") : (darkMode ? "bg-rose-500/20 text-rose-400" : "bg-rose-100 text-rose-600")}`}>
-                          {i + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full ${h.difficulty === "hard" ? "bg-rose-100 text-rose-600" : h.difficulty === "medium" ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"}`}>
-                              {h.difficulty}
-                            </span>
-                            <span className={`text-xs font-bold ${h.correct ? (darkMode ? "text-emerald-400" : "text-emerald-700") : (darkMode ? "text-rose-400" : "text-rose-600")}`}>
-                              {h.correct ? "✓ Correct" : "✗ Incorrect"}
-                            </span>
-                          </div>
-                          <div className={`text-xs mt-1 leading-snug line-clamp-2 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>{parseMarkdownAndMath(h.question)}</div>
-                          {!h.correct && (
-                            <div className={`text-[10px] mt-1 leading-snug ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{parseMarkdownAndMath(h.explanation)}</div>
-                          )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {activeTopics.map((topic) => {
+                const score = student.scores[topic] || 0;
+                const { code, colorClass, barColor } = getTopicAbbreviation(topic);
+                return (
+                  <button
+                    key={topic}
+                    onClick={() => {
+                      setSelectedTopic(topic);
+                      setActiveTab("cheat");
+                    }}
+                    onMouseEnter={(e) => gsap.to(e.currentTarget, { scale: 1.03, y: -4, duration: 0.25, ease: "power2.out" })}
+                    onMouseLeave={(e) => gsap.to(e.currentTarget, { scale: 1, y: 0, duration: 0.3, ease: "power2.out" })}
+                    className={`p-4 rounded-3xl border text-left cursor-pointer hover:shadow-lg flex flex-col justify-between h-40 ${darkMode ? "bg-slate-900 border-slate-800 hover:border-slate-700" : "bg-white border-slate-200/60 hover:border-slate-300"
+                      }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <div className={`w-9 h-9 rounded-xl font-black flex items-center justify-center text-xs tracking-wider shadow-sm ${colorClass}`}>
+                          {code}
                         </div>
+                        <span className="text-[10px] font-mono font-black text-slate-900 dark:text-slate-400 uppercase">Roll No {student.rollNo}</span>
                       </div>
-                    ))}
+                      <h4 className="text-xs font-extrabold line-clamp-2 leading-snug">{topic}</h4>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-900 dark:text-slate-400">
+                        <span>Progression</span>
+                        <span className={`font-extrabold ${score >= 80 ? "text-emerald-600 dark:text-emerald-400" :
+                            score >= 60 ? "text-sky-600 dark:text-sky-400" :
+                              score >= 40 ? "text-amber-600 dark:text-amber-400" :
+                                "text-rose-600 dark:text-rose-400"
+                          }`}><AnimatedCounter value={score} suffix="%" /></span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-300 ${score >= 80 ? "bg-emerald-500" :
+                            score >= 60 ? "bg-sky-500" :
+                              score >= 40 ? "bg-amber-500" :
+                                "bg-rose-500"
+                          }`} style={{ width: `${score}%` }} />
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Adaptive AI Quiz Panel */}
+          <section className={`p-6 rounded-[2rem] border relative overflow-hidden transition-all duration-300 ${darkMode
+            ? "bg-slate-900/60 border-slate-800 text-white"
+            : "bg-white border-slate-200/80 shadow-md shadow-slate-100 text-slate-900"}`}>
+            <div className={`absolute inset-0 pointer-events-none z-0 ${darkMode
+              ? "bg-gradient-to-br from-indigo-950/10 via-slate-950/30 to-cyan-950/10"
+              : "bg-gradient-to-br from-indigo-50/20 via-white to-sky-50/20"}`} />
+
+            <div className="relative z-10 space-y-6">
+              <AnimatePresence>
+              {!quizStarted ? (
+                /* Pre-Quiz Selection */
+                <div className="max-w-2xl space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${darkMode
+                      ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/20"
+                      : "bg-indigo-50 text-indigo-600 border-indigo-100"}`}>
+                      Adaptive AI Quiz
+                    </span>
+                  </div>
+                  <h3 className={`text-2xl font-black font-display ${darkMode ? "text-white" : "text-slate-900"}`}>
+                    Adaptive Assessment Session
+                  </h3>
+                  <p className={`text-sm leading-relaxed font-semibold ${darkMode ? "text-indigo-200" : "text-slate-700"}`}>
+                    5 questions, one at a time. Difficulty adjusts based on your answers — correct gets harder, wrong gets easier. Full performance report at the end.
+                  </p>
+
+                  {quizError && (
+                    <div className="p-3 bg-rose-950/60 border border-rose-900/40 text-rose-300 rounded-xl flex items-center gap-2 text-sm font-semibold">
+                      <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                      <span>{quizError}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-3 pt-3 items-stretch sm:items-end">
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <label className={`block text-xs font-black uppercase tracking-wider ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
+                        Select Topic
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={quizTopic}
+                          onChange={(e) => setQuizTopic(e.target.value)}
+                          className={`w-full border rounded-xl pl-4 pr-10 py-3 text-base font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer appearance-none ${darkMode
+                            ? "bg-slate-950 text-white border-slate-800"
+                            : "bg-slate-50 text-slate-900 border-slate-200"}`}
+                        >
+                          {activeTopics.map((chap) => (
+                            <option key={chap} value={chap}>{chap}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleStartQuiz}
+                      disabled={quizLoading}
+                      className={`font-extrabold text-sm px-6 py-3.5 rounded-xl transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2 min-w-[180px] ${darkMode
+                        ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white"
+                        : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white"}`}
+                    >
+                      {quizLoading ? (
+                        <><Loader className="w-4 h-4 animate-spin" /> Generating...</>
+                      ) : (
+                        <><Zap className="w-4 h-4" /> Start Quiz</>
+                      )}
+                    </button>
                   </div>
                 </div>
-
-                {/* Recommendation */}
-                {quizState.correctCount < 5 && (
-                  <div className={`p-4 rounded-2xl border ${darkMode ? "bg-indigo-950/40 border-indigo-800/40" : "bg-indigo-50 border-indigo-100"}`}>
-                    <p className={`text-xs font-extrabold uppercase tracking-wider mb-1 ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>Study Recommendation</p>
-                    <p className={`text-xs font-semibold leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
-                      Review the incorrect questions above and revisit your {quizState.topic} notes. Focus on the explanations provided — they target the exact concept gaps.
+              ) : quizFinished && quizState ? (
+                /* Performance Report */
+                <div className="space-y-6 max-w-2xl">
+                  <div className="text-center space-y-2">
+                    <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${darkMode ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border-emerald-100"}`}>
+                      Session Complete
+                    </span>
+                    <h3 className={`text-2xl font-black ${darkMode ? "text-white" : "text-slate-900"}`}>
+                      Performance Report
+                    </h3>
+                    <p className={`text-sm font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                      Topic: {quizState.topic}
                     </p>
                   </div>
-                )}
 
-                <button
-                  onClick={handleRestartQuiz}
-                  className="w-full flex items-center justify-center gap-2 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all"
-                >
-                  <RefreshCw className="h-4 w-4" /> Start New Quiz
-                </button>
-              </div>
-            ) : (
-              /* Active Question */
-              <div className="space-y-5 max-w-2xl">
-                {/* Header */}
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div>
-                    <span className={`text-[10px] font-extrabold tracking-widest uppercase ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
-                      Active Assessment
-                    </span>
-                    <h4 className={`text-base font-black mt-0.5 ${darkMode ? "text-white" : "text-slate-900"}`}>
-                      {quizState?.topic || quizTopic}
-                    </h4>
+                  {/* Score card */}
+                  <div className={`p-5 rounded-2xl border text-center ${darkMode ? "bg-slate-800/60 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
+                    <div className="flex items-center justify-center gap-4">
+                      <span className="text-6xl font-black text-indigo-600">{quizState.correctCount}</span>
+                      <div className="text-left">
+                        <p className={`text-xs font-bold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-slate-500"}`}>out of 5</p>
+                        <p className={`text-sm font-extrabold ${darkMode ? "text-slate-200" : "text-slate-700"}`}>
+                          {quizState.correctCount === 5 ? "🏆 Perfect!" : quizState.correctCount >= 4 ? "🌟 Excellent!" : quizState.correctCount >= 3 ? "👍 Good work" : quizState.correctCount >= 2 ? "📚 Keep practicing" : "💪 Don't give up!"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`h-2 rounded-full mt-4 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}>
+                      <div className={`h-full rounded-full transition-all duration-700 ${quizState.correctCount >= 4 ? "bg-emerald-500" : quizState.correctCount >= 3 ? "bg-amber-500" : "bg-rose-500"}`}
+                        style={{ width: `${(quizState.correctCount / 5) * 100}%` }} />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {/* Progress dots */}
-                    <div className="flex gap-1">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className={`w-2 h-2 rounded-full ${i < (quizState?.roundsCompleted || 0)
-                          ? (quizState?.history[i]?.correct ? "bg-emerald-500" : "bg-rose-500")
-                          : i === (quizState?.roundsCompleted || 0) ? "bg-indigo-500 animate-pulse" : (darkMode ? "bg-slate-700" : "bg-slate-200")}`} />
+
+                  {/* Difficulty progression */}
+                  <div>
+                    <p className={`text-xs font-black uppercase tracking-wider mb-2 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Question Breakdown</p>
+                    <div className="space-y-2">
+                      {quizState.history.map((h, i) => (
+                        <div key={i} className={`flex items-start gap-3 p-3 rounded-xl border ${darkMode ? "bg-slate-800/40 border-slate-700/40" : "bg-slate-50 border-slate-100"}`}>
+                          <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 mt-0.5 ${h.correct ? (darkMode ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-700") : (darkMode ? "bg-rose-500/20 text-rose-400" : "bg-rose-100 text-rose-600")}`}>
+                            {i + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full ${h.difficulty === "hard" ? "bg-rose-100 text-rose-600" : h.difficulty === "medium" ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"}`}>
+                                {h.difficulty}
+                              </span>
+                              <span className={`text-xs font-bold ${h.correct ? (darkMode ? "text-emerald-400" : "text-emerald-700") : (darkMode ? "text-rose-400" : "text-rose-600")}`}>
+                                {h.correct ? "✓ Correct" : "✗ Incorrect"}
+                              </span>
+                            </div>
+                            <div className={`text-xs mt-1 leading-snug line-clamp-2 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>{parseMarkdownAndMath(h.question)}</div>
+                            {!h.correct && (
+                              <div className={`text-[10px] mt-1 leading-snug ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{parseMarkdownAndMath(h.explanation)}</div>
+                            )}
+                          </div>
+                        </div>
                       ))}
                     </div>
-                    <span className={`text-xs font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                      {(quizState?.roundsCompleted || 0) + 1}/5
-                    </span>
-                    {/* Difficulty badge */}
-                    {quizState && (
-                      <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${quizState.difficulty === "hard" ? "bg-rose-100 text-rose-700" : quizState.difficulty === "medium" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                        {quizState.difficulty}
-                      </span>
-                    )}
                   </div>
+
+                  {/* Recommendation */}
+                  {quizState.correctCount < 5 && (
+                    <div className={`p-4 rounded-2xl border ${darkMode ? "bg-indigo-950/40 border-indigo-800/40" : "bg-indigo-50 border-indigo-100"}`}>
+                      <p className={`text-xs font-extrabold uppercase tracking-wider mb-1 ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>Study Recommendation</p>
+                      <p className={`text-xs font-semibold leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+                        Review the incorrect questions above and revisit your {quizState.topic} notes. Focus on the explanations provided — they target the exact concept gaps.
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleRestartQuiz}
+                    className="w-full flex items-center justify-center gap-2 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all"
+                  >
+                    <RefreshCw className="h-4 w-4" /> Start New Quiz
+                  </button>
                 </div>
-
-                {quizLoading ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-4">
-                    <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                    <p className={`text-sm font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Generating next question...</p>
+              ) : (
+                /* Active Question */
+                <div className="space-y-5 max-w-2xl">
+                  {/* Header */}
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <span className={`text-[10px] font-extrabold tracking-widest uppercase ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
+                        Active Assessment
+                      </span>
+                      <h4 className={`text-base font-black mt-0.5 ${darkMode ? "text-white" : "text-slate-900"}`}>
+                        {quizState?.topic || quizTopic}
+                      </h4>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* Progress dots */}
+                      <div className="flex gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <div key={i} className={`w-2 h-2 rounded-full ${i < (quizState?.roundsCompleted || 0)
+                            ? (quizState?.history[i]?.correct ? "bg-emerald-500" : "bg-rose-500")
+                            : i === (quizState?.roundsCompleted || 0) ? "bg-indigo-500 animate-pulse" : (darkMode ? "bg-slate-700" : "bg-slate-200")}`} />
+                        ))}
+                      </div>
+                      <span className={`text-xs font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                        {(quizState?.roundsCompleted || 0) + 1}/5
+                      </span>
+                      {/* Difficulty badge */}
+                      {quizState && (
+                        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${quizState.difficulty === "hard" ? "bg-rose-100 text-rose-700" : quizState.difficulty === "medium" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                          {quizState.difficulty}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                ) : quizError ? (
-                  <div className="space-y-4 py-8 text-center max-w-md mx-auto">
-                    <div className="mx-auto w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                      <AlertCircle className="h-6 w-6" />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className={`text-sm font-black ${darkMode ? "text-white" : "text-slate-900"}`}>Failed to load question</h4>
-                      <p className={`text-xs font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{quizError}</p>
-                    </div>
-                    <div className="flex items-center justify-center gap-3 pt-2">
-                      <button
-                        onClick={() => quizState && fetchNextQuestion(quizState)}
-                        className="px-4 py-2 font-extrabold text-xs rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all cursor-pointer"
-                      >
-                        Try Again
-                      </button>
-                      <button
-                        onClick={handleRestartQuiz}
-                        className={`px-4 py-2 font-extrabold text-xs rounded-xl border transition-all cursor-pointer ${
-                          darkMode ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                        }`}
-                      >
-                        Exit Quiz
-                      </button>
-                    </div>
-                  </div>
-                ) : currentQuestion ? (
-                  <div className={`p-5 rounded-2xl border space-y-4 ${darkMode ? "bg-slate-950/40 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-                    {/* Question */}
-                    <div className={`text-sm font-bold leading-relaxed select-text ${darkMode ? "text-white" : "text-slate-900"}`}>
-                      {parseMarkdownAndMath(currentQuestion.question)}
-                    </div>
 
-                    {/* Options */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {currentQuestion.options.map((opt: string, optIdx: number) => {
-                        const isSelected = selectedAnswer === optIdx;
-                        const isCorrect = optIdx === currentQuestion.answerIndex;
+                  {quizLoading ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-4">
+                      <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                      <p className={`text-sm font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Generating next question...</p>
+                    </div>
+                  ) : quizError ? (
+                    <div className="space-y-4 py-8 text-center max-w-md mx-auto">
+                      <div className="mx-auto w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                        <AlertCircle className="h-6 w-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className={`text-sm font-black ${darkMode ? "text-white" : "text-slate-900"}`}>Failed to load question</h4>
+                        <p className={`text-xs font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{quizError}</p>
+                      </div>
+                      <div className="flex items-center justify-center gap-3 pt-2">
+                        <button
+                          onClick={() => quizState && fetchNextQuestion(quizState)}
+                          className="px-4 py-2 font-extrabold text-xs rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all cursor-pointer"
+                        >
+                          Try Again
+                        </button>
+                        <button
+                          onClick={handleRestartQuiz}
+                          className={`px-4 py-2 font-extrabold text-xs rounded-xl border transition-all cursor-pointer ${darkMode ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                            }`}
+                        >
+                          Exit Quiz
+                        </button>
+                      </div>
+                    </div>
+                  ) : currentQuestion ? (
+                    <div ref={quizCardRef} className={`p-5 rounded-2xl border space-y-4 ${darkMode ? "bg-slate-950/40 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
+                      {/* Question */}
+                      <div className={`text-sm font-bold leading-relaxed select-text ${darkMode ? "text-white" : "text-slate-900"}`}>
+                        {parseMarkdownAndMath(currentQuestion.question)}
+                      </div>
 
-                        let style = "";
-                        if (showFeedback) {
-                          if (isCorrect) style = darkMode ? "bg-emerald-600 border-emerald-400 text-white" : "bg-emerald-50 border-emerald-300 text-emerald-700 font-extrabold";
-                          else if (isSelected) style = darkMode ? "bg-rose-600 border-rose-400 text-white" : "bg-rose-50 border-rose-200 text-rose-600";
-                          else style = "opacity-40 " + (darkMode ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-white border-slate-200 text-slate-500");
-                        } else {
-                          style = isSelected
-                            ? darkMode ? "bg-indigo-600 border-indigo-400 text-white" : "bg-indigo-50 border-indigo-300 text-indigo-700 font-extrabold"
-                            : darkMode ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750 hover:border-indigo-700" : "bg-white border-slate-200 text-slate-800 hover:bg-indigo-50 hover:border-indigo-200";
-                        }
+                      {/* Options */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {currentQuestion.options.map((opt: string, optIdx: number) => {
+                          const isSelected = selectedAnswer === optIdx;
+                          const isCorrect = optIdx === currentQuestion.answerIndex;
 
-                        return (
+                          let style = "";
+                          if (showFeedback) {
+                            if (isCorrect) style = darkMode ? "bg-emerald-600 border-emerald-400 text-white" : "bg-emerald-50 border-emerald-300 text-emerald-700 font-extrabold";
+                            else if (isSelected) style = darkMode ? "bg-rose-600 border-rose-400 text-white" : "bg-rose-50 border-rose-200 text-rose-600";
+                            else style = "opacity-40 " + (darkMode ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-white border-slate-200 text-slate-500");
+                          } else {
+                            style = isSelected
+                              ? darkMode ? "bg-indigo-600 border-indigo-400 text-white" : "bg-indigo-50 border-indigo-300 text-indigo-700 font-extrabold"
+                              : darkMode ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750 hover:border-indigo-700" : "bg-white border-slate-200 text-slate-800 hover:bg-indigo-50 hover:border-indigo-200";
+                          }
+
+                          return (
+                            <button
+                              key={optIdx}
+                              onClick={() => handleSelectAnswer(optIdx)}
+                              disabled={showFeedback}
+                              className={`p-3.5 rounded-xl border text-left text-xs font-semibold transition-all ${style} ${!showFeedback ? "cursor-pointer" : "cursor-default"}`}
+                            >
+                              <span className="font-black text-[10px] opacity-60 mr-1.5">{["A", "B", "C", "D"][optIdx]}.</span>
+                              <span>{parseBoldAndMathInline(opt)}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Feedback area */}
+                      {showFeedback && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                          className={`p-3.5 rounded-xl border ${selectedAnswer === currentQuestion.answerIndex
+                            ? (darkMode ? "bg-emerald-950/40 border-emerald-800/40" : "bg-emerald-50 border-emerald-200")
+                            : (darkMode ? "bg-rose-950/40 border-rose-800/40" : "bg-rose-50 border-rose-200")}`}
+                        >
+                          <p className={`text-xs font-extrabold mb-1 ${selectedAnswer === currentQuestion.answerIndex ? (darkMode ? "text-emerald-400" : "text-emerald-700") : (darkMode ? "text-rose-400" : "text-rose-600")}`}>
+                            {selectedAnswer === currentQuestion.answerIndex ? "✓ Correct!" : "✗ Incorrect"}
+                          </p>
+                          <p className={`text-xs leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+                            {parseMarkdownAndMath(currentQuestion.explanation)}
+                          </p>
+                        </motion.div>
+                      )}
+
+                      {/* Action row */}
+                      <div className="flex items-center justify-between gap-3">
+                        {!showFeedback ? (
                           <button
-                            key={optIdx}
-                            onClick={() => handleSelectAnswer(optIdx)}
-                            disabled={showFeedback}
-                            className={`p-3.5 rounded-xl border text-left text-xs font-semibold transition-all ${style} ${!showFeedback ? "cursor-pointer" : "cursor-default"}`}
+                            onClick={handleConfirmAnswer}
+                            disabled={selectedAnswer === null}
+                            className="flex-1 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
                           >
-                            <span className="font-black text-[10px] opacity-60 mr-1.5">{["A", "B", "C", "D"][optIdx]}.</span>
-                            <span>{parseBoldAndMathInline(opt)}</span>
+                            Confirm Answer
                           </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Feedback area */}
-                    {showFeedback && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                        className={`p-3.5 rounded-xl border ${selectedAnswer === currentQuestion.answerIndex
-                          ? (darkMode ? "bg-emerald-950/40 border-emerald-800/40" : "bg-emerald-50 border-emerald-200")
-                          : (darkMode ? "bg-rose-950/40 border-rose-800/40" : "bg-rose-50 border-rose-200")}`}
-                      >
-                        <p className={`text-xs font-extrabold mb-1 ${selectedAnswer === currentQuestion.answerIndex ? (darkMode ? "text-emerald-400" : "text-emerald-700") : (darkMode ? "text-rose-400" : "text-rose-600")}`}>
-                          {selectedAnswer === currentQuestion.answerIndex ? "✓ Correct!" : "✗ Incorrect"}
-                        </p>
-                        <p className={`text-xs leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
-                          {parseMarkdownAndMath(currentQuestion.explanation)}
-                        </p>
-                      </motion.div>
-                    )}
-
-                    {/* Action row */}
-                    <div className="flex items-center justify-between gap-3">
-                      {!showFeedback ? (
+                        ) : (quizState?.roundsCompleted || 0) < 5 ? (
+                          <button
+                            onClick={handleNextQuestion}
+                            className="flex-1 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center justify-center gap-2"
+                          >
+                            Next Question <ChevronRight className="h-4 w-4" />
+                          </button>
+                        ) : null}
                         <button
-                          onClick={handleConfirmAnswer}
-                          disabled={selectedAnswer === null}
-                          className="flex-1 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+                          onClick={handleRestartQuiz}
+                          className={`px-4 py-3 text-xs font-bold rounded-xl transition-all ${darkMode ? "bg-slate-800 text-slate-400 hover:text-slate-200" : "bg-slate-100 text-slate-500 hover:text-slate-700"}`}
                         >
-                          Confirm Answer
+                          Exit
                         </button>
-                      ) : (quizState?.roundsCompleted || 0) < 5 ? (
-                        <button
-                          onClick={handleNextQuestion}
-                          className="flex-1 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center justify-center gap-2"
-                        >
-                          Next Question <ChevronRight className="h-4 w-4" />
-                        </button>
-                      ) : null}
-                      <button
-                        onClick={handleRestartQuiz}
-                        className={`px-4 py-3 text-xs font-bold rounded-xl transition-all ${darkMode ? "bg-slate-800 text-slate-400 hover:text-slate-200" : "bg-slate-100 text-slate-500 hover:text-slate-700"}`}
-                      >
-                        Exit
-                      </button>
+                      </div>
                     </div>
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </div>
-        </section>
-      </main>
+                  ) : null}
+                </div>
+              )}
+              </AnimatePresence>
+            </div>
+          </section>
+        </main>
       </div>  {/* End sidebar flex wrapper */}
-
 
       {/* SAMS Academic Chapter Companion Slide panel */}
       <AnimatePresence>
@@ -2190,6 +2293,123 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
               </button>
             </form>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Student Profile Popup Modal */}
+      <AnimatePresence>
+        {showProfilePopup && (
+          <div className="fixed inset-0 z-[55]">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowProfilePopup(false)}
+              className="absolute inset-0 bg-slate-950/65 backdrop-blur-sm"
+            />
+            {/* Absolute centering layer anchored to the visible window */}
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+            {/* Modal Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 15 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className={`relative w-[90%] max-w-xs sm:max-w-md rounded-[2rem] sm:rounded-[2.5rem] p-4 sm:p-6 border shadow-2xl z-10 overflow-hidden font-sans ${darkMode ? "bg-slate-900 border-slate-800 text-slate-100 shadow-slate-950/90" : "bg-white border-slate-200 text-slate-800 shadow-indigo-950/10"
+                }`}
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center mb-3 sm:mb-4">
+                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[#3b6b95] dark:text-[#88b0d6] font-display">
+                  SAMS Student Profile
+                </span>
+                <button
+                  onClick={() => setShowProfilePopup(false)}
+                  className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X className="h-4 w-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" />
+                </button>
+              </div>
+
+              {/* Avatar circle */}
+              <div className="flex flex-col items-center text-center pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-800 mb-3 sm:mb-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-[#3b6b95] text-white font-black text-base sm:text-xl tracking-tight shadow-lg shadow-[#3b6b95]/15 flex items-center justify-center uppercase mb-2 sm:mb-3">
+                  {getInitials(student.name)}
+                </div>
+                <h3 className="text-base sm:text-xl font-black text-slate-900 dark:text-white font-display tracking-tight leading-none mb-1">
+                  {student.name}
+                </h3>
+                <span className="text-[9px] sm:text-[10px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-widest">
+                  Class XII Student Portal
+                </span>
+              </div>
+
+              {/* Details grid */}
+              <div className="space-y-2 sm:space-y-3">
+                <div className="grid grid-cols-3 text-[11px] sm:text-xs py-1 border-b border-slate-50 dark:border-slate-800/40">
+                  <span className="text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider">Roll Number</span>
+                  <span className="col-span-2 font-mono font-black text-right">{student.rollNo}</span>
+                </div>
+                <div className="grid grid-cols-3 text-[11px] sm:text-xs py-1 border-b border-slate-50 dark:border-slate-800/40">
+                  <span className="text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider">Class ID</span>
+                  <span className="col-span-2 font-black text-right uppercase">{(student.classId || "xii-a")}</span>
+                </div>
+                <div className="grid grid-cols-3 text-[11px] sm:text-xs py-1 border-b border-slate-50 dark:border-slate-800/40">
+                  <span className="text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider">Mobile No</span>
+                  <span className="col-span-2 font-mono font-bold text-right">{student.phone || "Not Registered"}</span>
+                </div>
+                {student.email && (
+                  <div className="grid grid-cols-3 text-[11px] sm:text-xs py-1 border-b border-slate-50 dark:border-slate-800/40">
+                    <span className="text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider">Email Address</span>
+                    <span className="col-span-2 font-mono font-semibold text-right text-slate-600 dark:text-slate-300 break-all">{student.email}</span>
+                  </div>
+                )}
+
+                {/* Faculty Allocation */}
+                <div className="pt-1.5 sm:pt-2">
+                  <span className="text-[9px] sm:text-[10px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2">
+                    Class Faculty Members
+                  </span>
+                  <div className="bg-slate-50 dark:bg-slate-950 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1.5 font-sans">
+                    {studentSubjects.includes("Chemistry") && (
+                      <div className="flex justify-between items-center text-[11px] sm:text-xs">
+                        <span className="font-bold text-slate-500 dark:text-slate-400">Chemistry</span>
+                        <span className="font-extrabold text-[#3b6b95]">Pradeep Gusain</span>
+                      </div>
+                    )}
+                    {studentSubjects.includes("Physics") && (
+                      <div className="flex justify-between items-center text-[11px] sm:text-xs">
+                        <span className="font-bold text-slate-500 dark:text-slate-400">Physics</span>
+                        <span className="font-extrabold text-[#3b6b95]">Narendra Kumar</span>
+                      </div>
+                    )}
+                    {studentSubjects.includes("Mathematics") && (
+                      <div className="flex justify-between items-center text-[11px] sm:text-xs">
+                        <span className="font-bold text-slate-500 dark:text-slate-400">Mathematics</span>
+                        <span className="font-extrabold text-[#3b6b95]">Tarun Makkar</span>
+                      </div>
+                    )}
+                    {studentSubjects.includes("Biology") && (
+                      <div className="flex justify-between items-center text-[11px] sm:text-xs">
+                        <span className="font-bold text-slate-500 dark:text-slate-400">Biology</span>
+                        <span className="font-extrabold text-[#3b6b95]">Manishi Chawla</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowProfilePopup(false)}
+                className="w-full mt-4 sm:mt-6 py-2.5 sm:py-3 bg-[#3b6b95] hover:bg-[#2c5375] text-white rounded-xl sm:rounded-2xl text-sm font-bold shadow-md shadow-[#3b6b95]/15 transition-all cursor-pointer text-center font-sans"
+              >
+                Close Profile
+              </button>
+            </motion.div>
+            </div>
+          </div>
         )}
       </AnimatePresence>
 

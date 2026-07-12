@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import LoginPortal from "./components/LoginPortal";
 import StudentView from "./components/StudentView";
 import TeacherView from "./components/TeacherView";
+import GsapRoute from "./components/GsapRoute";
 import { Student } from "./types";
 
 interface SessionState {
@@ -58,15 +59,15 @@ export default function App() {
   }
 
   if (!session) {
-    return <LoginPortal onLoginSuccess={handleLoginSuccess} />;
+    return <GsapRoute><LoginPortal onLoginSuccess={handleLoginSuccess} /></GsapRoute>;
   }
 
   if (session.role === "student" && session.student) {
-    return <StudentView student={session.student} onLogout={handleLogout} />;
+    return <GsapRoute><StudentView student={session.student} onLogout={handleLogout} /></GsapRoute>;
   }
 
   if (session.role === "teacher") {
-    return <TeacherView passcode={session.passcode || "CHEM12A"} onLogout={handleLogout} />;
+    return <GsapRoute><TeacherView passcode={session.passcode || "CHEM12A"} onLogout={handleLogout} /></GsapRoute>;
   }
 
   return null;
