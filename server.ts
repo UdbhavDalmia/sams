@@ -240,7 +240,7 @@ async function ensureFirestoreSeeded() {
       fs.writeFileSync(tPath, JSON.stringify(teacherData, null, 2), "utf8");
     } else {
       if (tId === "T1") {
-        teacherData = { id: "T1", name: "Mr. Pradeep Gusain", subject: "Chemistry", passcodes: ["CHEM12A", "PRADEEP12", "SAMS12"], email: "", classes: ["xii-a", "xii-b"] };
+        teacherData = { id: "T1", name: "Dr. Pradeep Gusain", subject: "Chemistry", passcodes: ["CHEM12A", "PRADEEP12", "SAMS12"], email: "", classes: ["xii-a", "xii-b"] };
       } else if (tId === "T2") {
         teacherData = { id: "T2", name: "Mr. Narendra Kumar", subject: "Physics", passcodes: ["PHYS12A", "NARENDRA12", "SATISH12"], email: "", classes: ["xii-a", "xii-b"] };
       } else if (tId === "T3") {
@@ -1078,33 +1078,53 @@ Do NOT generate any question that is similar or identical to the following previ
 ${JSON.stringify(previousQuestions)}`;
   }
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-flash-lite",
-      contents: `Generate one ${diff} MCQ for topic: ${topic}`,
-      config: {
-        systemInstruction,
-        temperature: diff === "hard" ? 1.0 : 0.8,
-        responseMimeType: "application/json",
-      },
-    });
+  const MAX_ATTEMPTS = 3;
+  let lastErr: any = null;
 
-    const text = response.text?.trim() || "";
-    let jsonString = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
-    const question = JSON.parse(jsonString);
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-lite",
+        contents: `Generate one ${diff} MCQ for topic: ${topic}`,
+        config: {
+          systemInstruction,
+          temperature: diff === "hard" ? 1.0 : 0.8,
+          responseMimeType: "application/json",
+        },
+      });
 
-    if (!question.question || !Array.isArray(question.options) || question.options.length !== 4) {
-      throw new Error("Invalid question structure returned by AI");
+      const text = response.text?.trim() || "";
+      if (!text) throw new Error("Empty response from AI model");
+
+      let jsonString = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+      const question = JSON.parse(jsonString);
+
+      if (!question.question || !Array.isArray(question.options) || question.options.length !== 4) {
+        throw new Error("Invalid question structure returned by AI");
+      }
+
+      return res.json(question);
+    } catch (err: any) {
+      lastErr = err;
+      const isRateLimit = err?.status === 429 || /quota|rate.?limit/i.test(err?.message || "");
+      console.warn(`[Quiz Gen] Attempt ${attempt}/${MAX_ATTEMPTS} failed:`, err?.message || err);
+
+      if (isRateLimit) break; // no point retrying rate limits immediately
+
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, 600 * attempt)); // 600ms, 1200ms
+      }
     }
-
-    res.json(question);
-  } catch (err: any) {
-    console.error("Gemini Quiz Generator Error:", err);
-    res.status(500).json({
-      error: "The AI Question generator is currently busy. Please try again shortly.",
-      details: err.message,
-    });
   }
+
+  const isRateLimit = lastErr?.status === 429 || /quota|rate.?limit/i.test(lastErr?.message || "");
+  console.error("Gemini Quiz Generator: all attempts failed:", lastErr);
+  res.status(500).json({
+    error: isRateLimit
+      ? "AI quota exceeded. Please wait a moment and try again."
+      : "Failed to generate a question. Please tap \"Try Again\" — it usually works on the next attempt.",
+    details: lastErr?.message,
+  });
 });
 
 // 9.6 Streaming AI Chatbot (SSE) (using gemini-2.0-flash)

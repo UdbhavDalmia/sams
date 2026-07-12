@@ -154,36 +154,43 @@ const MathRenderer: React.FC<{ math: string; block?: boolean }> = ({ math, block
 
 // Markdown + LaTeX Parser
 const parseBoldAndMathInline = (text: string): React.ReactNode[] => {
+  const result: React.ReactNode[] = [];
+
   // Split by inline math ($...$) first
   const parts = text.split(/(\$[\s\S]*?\$)/g);
 
-  return parts.map((part, index) => {
+  parts.forEach((part, index) => {
     if (part.startsWith("$") && part.endsWith("$")) {
       const math = part.slice(1, -1).trim();
-      return <MathRenderer key={`math-${index}`} math={math} block={false} />;
+      result.push(<MathRenderer key={`math-${index}`} math={math} block={false} />);
+      return;
     }
 
     // For non-math, parse bold text (**...**)
     const boldParts = part.split(/(\*\*[\s\S]*?\*\*)/g);
-    return boldParts.map((bPart, bIndex) => {
+    boldParts.forEach((bPart, bIndex) => {
       if (bPart.startsWith("**") && bPart.endsWith("**")) {
-        return <strong key={`bold-${index}-${bIndex}`} className="font-extrabold text-slate-900 dark:text-white">{bPart.slice(2, -2)}</strong>;
+        result.push(<strong key={`bold-${index}-${bIndex}`} className="font-extrabold text-slate-900 dark:text-white">{bPart.slice(2, -2)}</strong>);
+        return;
       }
 
       // Parse inline code blocks (`...`)
       const codeParts = bPart.split(/(`[\s\S]*?`)/g);
-      return codeParts.map((cPart, cIndex) => {
+      codeParts.forEach((cPart, cIndex) => {
         if (cPart.startsWith("`") && cPart.endsWith("`")) {
-          return (
+          result.push(
             <code key={`code-${index}-${bIndex}-${cIndex}`} className="bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 px-1 py-0.5 rounded font-mono text-[11px] font-bold">
               {cPart.slice(1, -1)}
             </code>
           );
+        } else {
+          result.push(<span key={`text-${index}-${bIndex}-${cIndex}`}>{cPart}</span>);
         }
-        return <span key={`text-${index}-${bIndex}-${cIndex}`}>{cPart}</span>;
       });
     });
   });
+
+  return result;
 };
 
 const parseMarkdownAndMath = (text: string) => {
@@ -741,7 +748,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ topic, difficulty, previousQuestions }),
       signal: controller.signal,
-      timeoutMs: 45000,
+      timeoutMs: 90000,
     }).then(async (res) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Prefetch failed");
@@ -770,10 +777,10 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
           difficulty: state.difficulty,
           previousQuestions: state.history.map(h => h.question),
         }),
-        timeoutMs: 45000,
+        timeoutMs: 90000, // 90s — covers server's 3-attempt retry loop
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "AI is busy, try again.");
+      if (!res.ok) throw new Error(data.error || "Failed to generate question. Please try again.");
       setCurrentQuestion(data);
     } catch (err: any) {
       setQuizError(err.message);
@@ -1633,7 +1640,6 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                         <div className={`w-9 h-9 rounded-xl font-black flex items-center justify-center text-xs tracking-wider shadow-sm ${colorClass}`}>
                           {code}
                         </div>
-                        <span className="text-[10px] font-mono font-black text-slate-900 dark:text-slate-400 uppercase">Roll No {student.rollNo}</span>
                       </div>
                       <h4 className="text-xs font-extrabold line-clamp-2 leading-snug">{topic}</h4>
                     </div>
@@ -2401,7 +2407,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                     {studentSubjects.includes("Chemistry") && (
                       <div className="flex justify-between items-center text-[11px] sm:text-xs">
                         <span className="font-bold text-slate-500 dark:text-slate-400">Chemistry</span>
-                        <span className="font-extrabold text-[#3b6b95]">Pradeep Gusain</span>
+                        <span className="font-extrabold text-[#3b6b95]">Dr. Pradeep Gusain</span>
                       </div>
                     )}
                     {studentSubjects.includes("Physics") && (

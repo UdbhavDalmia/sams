@@ -51,7 +51,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
     if (p === "BIO12A" || p === "MANISHI12" || p === "BIO12B") {
       return { name: "Ms. Manishi Chawla", role: "Biology Faculty / Class XII-B Coordinator", subject: "Biology" as const, initials: "MC", classLabel: "Class XII-B", classes: ["xii-b"] };
     }
-    return { name: "Mr. Pradeep Gusain", role: "Class XII-A Coordinator", subject: "Chemistry" as const, initials: "PG", classLabel: "Class XII-A & XII-B", classes: ["xii-a", "xii-b"] };
+    return { name: "Dr. Pradeep Gusain", role: "Class XII-A Coordinator", subject: "Chemistry" as const, initials: "PG", classLabel: "Class XII-A & XII-B", classes: ["xii-a", "xii-b"] };
   };
 
   const [teacherDetails, setTeacherDetails] = useState(getTeacherDetails(passcode));
