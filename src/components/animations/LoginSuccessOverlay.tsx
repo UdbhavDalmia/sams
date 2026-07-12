@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import { CheckCircle2 } from "lucide-react";
-import { gsap, useGSAP } from "../lib/gsap";
+import { gsap, useGSAP } from "../../lib/gsap.ts";
 
 interface LoginSuccessOverlayProps {
   name: string;

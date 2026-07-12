@@ -5,7 +5,7 @@ import { fetchWithRetry } from "../lib/fetch";
 import { signInWithGoogle } from "../lib/firebase";
 import { gsap, useGSAP } from "../lib/gsap";
 import SAMSLogo from "./SAMSLogo";
-import LoginSuccessOverlay from "./LoginSuccessOverlay";
+import LoginSuccessOverlay from "./animations/LoginSuccessOverlay";
 
 interface LoginPortalProps {
   onLoginSuccess: (session: { role: "student" | "teacher"; student?: any; name?: string }) => void;

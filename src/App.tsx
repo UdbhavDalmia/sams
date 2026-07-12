@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import LoginPortal from "./components/LoginPortal";
 import StudentView from "./components/StudentView";
 import TeacherView from "./components/TeacherView";
-import GsapRoute from "./components/GsapRoute";
+import GsapRoute from "./components/animations/GsapRoute";
 import { Student } from "./types";
 
 interface SessionState {

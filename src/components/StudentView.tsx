@@ -35,7 +35,7 @@ import "katex/dist/katex.min.css";
 import { fetchWithRetry } from "../lib/fetch";
 import { gsap } from "../lib/gsap";
 import SAMSLogo from "./SAMSLogo";
-import AnimatedCounter from "./AnimatedCounter";
+import AnimatedCounter from "./animations/AnimatedCounter";
 
 // Dynamic translation map for standard topic formulas into beautiful textbook LaTeX
 const FORMULA_LATEX_MAP: Record<string, string> = {
@@ -120,6 +120,14 @@ const FORMULA_LATEX_MAP: Record<string, string> = {
   "P(A|B) = P(A ∩ B) / P(B)": "P(A|B) = \\frac{P(A \\cap B)}{P(B)}",
   "P(E_i|A) = P(E_i)P(A|E_i) / [Σ P(E_j)P(A|E_j)]": "P(E_i|A) = \\frac{P(E_i)P(A|E_i)}{\\sum P(E_j)P(A|E_j)}",
   "E(X) = Σ x_i • p(x_i)": "E(X) = \\sum x_i p(x_i)"
+};
+
+const getProgressColor = (score: number, alpha = 1) => {
+  const s = Math.max(0, Math.min(100, score));
+  // 0-50: Red (0) to Amber (45)
+  // 50-100: Amber (45) to Emerald (140)
+  const hue = s <= 50 ? (s / 50) * 45 : 45 + ((s - 50) / 50) * 95;
+  return `hsla(${Math.round(hue)}, 85%, 45%, ${alpha})`;
 };
 
 // KaTeX Math Renderer
@@ -672,16 +680,36 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     return "maths";
   };
 
-  // Load active quiz from DB on mount (reload-proof)
+  // Load active quiz and latest student data from DB on mount (reload-proof)
   useEffect(() => {
-    if (student.activeQuiz) {
-      const aq = student.activeQuiz;
-      setQuizState(aq);
-      setQuizTopic(aq.topic);
-      setQuizStarted(true);
-      // Fetch the next question immediately
-      fetchNextQuestion(aq);
-    }
+    const fetchLatestData = async () => {
+      try {
+        const res = await fetchWithRetry(`/api/student/${student.rollNo}?classId=${student.classId || "xii-a"}`);
+        const data = await res.json();
+        if (res.ok && data) {
+          setStudent(data);
+          if (data.activeQuiz) {
+            const aq = data.activeQuiz;
+            setQuizState(aq);
+            setQuizTopic(aq.topic);
+            setQuizStarted(true);
+            fetchNextQuestion(aq);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch latest student data:", err);
+        // Fallback to initial student data
+        if (student.activeQuiz) {
+          const aq = student.activeQuiz;
+          setQuizState(aq);
+          setQuizTopic(aq.topic);
+          setQuizStarted(true);
+          fetchNextQuestion(aq);
+        }
+      }
+    };
+    
+    fetchLatestData();
   }, []);
 
   const persistQuizState = async (state: ActiveQuizState | null, completed = false) => {
@@ -1442,30 +1470,31 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                     Preparation Rating
                   </h3>
                   {(() => {
-                    let badgeColors = "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-300";
                     let label = "Mastered";
                     let Icon = TrendingUp;
 
                     if (overallAvg >= 80) {
-                      badgeColors = "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-300";
                       label = "Mastered";
                       Icon = TrendingUp;
                     } else if (overallAvg >= 60) {
-                      badgeColors = "bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-900/40 text-sky-700 dark:text-sky-300";
                       label = "Strong";
                       Icon = TrendingUp;
                     } else if (overallAvg >= 40) {
-                      badgeColors = "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-300";
                       label = "Developing";
                       Icon = TrendingUp;
                     } else {
-                      badgeColors = "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/40 text-rose-700 dark:text-rose-300";
                       label = "Critical";
                       Icon = Zap;
                     }
 
+                    const dynamicColor = getProgressColor(overallAvg);
+                    const dynamicBg = getProgressColor(overallAvg, 0.15);
+
                     return (
-                      <span className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-wider ${badgeColors}`}>
+                      <span 
+                        className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-wider`}
+                        style={{ color: dynamicColor, borderColor: dynamicBg, backgroundColor: dynamicBg }}
+                      >
                         <Icon className="h-3 w-3 shrink-0" /> {label}
                       </span>
                     );
@@ -1486,7 +1515,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                     {/* Gauge Progress Path */}
                     <path
                       d="M 20 80 A 70 70 0 0 1 160 80"
-                      stroke="#10b981"
+                      stroke={getProgressColor(overallAvg)}
                       strokeWidth="12"
                       strokeLinecap="round"
                       fill="none"
@@ -1612,18 +1641,15 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-[10px] font-bold text-slate-900 dark:text-slate-400">
                         <span>Progression</span>
-                        <span className={`font-extrabold ${score >= 80 ? "text-emerald-600 dark:text-emerald-400" :
-                            score >= 60 ? "text-sky-600 dark:text-sky-400" :
-                              score >= 40 ? "text-amber-600 dark:text-amber-400" :
-                                "text-rose-600 dark:text-rose-400"
-                          }`}><AnimatedCounter value={score} suffix="%" /></span>
+                        <span className={`font-extrabold`} style={{ color: getProgressColor(score) }}>
+                          <AnimatedCounter value={score} suffix="%" />
+                        </span>
                       </div>
-                      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all duration-300 ${score >= 80 ? "bg-emerald-500" :
-                            score >= 60 ? "bg-sky-500" :
-                              score >= 40 ? "bg-amber-500" :
-                                "bg-rose-500"
-                          }`} style={{ width: `${score}%` }} />
+                      <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-2.5 overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{ width: `${score}%`, backgroundColor: getProgressColor(score) }} 
+                        />
                       </div>
                     </div>
                   </button>
@@ -2020,7 +2046,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                                 }`}
                             >
                               <span className="text-[10px] font-extrabold text-indigo-700 dark:text-indigo-400 uppercase block">
-                                {item.label}
+                                {parseBoldAndMathInline(item.label)}
                               </span>
                               <div className={`px-3.5 py-3 rounded-xl flex items-center justify-center select-all border overflow-x-auto ${darkMode
                                 ? "bg-slate-800 border-slate-700 text-indigo-200"
@@ -2043,7 +2069,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                         {TOPIC_RESOURCES[selectedTopic]?.concepts?.map((c) => (
                           <li key={c} className="flex gap-2.5 text-xs text-slate-950 dark:text-slate-200 font-bold leading-relaxed">
                             <span className="text-indigo-600 dark:text-indigo-400 font-bold shrink-0">✓</span>
-                            {c}
+                            {parseBoldAndMathInline(c)}
                           </li>
                         ))}
                       </ul>
@@ -2119,7 +2145,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                                   ? "font-bold text-indigo-900 dark:text-indigo-200 line-through decoration-indigo-300 dark:decoration-indigo-700 decoration-1"
                                   : "font-semibold text-slate-700 dark:text-slate-300"
                                   }`}>
-                                  {concept}
+                                  {parseBoldAndMathInline(concept)}
                                 </span>
 
                                 <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${isChecked
@@ -2219,7 +2245,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed bottom-24 right-6 w-[360px] h-[480px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col z-50 overflow-hidden font-sans"
+            className="fixed bottom-24 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-[360px] h-[480px] max-h-[calc(100vh-8rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl flex flex-col z-50 overflow-hidden font-sans"
           >
             {/* Bot Header */}
             <div className="bg-slate-900 p-4 shrink-0 relative flex items-center gap-2.5">

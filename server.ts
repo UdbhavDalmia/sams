@@ -93,7 +93,7 @@ const XIIB_STUDENTS_DATA = [
   { rollNo: 15, name: "Caleb Abrol", phone: "9871818919", email: "calebmasin45@gmail.com" },
   { rollNo: 16, name: "Mayank Pal", phone: "9811508668", email: "mayankp8433@gmail.com" },
   { rollNo: 17, name: "Naitik Khurana", phone: "9818954695", email: "naitikkhurana10@gmail.com" },
-  { rollNo: 18, name: "Khushal Kumar", phone: "", email: "" }
+  { rollNo: 18, name: "Kushal Kumar", phone: "9871594160", email: "20230201272.kushal@doe.delhi.gov.in" }
 ];
 
 // Initialize Firestore Admin Client
@@ -194,7 +194,7 @@ async function ensureFirestoreSeeded() {
     if (!fs.existsSync(filePath)) {
       const isPCMB = [7, 14, 17].includes(s.rollNo);
       const scores: Record<string, number> = {};
-      
+
       // Initialize scores based on subject profile
       CHEMISTRY_TOPICS.forEach(t => scores[t] = 0);
       PHYSICS_TOPICS.forEach(t => scores[t] = 0);
@@ -321,6 +321,7 @@ let studentsCacheTime = 0;
 let teacherProfileCache: Map<string, { value: any; cachedAt: number }> = new Map();
 const CACHE_TTL = 60 * 1000; // 60 seconds
 const pendingStudentWrites = new Map<string, ReturnType<typeof setTimeout>>();
+const pendingStudentPatches = new Map<string, Record<string, any>>();
 
 function mergeData<T>(base: T, patch: Partial<T>): T {
   if (!patch || typeof patch !== "object") return base;
@@ -375,13 +376,20 @@ async function saveStudentPartial(student: Student, patch: Record<string, any>):
 
 async function queueStudentPatch(student: Student, patch: Record<string, any>, delay = 250): Promise<void> {
   const key = `${student.classId || "xii-a"}:${student.rollNo}`;
+  
+  // Accumulate patches for this student
+  const existingPatch = pendingStudentPatches.get(key) || {};
+  pendingStudentPatches.set(key, mergeData(existingPatch, patch));
+
   const existingTimer = pendingStudentWrites.get(key);
   if (existingTimer) clearTimeout(existingTimer);
 
   return await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(async () => {
       try {
-        await saveStudentPartial(student, patch);
+        const accumulatedPatch = pendingStudentPatches.get(key) || {};
+        pendingStudentPatches.delete(key);
+        await saveStudentPartial(student, accumulatedPatch);
         resolve();
       } catch (err) {
         reject(err);
@@ -460,7 +468,7 @@ async function getStudents(): Promise<Student[]> {
 async function saveStudents(students: Student[]): Promise<void> {
   // Clear cache
   studentsCache = null;
-  
+
   if (db) {
     try {
       const batchSize = 100;
@@ -608,7 +616,7 @@ async function getTeachers(): Promise<Teacher[]> {
     return teachersCache;
   }
   const teachers: Teacher[] = [];
-  
+
   if (db) {
     try {
       const snapshot = await db.collection("teachers").get();
@@ -663,11 +671,11 @@ async function getTeacherProfile(passcode: string): Promise<any> {
   const teacher = await getTeacherByPasscode(cacheKey);
   const profile = teacher
     ? {
-        name: teacher.name,
-        subject: teacher.subject,
-        email: teacher.email,
-        classes: teacher.classes,
-      }
+      name: teacher.name,
+      subject: teacher.subject,
+      email: teacher.email,
+      classes: teacher.classes,
+    }
     : null;
 
   teacherProfileCache.set(cacheKey, { value: profile, cachedAt: Date.now() });
@@ -723,7 +731,7 @@ function logStudentActivity(
   // Grouping rule: check if there's an active session in the last 15 minutes
   // 15 minutes in milliseconds = 15 * 60 * 1000 = 900,000 ms
   const SESSION_THRESHOLD_MS = 15 * 60 * 1000;
-  
+
   let activeSessionIndex = -1;
   if (student.recentSessions.length > 0) {
     const latestSession = student.recentSessions[0];
@@ -1044,14 +1052,16 @@ app.post("/api/gemini/generate-quiz-question", async (req, res) => {
     hard: "challenging, multi-step problem-solving level, similar to JEE Main or JEE Advanced difficulty. May require combining multiple concepts.",
   };
 
-  let systemInstruction = `You are an expert XII standard professor generating ONE multiple-choice question for: "${topic}".
+let systemInstruction = `You are an expert XII standard professor generating ONE multiple-choice question for: "${topic}".
 Difficulty level: ${diff.toUpperCase()} — ${difficultyDesc[diff]}
 
 FORMATTING RULES (critical — do NOT break these):
 - Use $...$ for ALL inline math, variables, units, constants, and short chemical formulas/species (e.g. $E = mc^2$, $\\Delta T_f$, $\\text{H}_2\\text{O}$, $\\text{RBr}$, $\\text{AgF}$, $K_b$).
 - Use $$...$$ ONLY for important standalone equations that deserve their own line. Do NOT use block math for every formula.
 - NEVER use raw unicode math symbols or superscript/subscript symbols like ², ³, ₀, ₁, ₂, Δ, π, → outside LaTeX. Always wrap them.
-- The options list should contain 4 plausible options, all formatted cleanly with inline LaTeX where needed.
+- Provide EXACTLY 4 plausible options. The correct answer MUST be undeniably correct and scientifically unambiguous.
+- Do NOT use tricky wording like "None of the above" or "All of the above". Make every distractor option a specific, distinct concept or value.
+- Do NOT generate questions with imperfect matches or debatable answers. 
 - Return ONLY a single valid JSON object (no markdown formatting around it, no explanation outside JSON, no outer wrapper).
 
 JSON Schema:
@@ -1164,7 +1174,7 @@ app.post("/api/student/:roll_no/quiz-state", async (req, res) => {
   if (completed) {
     // Quiz is finished — clear active quiz, update stats
     student.activeQuiz = null;
-    
+
     // Log the completed quiz details in the student activity sessions
     if (quizState) {
       const scoreDetail = `Scored ${quizState.correctCount}/5 in '${quizState.topic}' adaptive quiz (${quizState.difficulty} difficulty)`;

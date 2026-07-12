@@ -26,6 +26,14 @@ import { Student, TopicName, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIO
 import { fetchWithRetry } from "../lib/fetch";
 import SAMSLogo from "./SAMSLogo";
 
+const getProgressColor = (score: number, alpha = 1) => {
+  const s = Math.max(0, Math.min(100, score));
+  // 0-50: Red (0) to Amber (45)
+  // 50-100: Amber (45) to Emerald (140)
+  const hue = s <= 50 ? (s / 50) * 45 : 45 + ((s - 50) / 50) * 95;
+  return `hsla(${Math.round(hue)}, 85%, 45%, ${alpha})`;
+};
+
 interface TeacherViewProps {
   passcode: string;
   onLogout: () => void;
@@ -219,10 +227,15 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   const totalStudents = subjectStudents.length;
 
   const getScoreStatus = (score: number) => {
-    if (score >= 80) return { label: "Mastered", badge: "text-emerald-700 bg-emerald-50 border-emerald-200", bar: "bg-emerald-500" };
-    if (score >= 60) return { label: "Strong", badge: "text-sky-700 bg-sky-50 border-sky-200", bar: "bg-sky-500" };
-    if (score >= 40) return { label: "Developing", badge: "text-amber-700 bg-amber-50 border-amber-200", bar: "bg-amber-500" };
-    return { label: "Needs Attention", badge: "text-rose-700 bg-rose-50 border-rose-200", bar: "bg-rose-500" };
+    let label = "Needs Attention";
+    if (score >= 80) label = "Mastered";
+    else if (score >= 60) label = "Strong";
+    else if (score >= 40) label = "Developing";
+    return { 
+      label, 
+      color: getProgressColor(score),
+      bg: getProgressColor(score, 0.15)
+    };
   };
 
   const calculateStudentAvg = (s: Student) => {
@@ -454,13 +467,11 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                   </span>
                   <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${tone.bar}`}
-                      style={{ width: `${pct}%` }}
+                      className={`h-full rounded-full transition-all duration-500`}
+                      style={{ width: `${pct}%`, backgroundColor: tone.color }}
                     />
                   </div>
-                  <span className={`text-[11px] font-black w-10 text-right shrink-0 ${
-                    pct >= 80 ? "text-emerald-600" : pct >= 60 ? "text-sky-600" : pct >= 40 ? "text-amber-600" : "text-rose-500"
-                  }`}>
+                  <span className={`text-[11px] font-black w-10 text-right shrink-0`} style={{ color: tone.color }}>
                     {pct}%
                   </span>
                 </div>
@@ -587,20 +598,8 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                   filteredStudents.map((s) => {
                     const avg = calculateStudentAvg(s);
                     const tone = getScoreStatus(avg);
-                    const badgeColor = tone.badge;
-                    let stateLabel = "Not Started";
-
-                    if (avg === 0) {
-                      stateLabel = "Not Commenced";
-                    } else if (avg < 40) {
-                      stateLabel = "Needs Attention";
-                    } else if (avg < 60) {
-                      stateLabel = "Developing";
-                    } else if (avg < 80) {
-                      stateLabel = "Strong";
-                    } else {
-                      stateLabel = "Mastered";
-                    }
+                    let stateLabel = tone.label;
+                    if (avg === 0) stateLabel = "Not Commenced";
 
                     return (
                       <tr key={`${s.classId || "unknown"}-${s.rollNo}`} className="hover:bg-slate-50/50 transition-colors">
@@ -625,12 +624,15 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                           <div className="flex items-center gap-3">
                             <span className="text-sm font-black text-slate-900">{avg}%</span>
                             <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0 hidden md:block">
-                              <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${avg}%` }} />
+                              <div className={`h-full rounded-full`} style={{ width: `${avg}%`, backgroundColor: tone.color }} />
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap ${badgeColor}`}>
+                          <span 
+                            className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap`}
+                            style={{ color: tone.color, backgroundColor: tone.bg, borderColor: tone.bg }}
+                          >
                             {stateLabel}
                           </span>
                         </td>
