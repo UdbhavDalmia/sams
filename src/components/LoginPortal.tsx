@@ -11,6 +11,8 @@ interface LoginPortalProps {
   onLoginSuccess: (session: { role: "student" | "teacher"; student?: any; name?: string }) => void;
 }
 
+const LOGIN_MODE: "host" | "test" = "test";
+
 export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
   const [role, setRole] = useState<"student" | "teacher">("student");
   const [rollNo, setRollNo] = useState("");
@@ -42,10 +44,10 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    
+
     // Show verifying overlay immediately
     setLoginSuccess({ name: role === "student" ? `Roll #${rollNo}` : "Teacher Portal" });
-    
+
     try {
       const body = role === "student" ? { role, rollNo, phone, classId } : { role, passcode };
       const res = await fetchWithRetry("/api/login", {
@@ -71,7 +73,7 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
       const result = await signInWithGoogle();
       const user = result.user;
       if (!user || !user.email) throw new Error("Failed to get Google account information.");
-      
+
       // Google pop-up succeeded, now trigger overlay during database validation
       setLoginSuccess({ name: user.displayName || user.email });
 
@@ -257,165 +259,180 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
       <div className="mt-6 sm:mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10">
         <div className="glass-panel py-6 px-5 sm:py-8 shadow-2xl shadow-[#3b6b95]/5 rounded-[2rem] sm:rounded-[2.5rem] sm:px-10">
           {/* Role Tabs */}
-          <div ref={roleTabContainerRef} className="relative flex bg-slate-50/80 p-1.5 rounded-[1.5rem] mb-6 sm:mb-8 border border-slate-200/50">
-            <div ref={rolePillRef} className="absolute left-0 top-1.5 bottom-1.5 rounded-xl bg-indigo-600 pointer-events-none" style={{ width: 0 }} />
-            <button
-              ref={studentTabRef}
-              id="student-role-tab"
-              onClick={() => { setRole("student"); setError(null); }}
-              className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-colors cursor-pointer ${
-                role === "student" ? "text-white" : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              <GraduationCap className="h-4 w-4 shrink-0" />
-              Student Portal
-            </button>
-            <button
-              ref={teacherTabRef}
-              id="teacher-role-tab"
-              onClick={() => { setRole("teacher"); setError(null); }}
-              className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-colors cursor-pointer ${
-                role === "teacher" ? "text-white" : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              <ShieldAlert className="h-4 w-4 shrink-0" />
-              Faculty Portal
-            </button>
-          </div>
+          {LOGIN_MODE === "test" && (
+            <div ref={roleTabContainerRef} className="relative flex bg-slate-50/80 p-1.5 rounded-[1.5rem] mb-6 sm:mb-8 border border-slate-200/50">
+              <div ref={rolePillRef} className="absolute left-0 top-1.5 bottom-1.5 rounded-xl bg-indigo-600 pointer-events-none" style={{ width: 0 }} />
+              <button
+                ref={studentTabRef}
+                id="student-role-tab"
+                onClick={() => { setRole("student"); setError(null); }}
+                className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-colors cursor-pointer ${role === "student" ? "text-white" : "text-slate-500 hover:text-slate-800"
+                  }`}
+              >
+                <GraduationCap className="h-4 w-4 shrink-0" />
+                Student Portal
+              </button>
+              <button
+                ref={teacherTabRef}
+                id="teacher-role-tab"
+                onClick={() => { setRole("teacher"); setError(null); }}
+                className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold rounded-xl transition-colors cursor-pointer ${role === "teacher" ? "text-white" : "text-slate-500 hover:text-slate-800"
+                  }`}
+              >
+                <ShieldAlert className="h-4 w-4 shrink-0" />
+                Faculty Portal
+              </button>
+            </div>
+          )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {role === "student" ? (
-              <>
-                <div>
-                  <label htmlFor="classId" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
-                    Your Class
-                  </label>
-                  <div className="mt-2 relative rounded-xl shadow-none">
-                    <select
-                      id="classId"
-                      value={classId}
-                      onChange={(e) => setClassId(e.target.value)}
-                      className="block w-full px-3 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-base font-medium transition-all cursor-pointer"
-                    >
-                      <option value="xii-a">XII-A (PCM)</option>
-                      <option value="xii-b">XII-B (PCB / PCMB)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="rollNo" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
-                    Your Roll Number
-                  </label>
-                  <div className="mt-2 relative rounded-xl shadow-none">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                      <User className="h-4 w-4 text-slate-400" />
+          {LOGIN_MODE === "test" && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {role === "student" ? (
+                <>
+                  <div>
+                    <label htmlFor="classId" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
+                      Your Class
+                    </label>
+                    <div className="mt-2 relative rounded-xl shadow-none">
+                      <select
+                        id="classId"
+                        value={classId}
+                        onChange={(e) => setClassId(e.target.value)}
+                        className="block w-full px-3 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-base font-medium transition-all cursor-pointer"
+                      >
+                        <option value="xii-a">XII-A (PCM)</option>
+                        <option value="xii-b">XII-B (PCB / PCMB)</option>
+                      </select>
                     </div>
-                    <input
-                      id="rollNo" name="rollNo" type="number" required min="1" max={classId === "xii-a" ? "37" : "18"}
-                      placeholder="e.g. 1" value={rollNo} onChange={(e) => setRollNo(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-base font-medium transition-all"
-                    />
                   </div>
-                  <p className="mt-1.5 text-xs text-slate-400 font-mono">Hint: Class supports rolls 1 through {classId === "xii-a" ? 37 : 18}</p>
-                </div>
 
+                  <div>
+                    <label htmlFor="rollNo" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
+                      Your Roll Number
+                    </label>
+                    <div className="mt-2 relative rounded-xl shadow-none">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <User className="h-4 w-4 text-slate-400" />
+                      </div>
+                      <input
+                        id="rollNo" name="rollNo" type="number" required min="1" max={classId === "xii-a" ? "37" : "18"}
+                        placeholder="e.g. 1" value={rollNo} onChange={(e) => setRollNo(e.target.value)}
+                        className="block w-full pl-10 pr-3 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-base font-medium transition-all"
+                      />
+                    </div>
+                    <p className="mt-1.5 text-xs text-slate-400 font-mono">Hint: Class supports rolls 1 through {classId === "xii-a" ? 37 : 18}</p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
+                      Registered Phone (or last 4 digits)
+                    </label>
+                    <div className="mt-2 relative rounded-xl shadow-none">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <Lock className="h-4 w-4 text-slate-400" />
+                      </div>
+                      <input
+                        id="phone" name="phone" type="password" inputMode="numeric" pattern="[0-9]*" required placeholder="e.g. 1234"
+                        value={phone} onChange={(e) => setPhone(e.target.value)}
+                        className="block w-full pl-10 pr-3 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-base font-medium transition-all"
+                      />
+                    </div>
+                    <p className="mt-1.5 text-xs text-slate-400">Secure Check: Enter the 10-digit phone or the last 4 digits listed in the registry.</p>
+                  </div>
+                </>
+              ) : (
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
-                    Registered Phone (or last 4 digits)
+                  <label htmlFor="passcode" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
+                    Academic Faculty Passcode
                   </label>
                   <div className="mt-2 relative rounded-xl shadow-none">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                       <Lock className="h-4 w-4 text-slate-400" />
                     </div>
                     <input
-                      id="phone" name="phone" type="password" required placeholder="e.g. 1234"
-                      value={phone} onChange={(e) => setPhone(e.target.value)}
+                      id="passcode" name="passcode" type="password" required placeholder="Enter Staff Passcode"
+                      value={passcode} onChange={(e) => setPasscode(e.target.value)}
                       className="block w-full pl-10 pr-3 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-base font-medium transition-all"
                     />
                   </div>
-                  <p className="mt-1.5 text-xs text-slate-400">Secure Check: Enter the 10-digit phone or the last 4 digits listed in the registry.</p>
-                </div>
-              </>
-            ) : (
-              <div>
-                <label htmlFor="passcode" className="block text-sm font-bold text-slate-500 uppercase tracking-wider">
-                  Academic Faculty Passcode
-                </label>
-                <div className="mt-2 relative rounded-xl shadow-none">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <Lock className="h-4 w-4 text-slate-400" />
-                  </div>
-                  <input
-                    id="passcode" name="passcode" type="password" required placeholder="Enter Staff Passcode"
-                    value={passcode} onChange={(e) => setPasscode(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-500 text-base font-medium transition-all"
-                  />
-                </div>
-                <div className="mt-3 p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Staff Access Keys:</p>
-                  <div className="grid grid-cols-1 gap-1.5 text-xs text-slate-600 font-medium">
-                    {[["Chemistry Login:", "CHEM12A"], ["Physics Login:", "PHYS12A"], ["Mathematics Login:", "MATH12A"]].map(([label, code]) => (
-                      <div key={code} className="flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-slate-100">
-                        <span>{label}</span>
-                        <code className="text-indigo-600 font-mono font-bold text-sm">{code}</code>
-                      </div>
-                    ))}
+                  <div className="mt-3 p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Staff Access Keys:</p>
+                    <div className="grid grid-cols-1 gap-1.5 text-xs text-slate-600 font-medium">
+                      {[["Chemistry Login:", "CHEM12A"], ["Physics Login:", "PHYS12A"], ["Mathematics Login:", "MATH12A"]].map(([label, code]) => (
+                        <div key={code} className="flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-slate-100">
+                          <span>{label}</span>
+                          <code className="text-indigo-600 font-mono font-bold text-sm">{code}</code>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-                className="p-3.5 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-2 text-rose-600 text-sm font-medium"
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                  className="p-3.5 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-2 text-rose-600 text-sm font-medium"
+                >
+                  <ShieldAlert className="h-4 w-4 shrink-0 text-rose-500" />
+                  <span>{error}</span>
+                </motion.div>
+              )}
+
+              <button
+                id="login-submit-button" type="submit" disabled={loading || !!loginSuccess}
+                className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/15 transition-all cursor-pointer"
               >
-                <ShieldAlert className="h-4 w-4 shrink-0 text-rose-500" />
-                <span>{error}</span>
-              </motion.div>
-            )}
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Verifying Credentials...
+                  </div>
+                ) : role === "student" ? "Authenticate Access" : "Authorize Staff Session"}
+              </button>
+            </form>
+          )}
 
-            <button
-              id="login-submit-button" type="submit" disabled={loading || !!loginSuccess}
-              className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed shadow-md shadow-indigo-600/10 hover:shadow-indigo-600/15 transition-all cursor-pointer"
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Verifying Credentials...
-                </div>
-              ) : role === "student" ? "Authenticate Access" : "Authorize Staff Session"}
-            </button>
-          </form>
-
-            <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-2">
+            {LOGIN_MODE === "test" && (
               <div className="relative flex items-center justify-center">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-slate-200" />
                 </div>
                 <span className="relative px-3 bg-white text-xs font-bold text-slate-400 uppercase tracking-widest">or</span>
               </div>
-              <button
-                type="button" onClick={handleRealGoogleLogin} disabled={googleLoading || !!loginSuccess}
-                className="w-full flex justify-center items-center gap-2.5 py-3.5 px-4 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {googleLoading ? (
-                  <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#EA4335" d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.2-3.2C17.52 1.57 14.97 1 12 1 7.24 1 3.17 3.74 1.23 7.78l3.85 2.99C6.01 7.42 8.78 5.04 12 5.04z" />
-                    <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.46c-.28 1.48-1.11 2.73-2.36 3.58l3.66 2.84c2.14-1.98 3.39-4.88 3.39-8.57z" />
-                    <path fill="#FBBC05" d="M5.08 14.21c-.24-.71-.38-1.47-.38-2.21s.14-1.5.38-2.21L1.23 6.8c-.81 1.62-1.27 3.44-1.27 5.4s.46 3.78 1.27 5.4l3.85-2.99z" />
-                    <path fill="#34A853" d="M12 23c3.24 0 5.96-1.07 7.95-2.92l-3.66-2.84c-1.01.68-2.31 1.08-4.29 1.08-3.22 0-5.99-2.38-6.92-5.73l-3.85 2.99C3.17 20.26 7.24 23 12 23z" />
-                  </svg>
-                )}
-                Sign in with Google
-              </button>
-              <p className="text-center text-[10px] text-slate-400 font-medium">
-                Google login is for pre-registered users only
-              </p>
-            </div>
+            )}
+            {LOGIN_MODE === "host" && (
+              <div className="flex flex-col items-center justify-center text-center space-y-3 pb-2">
+                <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center border-4 border-white shadow-sm mb-2">
+                  <ShieldAlert className="h-8 w-8 text-indigo-500" />
+                </div>
+                <h3 className="text-lg font-black text-slate-800">Secure Institutional Access</h3>
+                <p className="text-sm text-slate-500 font-medium leading-relaxed px-4">
+                  Please sign in with your registered Google account to access your personalized academic dashboard.
+                </p>
+              </div>
+            )}
+            <button
+              type="button" onClick={handleRealGoogleLogin} disabled={googleLoading || !!loginSuccess}
+              className="w-full flex justify-center items-center gap-2.5 py-3.5 px-4 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {googleLoading ? (
+                <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                  <path fill="#EA4335" d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.2-3.2C17.52 1.57 14.97 1 12 1 7.24 1 3.17 3.74 1.23 7.78l3.85 2.99C6.01 7.42 8.78 5.04 12 5.04z" />
+                  <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.46c-.28 1.48-1.11 2.73-2.36 3.58l3.66 2.84c2.14-1.98 3.39-4.88 3.39-8.57z" />
+                  <path fill="#FBBC05" d="M5.08 14.21c-.24-.71-.38-1.47-.38-2.21s.14-1.5.38-2.21L1.23 6.8c-.81 1.62-1.27 3.44-1.27 5.4s.46 3.78 1.27 5.4l3.85-2.99z" />
+                  <path fill="#34A853" d="M12 23c3.24 0 5.96-1.07 7.95-2.92l-3.66-2.84c-1.01.68-2.31 1.08-4.29 1.08-3.22 0-5.99-2.38-6.92-5.73l-3.85 2.99C3.17 20.26 7.24 23 12 23z" />
+                </svg>
+              )}
+              Sign in with Google
+            </button>
+            <p className="text-center text-[10px] text-slate-400 font-medium">
+              Google login is for pre-registered users only
+            </p>
+          </div>
 
           <div className="mt-5 border-t border-slate-100 pt-4 flex justify-center items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
             <span className="flex items-center gap-1">

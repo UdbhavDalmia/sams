@@ -601,6 +601,15 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                     let stateLabel = tone.label;
                     if (avg === 0) stateLabel = "Not Commenced";
 
+                    let isInactive = true;
+                    if (s.recentSessions && s.recentSessions.length > 0) {
+                      const latestSessionTime = new Date(s.recentSessions[0].timestamp).getTime();
+                      const daysInactive = (Date.now() - latestSessionTime) / (1000 * 60 * 60 * 24);
+                      if (daysInactive <= 7) {
+                        isInactive = false;
+                      }
+                    }
+
                     return (
                       <tr key={`${s.classId || "unknown"}-${s.rollNo}`} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-4 text-sm font-mono font-bold text-slate-500">
@@ -612,6 +621,11 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                             {classFilter === "all" && (
                               <span className="ml-2 inline-block px-1.5 py-0.5 text-[9px] font-black uppercase bg-slate-100 text-slate-500 rounded border border-slate-200">
                                 {s.classId?.toUpperCase() || "XII-A"}
+                              </span>
+                            )}
+                            {isInactive && (
+                              <span className="ml-2 inline-block px-1.5 py-0.5 text-[9px] font-black uppercase bg-rose-100 text-rose-600 rounded border border-rose-200" title="No study activity in the last 7 days">
+                                Inactive 7d+
                               </span>
                             )}
                           </span>
@@ -725,47 +739,65 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                       <p className="text-sm font-black text-slate-700">No study sessions recorded yet.</p>
                       <p className="mt-1 text-xs font-medium text-slate-500">A student’s first checklist update or quiz completion will appear here with a clear timeline.</p>
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {selectedStudent.recentSessions.map((session, sIdx) => {
-                        const date = new Date(session.timestamp);
-                        const formattedTime = date.toLocaleString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: true
-                        });
-                        return (
-                          <div key={sIdx} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">
-                                Session {sIdx + 1}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-400 font-mono">
-                                {formattedTime}
-                              </span>
+                  ) : (() => {
+                    const filteredSessions = selectedStudent.recentSessions
+                      .map(session => ({
+                        ...session,
+                        changes: session.changes.filter(ch => ch.subject.toLowerCase() === activeSubject.toLowerCase())
+                      }))
+                      .filter(session => session.changes.length > 0);
+
+                    if (filteredSessions.length === 0) {
+                      return (
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
+                          <p className="text-sm font-black text-slate-700">No {activeSubject} study sessions recorded yet.</p>
+                          <p className="mt-1 text-xs font-medium text-slate-500">Updates for this subject will appear here.</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-3">
+                        {filteredSessions.map((session, sIdx) => {
+                          const date = new Date(session.timestamp);
+                          const formattedTime = date.toLocaleString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true
+                          });
+                          return (
+                            <div key={sIdx} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">
+                                  Session {sIdx + 1}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400 font-mono">
+                                  {formattedTime}
+                                </span>
+                              </div>
+                              <div className="space-y-1.5">
+                                {session.changes.map((ch, cIdx) => (
+                                  <div key={cIdx} className="flex items-start gap-2 text-xs leading-relaxed">
+                                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase shrink-0 ${
+                                      ch.type === "quiz" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-indigo-50 text-indigo-600 border border-indigo-100"
+                                    }`}>
+                                      {ch.type}
+                                    </span>
+                                    <span className="font-semibold text-slate-700">
+                                      <span className="text-slate-400 font-bold mr-1">[{ch.subject}]</span>
+                                      {ch.detail}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                            <div className="space-y-1.5">
-                              {session.changes.map((ch, cIdx) => (
-                                <div key={cIdx} className="flex items-start gap-2 text-xs leading-relaxed">
-                                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase shrink-0 ${
-                                    ch.type === "quiz" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-indigo-50 text-indigo-600 border border-indigo-100"
-                                  }`}>
-                                    {ch.type}
-                                  </span>
-                                  <span className="font-semibold text-slate-700">
-                                    <span className="text-slate-400 font-bold mr-1">[{ch.subject}]</span>
-                                    {ch.detail}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="space-y-4">
@@ -792,7 +824,8 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                                 const val = parseInt(e.target.value, 10);
                                 setEditScores((prev) => ({ ...prev, [topic]: val }));
                               }}
-                              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none"
+                              disabled={true}
+                              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none opacity-50"
                             />
                             <input
                               type="number"
@@ -803,7 +836,8 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                                 const val = Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0));
                                 setEditScores((prev) => ({ ...prev, [topic]: val }));
                               }}
-                              className="w-14 border border-slate-200 rounded-lg p-1.5 text-center font-mono text-xs font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                              disabled={true}
+                              className="w-14 border border-slate-200 rounded-lg p-1.5 text-center font-mono text-xs font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 cursor-not-allowed"
                             />
                           </div>
                         </div>

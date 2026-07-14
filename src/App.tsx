@@ -35,7 +35,7 @@ export default function App() {
       role: loginData.role,
       student: loginData.student,
       // If student, the pass is their phone, if teacher it's the passcode.
-      passcode: loginData.role === "teacher" ? loginData.passcode : undefined, 
+      passcode: loginData.role === "teacher" ? loginData.passcode : undefined,
       name: loginData.name,
     };
     setSession(newSession);
