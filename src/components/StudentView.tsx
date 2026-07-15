@@ -379,6 +379,8 @@ const triggerConfetti = () => {
 
 export default function StudentView({ student: initialStudent, onLogout }: StudentViewProps) {
   const [student, setStudent] = useState<Student>(initialStudent);
+  const [studentDataStatus, setStudentDataStatus] = useState<"loading" | "ready" | "empty" | "error">("loading");
+  const [studentDataError, setStudentDataError] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<TopicName | null>(null);
   const [showProfilePopup, setShowProfilePopup] = useState(false);
 
@@ -416,6 +418,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   ]);
   const [chatbotInput, setChatbotInput] = useState("");
   const [chatbotLoading, setChatbotLoading] = useState(false);
+  const [chatbotError, setChatbotError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // GSAP animation refs
@@ -450,6 +453,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   const [localScore, setLocalScore] = useState<number>(0);
   const [savingProgress, setSavingProgress] = useState(false);
   const [saveProgressSuccess, setSaveProgressSuccess] = useState(false);
+  const [progressSaveError, setProgressSaveError] = useState<string | null>(null);
 
   // List of standard subjects for the Quiz Topic Select
   const standardChaptersList = [
@@ -524,14 +528,29 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
   // Sync current student progress from database on mount
   const syncStudentData = async () => {
+    setStudentDataStatus("loading");
+    setStudentDataError(null);
+
     try {
       const res = await fetchWithRetry(`/api/student/${student.rollNo}?classId=${student.classId || "xii-a"}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && !data.error) setStudent(data);
+      const data = await res.json();
+
+      if (!res.ok || data?.error) {
+        throw new Error(data?.error || "Unable to load your student profile.");
       }
-    } catch (err) {
+
+      if (!data?.scores || Object.keys(data.scores).length === 0) {
+        setStudentDataStatus("empty");
+        setStudentDataError("Your profile is available but no syllabus data has been loaded yet.");
+        return;
+      }
+
+      setStudent(data);
+      setStudentDataStatus("ready");
+    } catch (err: any) {
       console.error("Error refreshing student data:", err);
+      setStudentDataStatus("error");
+      setStudentDataError(err.message || "We could not refresh your academic profile. Please try again.");
     }
   };
 
@@ -556,19 +575,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     gsap.fromTo(studentRootRef.current, { opacity: 0.35 }, { opacity: 1, duration: 0.45, ease: "power2.out" });
   }, [darkMode]);
 
-  // Synchronize student state to localStorage to keep the session cache updated
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("sams_session_v1");
-      if (saved) {
-        const session = JSON.parse(saved);
-        session.student = student;
-        localStorage.setItem("sams_session_v1", JSON.stringify(session));
-      }
-    } catch (err) {
-      console.error("Error updating cached student session in localStorage:", err);
-    }
-  }, [student]);
+  // Student data profile is now maintained server-side through the authenticated session cookie.
 
   // Sync modal states whenever a topic is selected
   useEffect(() => {
@@ -943,6 +950,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
     if (!selectedTopic) return;
     setSavingProgress(true);
     setSaveProgressSuccess(false);
+    setProgressSaveError(null);
 
     try {
       const res = await fetchWithRetry(`/api/student/${student.rollNo}/save-progress?classId=${student.classId || "xii-a"}`, {
@@ -955,20 +963,22 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
         }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.student) {
-          setStudent(data.student);
-          setSaveProgressSuccess(true);
-          // Show full confetti showers ONLY on 100% completion save!
-          if (localScore === 100) {
-            triggerConfetti();
-          }
-          setTimeout(() => setSaveProgressSuccess(false), 3000);
-        }
+      const data = await res.json();
+      if (!res.ok || data?.error) {
+        throw new Error(data?.error || "Unable to save progress right now.");
       }
-    } catch (err) {
+
+      if (data && data.student) {
+        setStudent(data.student);
+        setSaveProgressSuccess(true);
+        if (localScore === 100) {
+          triggerConfetti();
+        }
+        setTimeout(() => setSaveProgressSuccess(false), 3000);
+      }
+    } catch (err: any) {
       console.error("Error saving student progress:", err);
+      setProgressSaveError(err.message || "We could not save your progress. Please retry.");
     } finally {
       setSavingProgress(false);
     }
@@ -981,15 +991,15 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
     const userMsgText = chatbotInput.trim();
     setChatbotInput("");
+    setChatbotError(null);
     const updatedMessages = [...chatbotMessages, { role: "user" as const, text: userMsgText }];
     setChatbotMessages(updatedMessages);
     setChatbotLoading(true);
 
-    // Add placeholder assistant message for streaming
     setChatbotMessages((prev) => [...prev, { role: "assistant" as const, text: "" }]);
 
     try {
-      const response = await fetch("/api/gemini/chatbot-stream", {
+      const response = await fetchWithRetry("/api/gemini/chatbot-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: updatedMessages }),
@@ -1029,6 +1039,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
       // Auto-scroll
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     } catch (err: any) {
+      setChatbotError(err.message || "The AI study assistant is temporarily unavailable. Please retry in a moment.");
       setChatbotMessages((prev) => [
         ...prev.slice(0, -1),
         { role: "assistant" as const, text: `I apologize, I am temporarily busy. Please try again.` },
@@ -1183,6 +1194,62 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   const tierLabel: Record<string, string> = { bronze: "Bronze", silver: "Silver", gold: "Gold", platinum: "Platinum" };
 
 
+
+  if (studentDataStatus === "loading") {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4">
+        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="text-center space-y-1">
+          <p className="text-sm font-black uppercase tracking-[0.3em] text-indigo-300">Loading profile</p>
+          <p className="text-xs text-slate-400">Syncing your academic dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (studentDataStatus === "error") {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white">
+        <div className="max-w-md w-full rounded-3xl border border-rose-900/40 bg-slate-900 p-6 text-center space-y-4">
+          <div className="mx-auto w-12 h-12 rounded-full bg-rose-500/15 flex items-center justify-center text-rose-300">
+            <AlertCircle className="h-6 w-6" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-lg font-black">Profile unavailable</h2>
+            <p className="text-sm text-slate-300">{studentDataError || "We could not load your academic profile right now."}</p>
+          </div>
+          <button
+            onClick={syncStudentData}
+            className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-xs font-black"
+          >
+            Retry loading profile
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (studentDataStatus === "empty") {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white">
+        <div className="max-w-md w-full rounded-3xl border border-amber-900/40 bg-slate-900 p-6 text-center space-y-4">
+          <div className="mx-auto w-12 h-12 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-300">
+            <BookOpen className="h-6 w-6" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-lg font-black">No syllabus data yet</h2>
+            <p className="text-sm text-slate-300">{studentDataError || "Your profile is active, but it does not contain syllabus progress yet."}</p>
+          </div>
+          <button
+            onClick={syncStudentData}
+            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black"
+          >
+            Refresh profile
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div id="student-view-container" ref={studentRootRef} className={`min-h-screen transition-colors duration-300 font-sans flex flex-col ${darkMode ? "bg-slate-950 text-slate-100 dark" : "bg-[#eaf4fc] text-slate-900"}`}>
@@ -2212,6 +2279,13 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                   </motion.div>
                 )}
 
+                {progressSaveError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-semibold flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    {progressSaveError}
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button
                     onClick={() => setSelectedTopic(null)}
@@ -2278,6 +2352,12 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
             {/* Chat History Area */}
             <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
+              {chatbotError && (
+                <div className="p-3 rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {chatbotError}
+                </div>
+              )}
               {chatbotMessages.map((msg, idx) => (
                 <div
                   key={idx}

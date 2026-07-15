@@ -23,6 +23,27 @@ export interface ActivitySession {
   }>;
 }
 
+export interface StudentPreferences {
+  theme: "light" | "dark" | "system";
+  notificationsEnabled: boolean;
+  reminderWindowMinutes: number;
+  targetScore: number;
+}
+
+export interface StudentStudyPlan {
+  dailyGoalMinutes: number;
+  weeklyTargets: Record<string, number>;
+  focusSubjects: Array<"Chemistry" | "Physics" | "Mathematics" | "Biology">;
+}
+
+export interface StudentNotification {
+  id: string;
+  type: "quiz" | "progress" | "system";
+  message: string;
+  read: boolean;
+  createdAt: string;
+}
+
 export interface Teacher {
   id: string;
   name: string;
@@ -40,6 +61,13 @@ export interface Student {
   scores: Record<string, number>;
   milestones?: Record<string, boolean[]>; // stores topic name -> array of booleans mapping to NCERT concepts list
   email?: string;
+  profileStatus?: "active" | "needs-linking" | "suspended";
+  preferences?: StudentPreferences;
+  studyPlan?: StudentStudyPlan;
+  notifications?: StudentNotification[];
+  lastActiveAt?: string;
+  streakDays?: number;
+  goals?: string[];
   activeQuiz?: ActiveQuizState | null;
   quizStats?: {
     totalQuizzes: number;

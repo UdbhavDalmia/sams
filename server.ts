@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import fs from "fs";
 import path from "path";
+import { randomUUID } from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { initializeApp as initAdminApp, cert } from "firebase-admin/app";
@@ -22,8 +23,34 @@ const ai = new GoogleGenAI({
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+const SESSION_COOKIE_NAME = "sams_session";
+const sessionStore = new Map<string, { role: "student" | "teacher"; student?: Student; passcode?: string; name?: string }>();
 
 app.use(express.json({ limit: "10mb" }));
+
+function parseCookies(cookieHeader = "") {
+  const cookies: Record<string, string> = {};
+  cookieHeader.split(";").forEach((cookie) => {
+    const [name, ...rest] = cookie.trim().split("=");
+    if (!name) return;
+    cookies[name] = decodeURIComponent(rest.join("="));
+  });
+  return cookies;
+}
+
+function getSessionFromRequest(req: express.Request) {
+  const cookies = parseCookies(req.headers.cookie || "");
+  const token = cookies[SESSION_COOKIE_NAME];
+  return token ? sessionStore.get(token) || null : null;
+}
+
+function writeSessionCookie(res: express.Response, token: string) {
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`);
+}
+
+function clearSessionCookie(res: express.Response) {
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+}
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const STUDENTS_DIR = path.join(DATA_DIR, "students");
@@ -542,8 +569,42 @@ function sanitizeStudentProfile(student: Student): Student {
 
   if (!student.scores) student.scores = {};
   if (!student.milestones) student.milestones = {};
+  if (!student.preferences) {
+    student.preferences = {
+      theme: "system",
+      notificationsEnabled: true,
+      reminderWindowMinutes: 30,
+      targetScore: 75,
+    };
+  }
+  if (!student.studyPlan) {
+    student.studyPlan = {
+      dailyGoalMinutes: 45,
+      weeklyTargets: {
+        Chemistry: 2,
+        Physics: 2,
+        Mathematics: 2,
+        Biology: 2,
+      },
+      focusSubjects: ["Chemistry", "Physics", "Mathematics"],
+    };
+  }
+  if (!student.notifications) {
+    student.notifications = [];
+  }
+  if (!student.goals) {
+    student.goals = ["Improve conceptual clarity", "Complete one chapter per week"];
+  }
+  if (!student.profileStatus) {
+    student.profileStatus = "active";
+  }
+  if (!student.streakDays) {
+    student.streakDays = 0;
+  }
+  if (!student.lastActiveAt) {
+    student.lastActiveAt = new Date().toISOString();
+  }
 
-  // Remove any keys that are not allowed
   Object.keys(student.scores).forEach((topic) => {
     if (!allowedSet.has(topic)) {
       delete student.scores[topic];
@@ -556,7 +617,6 @@ function sanitizeStudentProfile(student: Student): Student {
     }
   });
 
-  // Ensure all allowed topics are initialized to 0
   allowedTopics.forEach((t) => {
     if (student.scores[t] === undefined) {
       student.scores[t] = 0;
@@ -768,6 +828,24 @@ function logStudentActivity(
 // REST APIs
 
 // 1. Authentication
+app.get("/api/session", (req, res) => {
+  const session = getSessionFromRequest(req);
+  if (!session) {
+    return res.status(401).json({ error: "No active session" });
+  }
+  return res.json({ session });
+});
+
+app.post("/api/logout", (req, res) => {
+  const cookies = parseCookies(req.headers.cookie || "");
+  const token = cookies[SESSION_COOKIE_NAME];
+  if (token) {
+    sessionStore.delete(token);
+  }
+  clearSessionCookie(res);
+  return res.json({ success: true });
+});
+
 app.post("/api/login", async (req, res) => {
   const { role, rollNo, phone, passcode, classId } = req.body;
 
@@ -775,6 +853,9 @@ app.post("/api/login", async (req, res) => {
     const cleanPass = String(passcode).trim().toUpperCase();
     const teacher = await getTeacherByPasscode(cleanPass);
     if (teacher) {
+      const token = randomUUID();
+      sessionStore.set(token, { role: "teacher", name: teacher.name, passcode: teacher.passcodes[0] });
+      writeSessionCookie(res, token);
       return res.json({ success: true, role: "teacher", name: teacher.name, passcode: teacher.passcodes[0] });
     }
     return res.status(401).json({ error: "Invalid teacher passcode. Hints: CHEM12A (Chemistry), PHYS12A (Physics), MATH12A (Maths), BIO12B (Biology)" });
@@ -796,6 +877,9 @@ app.post("/api/login", async (req, res) => {
   const last4Db = dbPhone.slice(-4);
 
   if (cleanPhoneInput === dbPhone || cleanPhoneInput === last4Db) {
+    const token = randomUUID();
+    sessionStore.set(token, { role: "student", student });
+    writeSessionCookie(res, token);
     return res.json({ success: true, role: "student", student });
   }
 
@@ -828,13 +912,18 @@ app.post("/api/login-google", async (req, res) => {
 
   const teacher = await getTeacherByEmail(email);
   if (teacher) {
+    const token = randomUUID();
+    sessionStore.set(token, { role: "teacher", name: teacher.name, passcode: teacher.passcodes[0] });
+    writeSessionCookie(res, token);
     return res.json({ success: true, role: "teacher", name: teacher.name, passcode: teacher.passcodes[0] });
   }
 
   const student = await getStudentByEmail(email);
 
   if (student) {
-    // Log in directly since the identity has been authenticated via proper Google Login
+    const token = randomUUID();
+    sessionStore.set(token, { role: "student", student });
+    writeSessionCookie(res, token);
     return res.json({ success: true, role: "student", student });
   }
 

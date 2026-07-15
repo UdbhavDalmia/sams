@@ -16,35 +16,50 @@ export default function App() {
   const [session, setSession] = useState<SessionState | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Restore session from localStorage on mount
+  // Restore server-managed session on mount via secure cookie.
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("sams_session_v1");
-      if (saved) {
-        setSession(JSON.parse(saved));
+    const restoreSession = async () => {
+      try {
+        const response = await fetch("/api/session", {
+          credentials: "same-origin",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.session) {
+            setSession(data.session);
+          }
+        }
+      } catch (err) {
+        console.error("Error restoring session:", err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Error restoring session:", err);
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    restoreSession();
   }, []);
 
   const handleLoginSuccess = (loginData: { role: "student" | "teacher"; student?: Student; passcode?: string; name?: string }) => {
     const newSession: SessionState = {
       role: loginData.role,
       student: loginData.student,
-      // If student, the pass is their phone, if teacher it's the passcode.
       passcode: loginData.role === "teacher" ? loginData.passcode : undefined,
       name: loginData.name,
     };
     setSession(newSession);
-    localStorage.setItem("sams_session_v1", JSON.stringify(newSession));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setSession(null);
-    localStorage.removeItem("sams_session_v1");
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+    } catch (err) {
+      console.error("Error clearing server session:", err);
+    }
   };
 
   if (loading) {
