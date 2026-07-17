@@ -91,7 +91,11 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
       });
       if (profileRes.ok) {
         const data = await profileRes.json();
-        const initials = data.name.split(" ").filter((n: string) => !n.includes(".")).map((n: string) => n[0]).join("").toUpperCase() || "T";
+        const rawName = data.name || "Dr. Pradeep Gusain";
+        const normalizedName = rawName === "Mr. Pradeep Gusain" || rawName === "Pradeep Gusain"
+          ? "Dr. Pradeep Gusain"
+          : rawName;
+        const initials = normalizedName.split(" ").filter((n: string) => !n.includes(".")).map((n: string) => n[0]).join("").toUpperCase() || "T";
         const subject = data.subject;
         const classes = data.classes || (subject === "Biology" ? ["xii-b"] : ["xii-a", "xii-b"]);
         const role = subject === "Biology" 
@@ -102,7 +106,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
           : `Class ${classes[0].toUpperCase()}`;
         
         setTeacherDetails({
-          name: data.name,
+          name: normalizedName,
           role,
           subject,
           initials,

@@ -731,7 +731,7 @@ async function getTeacherProfile(passcode: string): Promise<any> {
   const teacher = await getTeacherByPasscode(cacheKey);
   const profile = teacher
     ? {
-      name: teacher.name,
+      name: teacher.id === "T1" ? "Dr. Pradeep Gusain" : teacher.name,
       subject: teacher.subject,
       email: teacher.email,
       classes: teacher.classes,
@@ -958,6 +958,9 @@ app.get("/api/teacher/profile", async (req, res) => {
   if (!auth) return res.status(401).json({ error: "Missing passcode" });
   const profile = await getTeacherProfile(String(auth));
   if (!profile) return res.status(404).json({ error: "Teacher not found" });
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   res.json(profile);
 });
 
