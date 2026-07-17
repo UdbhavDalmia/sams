@@ -722,7 +722,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
         }
       }
     };
-    
+
     fetchLatestData();
   }, []);
 
@@ -1321,8 +1321,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                 key={a.id}
                 onClick={() => setSelectedMobileAchievement(prev => prev === a.id ? null : a.id)}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold shrink-0 transition-all cursor-pointer ${a.earned
-                    ? tierBg[a.tier]
-                    : darkMode ? "bg-slate-800/40 border-slate-700/30 opacity-35" : "bg-slate-100 border-slate-200 opacity-40"
+                  ? tierBg[a.tier]
+                  : darkMode ? "bg-slate-800/40 border-slate-700/30 opacity-35" : "bg-slate-100 border-slate-200 opacity-40"
                   } ${selectedMobileAchievement === a.id ? "ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-slate-950" : ""}`}
               >
                 <span>{getAchievementIcon(a.id, a.tier, a.earned, "h-3.5 w-3.5")}</span>
@@ -1366,8 +1366,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
               >
                 <div className="flex items-start gap-3">
                   <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${activeAch.earned
-                      ? (darkMode ? "bg-indigo-500/15 border border-indigo-500/20" : "bg-indigo-50 border border-indigo-100")
-                      : (darkMode ? "bg-slate-800/60 border-slate-700/40" : "bg-slate-100 border border-slate-200")
+                    ? (darkMode ? "bg-indigo-500/15 border border-indigo-500/20" : "bg-indigo-50 border border-indigo-100")
+                    : (darkMode ? "bg-slate-800/60 border-slate-700/40" : "bg-slate-100 border border-slate-200")
                     }`}>
                     {getAchievementIcon(activeAch.id, activeAch.tier, activeAch.earned, "h-5 w-5")}
                   </div>
@@ -1390,8 +1390,8 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                       {activeAch.desc}
                     </p>
                     <div className={`mt-2.5 p-2 rounded-lg border text-[10px] font-bold leading-relaxed ${activeAch.earned
-                        ? (darkMode ? "bg-emerald-950/25 border-emerald-900/35 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-700")
-                        : (darkMode ? "bg-slate-800/30 border-slate-700/20 text-slate-400" : "bg-slate-100 border-slate-200 text-slate-600")
+                      ? (darkMode ? "bg-emerald-950/25 border-emerald-900/35 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-700")
+                      : (darkMode ? "bg-slate-800/30 border-slate-700/20 text-slate-400" : "bg-slate-100 border-slate-200 text-slate-600")
                       }`}>
                       {activeAch.earned ? (
                         <span className="flex items-center gap-1">🏆 <strong>Earned:</strong> Requirement met! Keep going.</span>
@@ -1434,13 +1434,13 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
               <div
                 key={a.id}
                 className={`flex items-start gap-3 p-3 rounded-2xl border transition-all ${a.earned
-                    ? tierBg[a.tier]
-                    : darkMode ? "bg-slate-800/20 border-slate-800/40 opacity-40" : "bg-slate-50 border-slate-100 opacity-50"
+                  ? tierBg[a.tier]
+                  : darkMode ? "bg-slate-800/20 border-slate-800/40 opacity-40" : "bg-slate-50 border-slate-100 opacity-50"
                   }`}
               >
                 <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${a.earned
-                    ? (darkMode ? "bg-indigo-500/15 border border-indigo-500/20" : "bg-indigo-50 border border-indigo-100")
-                    : (darkMode ? "bg-slate-850 border border-slate-800" : "bg-slate-100 border border-slate-200/60")
+                  ? (darkMode ? "bg-indigo-500/15 border border-indigo-500/20" : "bg-indigo-50 border border-indigo-100")
+                  : (darkMode ? "bg-slate-850 border border-slate-800" : "bg-slate-100 border border-slate-200/60")
                   }`}>
                   {getAchievementIcon(a.id, a.tier, a.earned, "h-4 w-4")}
                 </div>
@@ -1565,7 +1565,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                     const dynamicBg = getProgressColor(overallAvg, 0.15);
 
                     return (
-                      <span 
+                      <span
                         className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-wider`}
                         style={{ color: dynamicColor, borderColor: dynamicBg, backgroundColor: dynamicBg }}
                       >
@@ -1699,8 +1699,9 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                     }}
                     onMouseEnter={(e) => gsap.to(e.currentTarget, { scale: 1.03, y: -4, duration: 0.25, ease: "power2.out" })}
                     onMouseLeave={(e) => gsap.to(e.currentTarget, { scale: 1, y: 0, duration: 0.3, ease: "power2.out" })}
-                    className={`p-4 rounded-3xl border text-left cursor-pointer hover:shadow-lg flex flex-col justify-between h-40 ${darkMode ? "bg-slate-900 border-slate-800 hover:border-slate-700" : "bg-white border-slate-200/60 hover:border-slate-300"
+                    className={`p-4 rounded-3xl border text-left cursor-pointer flex flex-col justify-between h-40 ${darkMode ? "bg-slate-900 border-slate-800 hover:border-slate-700" : "bg-white border-slate-200/60 hover:border-slate-300"
                       }`}
+                    style={{ boxShadow: `0 0 4px 2px ${getProgressColor(score, 0.2)}` }}
                   >
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
@@ -1719,9 +1720,9 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
                         </span>
                       </div>
                       <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full mt-2.5 overflow-hidden">
-                        <div 
+                        <div
                           className="h-full rounded-full transition-all duration-300"
-                          style={{ width: `${score}%`, backgroundColor: getProgressColor(score) }} 
+                          style={{ width: `${score}%`, backgroundColor: getProgressColor(score) }}
                         />
                       </div>
                     </div>
@@ -1741,290 +1742,290 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
 
             <div className="relative z-10 space-y-6">
               <AnimatePresence>
-              {!quizStarted ? (
-                /* Pre-Quiz Selection */
-                <div className="max-w-2xl space-y-4">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${darkMode
-                      ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/20"
-                      : "bg-indigo-50 text-indigo-600 border-indigo-100"}`}>
-                      Adaptive AI Quiz
-                    </span>
-                  </div>
-                  <h3 className={`text-2xl font-black font-display ${darkMode ? "text-white" : "text-slate-900"}`}>
-                    Adaptive Assessment Session
-                  </h3>
-                  <p className={`text-sm leading-relaxed font-semibold ${darkMode ? "text-indigo-200" : "text-slate-700"}`}>
-                    5 questions, one at a time. Difficulty adjusts based on your answers — correct gets harder, wrong gets easier. Full performance report at the end.
-                  </p>
-
-                  {quizError && (
-                    <div className="p-3 bg-rose-950/60 border border-rose-900/40 text-rose-300 rounded-xl flex items-center gap-2 text-sm font-semibold">
-                      <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                      <span>{quizError}</span>
+                {!quizStarted ? (
+                  /* Pre-Quiz Selection */
+                  <div className="max-w-2xl space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${darkMode
+                        ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/20"
+                        : "bg-indigo-50 text-indigo-600 border-indigo-100"}`}>
+                        Adaptive AI Quiz
+                      </span>
                     </div>
-                  )}
-
-                  <div className="flex flex-col sm:flex-row gap-3 pt-3 items-stretch sm:items-end">
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <label className={`block text-xs font-black uppercase tracking-wider ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
-                        Select Topic
-                      </label>
-                      <div className="relative">
-                        <select
-                          value={quizTopic}
-                          onChange={(e) => setQuizTopic(e.target.value)}
-                          className={`w-full border rounded-xl pl-4 pr-10 py-3 text-base font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer appearance-none ${darkMode
-                            ? "bg-slate-950 text-white border-slate-800"
-                            : "bg-slate-50 text-slate-900 border-slate-200"}`}
-                        >
-                          {activeTopics.map((chap) => (
-                            <option key={chap} value={chap}>{chap}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleStartQuiz}
-                      disabled={quizLoading}
-                      className={`font-extrabold text-sm px-6 py-3.5 rounded-xl transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2 min-w-[180px] ${darkMode
-                        ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white"
-                        : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white"}`}
-                    >
-                      {quizLoading ? (
-                        <><Loader className="w-4 h-4 animate-spin" /> Generating...</>
-                      ) : (
-                        <><Zap className="w-4 h-4" /> Start Quiz</>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ) : quizFinished && quizState ? (
-                /* Performance Report */
-                <div className="space-y-6 max-w-2xl">
-                  <div className="text-center space-y-2">
-                    <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${darkMode ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border-emerald-100"}`}>
-                      Session Complete
-                    </span>
-                    <h3 className={`text-2xl font-black ${darkMode ? "text-white" : "text-slate-900"}`}>
-                      Performance Report
+                    <h3 className={`text-2xl font-black font-display ${darkMode ? "text-white" : "text-slate-900"}`}>
+                      Adaptive Assessment Session
                     </h3>
-                    <p className={`text-sm font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                      Topic: {quizState.topic}
+                    <p className={`text-sm leading-relaxed font-semibold ${darkMode ? "text-indigo-200" : "text-slate-700"}`}>
+                      5 questions, one at a time. Difficulty adjusts based on your answers — correct gets harder, wrong gets easier. Full performance report at the end.
                     </p>
-                  </div>
 
-                  {/* Score card */}
-                  <div className={`p-5 rounded-2xl border text-center ${darkMode ? "bg-slate-800/60 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
-                    <div className="flex items-center justify-center gap-4">
-                      <span className="text-6xl font-black text-indigo-600">{quizState.correctCount}</span>
-                      <div className="text-left">
-                        <p className={`text-xs font-bold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-slate-500"}`}>out of 5</p>
-                        <p className={`text-sm font-extrabold ${darkMode ? "text-slate-200" : "text-slate-700"}`}>
-                          {quizState.correctCount === 5 ? "🏆 Perfect!" : quizState.correctCount >= 4 ? "🌟 Excellent!" : quizState.correctCount >= 3 ? "👍 Good work" : quizState.correctCount >= 2 ? "📚 Keep practicing" : "💪 Don't give up!"}
-                        </p>
+                    {quizError && (
+                      <div className="p-3 bg-rose-950/60 border border-rose-900/40 text-rose-300 rounded-xl flex items-center gap-2 text-sm font-semibold">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                        <span>{quizError}</span>
                       </div>
-                    </div>
-                    <div className={`h-2 rounded-full mt-4 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}>
-                      <div className={`h-full rounded-full transition-all duration-700 ${quizState.correctCount >= 4 ? "bg-emerald-500" : quizState.correctCount >= 3 ? "bg-amber-500" : "bg-rose-500"}`}
-                        style={{ width: `${(quizState.correctCount / 5) * 100}%` }} />
-                    </div>
-                  </div>
+                    )}
 
-                  {/* Difficulty progression */}
-                  <div>
-                    <p className={`text-xs font-black uppercase tracking-wider mb-2 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Question Breakdown</p>
-                    <div className="space-y-2">
-                      {quizState.history.map((h, i) => (
-                        <div key={i} className={`flex items-start gap-3 p-3 rounded-xl border ${darkMode ? "bg-slate-800/40 border-slate-700/40" : "bg-slate-50 border-slate-100"}`}>
-                          <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 mt-0.5 ${h.correct ? (darkMode ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-700") : (darkMode ? "bg-rose-500/20 text-rose-400" : "bg-rose-100 text-rose-600")}`}>
-                            {i + 1}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full ${h.difficulty === "hard" ? "bg-rose-100 text-rose-600" : h.difficulty === "medium" ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"}`}>
-                                {h.difficulty}
-                              </span>
-                              <span className={`text-xs font-bold ${h.correct ? (darkMode ? "text-emerald-400" : "text-emerald-700") : (darkMode ? "text-rose-400" : "text-rose-600")}`}>
-                                {h.correct ? "✓ Correct" : "✗ Incorrect"}
-                              </span>
-                            </div>
-                            <div className={`text-xs mt-1 leading-snug line-clamp-2 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>{parseMarkdownAndMath(h.question)}</div>
-                            {!h.correct && (
-                              <div className={`text-[10px] mt-1 leading-snug ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{parseMarkdownAndMath(h.explanation)}</div>
-                            )}
-                          </div>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-3 items-stretch sm:items-end">
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <label className={`block text-xs font-black uppercase tracking-wider ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
+                          Select Topic
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={quizTopic}
+                            onChange={(e) => setQuizTopic(e.target.value)}
+                            className={`w-full border rounded-xl pl-4 pr-10 py-3 text-base font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer appearance-none ${darkMode
+                              ? "bg-slate-950 text-white border-slate-800"
+                              : "bg-slate-50 text-slate-900 border-slate-200"}`}
+                          >
+                            {activeTopics.map((chap) => (
+                              <option key={chap} value={chap}>{chap}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                         </div>
-                      ))}
+                      </div>
+                      <button
+                        onClick={handleStartQuiz}
+                        disabled={quizLoading}
+                        className={`font-extrabold text-sm px-6 py-3.5 rounded-xl transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2 min-w-[180px] ${darkMode
+                          ? "bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white"
+                          : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-100 disabled:text-slate-400 text-white"}`}
+                      >
+                        {quizLoading ? (
+                          <><Loader className="w-4 h-4 animate-spin" /> Generating...</>
+                        ) : (
+                          <><Zap className="w-4 h-4" /> Start Quiz</>
+                        )}
+                      </button>
                     </div>
                   </div>
-
-                  {/* Recommendation */}
-                  {quizState.correctCount < 5 && (
-                    <div className={`p-4 rounded-2xl border ${darkMode ? "bg-indigo-950/40 border-indigo-800/40" : "bg-indigo-50 border-indigo-100"}`}>
-                      <p className={`text-xs font-extrabold uppercase tracking-wider mb-1 ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>Study Recommendation</p>
-                      <p className={`text-xs font-semibold leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
-                        Review the incorrect questions above and revisit your {quizState.topic} notes. Focus on the explanations provided — they target the exact concept gaps.
+                ) : quizFinished && quizState ? (
+                  /* Performance Report */
+                  <div className="space-y-6 max-w-2xl">
+                    <div className="text-center space-y-2">
+                      <span className={`text-[10px] font-extrabold tracking-widest uppercase px-2.5 py-1 rounded-full border ${darkMode ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border-emerald-100"}`}>
+                        Session Complete
+                      </span>
+                      <h3 className={`text-2xl font-black ${darkMode ? "text-white" : "text-slate-900"}`}>
+                        Performance Report
+                      </h3>
+                      <p className={`text-sm font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                        Topic: {quizState.topic}
                       </p>
                     </div>
-                  )}
 
-                  <button
-                    onClick={handleRestartQuiz}
-                    className="w-full flex items-center justify-center gap-2 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all"
-                  >
-                    <RefreshCw className="h-4 w-4" /> Start New Quiz
-                  </button>
-                </div>
-              ) : (
-                /* Active Question */
-                <div className="space-y-5 max-w-2xl">
-                  {/* Header */}
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <span className={`text-[10px] font-extrabold tracking-widest uppercase ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
-                        Active Assessment
-                      </span>
-                      <h4 className={`text-base font-black mt-0.5 ${darkMode ? "text-white" : "text-slate-900"}`}>
-                        {quizState?.topic || quizTopic}
-                      </h4>
+                    {/* Score card */}
+                    <div className={`p-5 rounded-2xl border text-center ${darkMode ? "bg-slate-800/60 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
+                      <div className="flex items-center justify-center gap-4">
+                        <span className="text-6xl font-black text-indigo-600">{quizState.correctCount}</span>
+                        <div className="text-left">
+                          <p className={`text-xs font-bold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-slate-500"}`}>out of 5</p>
+                          <p className={`text-sm font-extrabold ${darkMode ? "text-slate-200" : "text-slate-700"}`}>
+                            {quizState.correctCount === 5 ? "🏆 Perfect!" : quizState.correctCount >= 4 ? "🌟 Excellent!" : quizState.correctCount >= 3 ? "👍 Good work" : quizState.correctCount >= 2 ? "📚 Keep practicing" : "💪 Don't give up!"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`h-2 rounded-full mt-4 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}>
+                        <div className={`h-full rounded-full transition-all duration-700 ${quizState.correctCount >= 4 ? "bg-emerald-500" : quizState.correctCount >= 3 ? "bg-amber-500" : "bg-rose-500"}`}
+                          style={{ width: `${(quizState.correctCount / 5) * 100}%` }} />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {/* Progress dots */}
-                      <div className="flex gap-1">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <div key={i} className={`w-2 h-2 rounded-full ${i < (quizState?.roundsCompleted || 0)
-                            ? (quizState?.history[i]?.correct ? "bg-emerald-500" : "bg-rose-500")
-                            : i === (quizState?.roundsCompleted || 0) ? "bg-indigo-500 animate-pulse" : (darkMode ? "bg-slate-700" : "bg-slate-200")}`} />
+
+                    {/* Difficulty progression */}
+                    <div>
+                      <p className={`text-xs font-black uppercase tracking-wider mb-2 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Question Breakdown</p>
+                      <div className="space-y-2">
+                        {quizState.history.map((h, i) => (
+                          <div key={i} className={`flex items-start gap-3 p-3 rounded-xl border ${darkMode ? "bg-slate-800/40 border-slate-700/40" : "bg-slate-50 border-slate-100"}`}>
+                            <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 mt-0.5 ${h.correct ? (darkMode ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-700") : (darkMode ? "bg-rose-500/20 text-rose-400" : "bg-rose-100 text-rose-600")}`}>
+                              {i + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full ${h.difficulty === "hard" ? "bg-rose-100 text-rose-600" : h.difficulty === "medium" ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600"}`}>
+                                  {h.difficulty}
+                                </span>
+                                <span className={`text-xs font-bold ${h.correct ? (darkMode ? "text-emerald-400" : "text-emerald-700") : (darkMode ? "text-rose-400" : "text-rose-600")}`}>
+                                  {h.correct ? "✓ Correct" : "✗ Incorrect"}
+                                </span>
+                              </div>
+                              <div className={`text-xs mt-1 leading-snug line-clamp-2 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>{parseMarkdownAndMath(h.question)}</div>
+                              {!h.correct && (
+                                <div className={`text-[10px] mt-1 leading-snug ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{parseMarkdownAndMath(h.explanation)}</div>
+                              )}
+                            </div>
+                          </div>
                         ))}
                       </div>
-                      <span className={`text-xs font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                        {(quizState?.roundsCompleted || 0) + 1}/5
-                      </span>
-                      {/* Difficulty badge */}
-                      {quizState && (
-                        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${quizState.difficulty === "hard" ? "bg-rose-100 text-rose-700" : quizState.difficulty === "medium" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                          {quizState.difficulty}
-                        </span>
-                      )}
                     </div>
+
+                    {/* Recommendation */}
+                    {quizState.correctCount < 5 && (
+                      <div className={`p-4 rounded-2xl border ${darkMode ? "bg-indigo-950/40 border-indigo-800/40" : "bg-indigo-50 border-indigo-100"}`}>
+                        <p className={`text-xs font-extrabold uppercase tracking-wider mb-1 ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>Study Recommendation</p>
+                        <p className={`text-xs font-semibold leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+                          Review the incorrect questions above and revisit your {quizState.topic} notes. Focus on the explanations provided — they target the exact concept gaps.
+                        </p>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleRestartQuiz}
+                      className="w-full flex items-center justify-center gap-2 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all"
+                    >
+                      <RefreshCw className="h-4 w-4" /> Start New Quiz
+                    </button>
                   </div>
-
-                  {quizLoading ? (
-                    <div className="flex flex-col items-center justify-center py-12 gap-4">
-                      <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                      <p className={`text-sm font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Generating next question...</p>
+                ) : (
+                  /* Active Question */
+                  <div className="space-y-5 max-w-2xl">
+                    {/* Header */}
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div>
+                        <span className={`text-[10px] font-extrabold tracking-widest uppercase ${darkMode ? "text-indigo-300" : "text-indigo-600"}`}>
+                          Active Assessment
+                        </span>
+                        <h4 className={`text-base font-black mt-0.5 ${darkMode ? "text-white" : "text-slate-900"}`}>
+                          {quizState?.topic || quizTopic}
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {/* Progress dots */}
+                        <div className="flex gap-1">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <div key={i} className={`w-2 h-2 rounded-full ${i < (quizState?.roundsCompleted || 0)
+                              ? (quizState?.history[i]?.correct ? "bg-emerald-500" : "bg-rose-500")
+                              : i === (quizState?.roundsCompleted || 0) ? "bg-indigo-500 animate-pulse" : (darkMode ? "bg-slate-700" : "bg-slate-200")}`} />
+                          ))}
+                        </div>
+                        <span className={`text-xs font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                          {(quizState?.roundsCompleted || 0) + 1}/5
+                        </span>
+                        {/* Difficulty badge */}
+                        {quizState && (
+                          <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${quizState.difficulty === "hard" ? "bg-rose-100 text-rose-700" : quizState.difficulty === "medium" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                            {quizState.difficulty}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  ) : quizError ? (
-                    <div className="space-y-4 py-8 text-center max-w-md mx-auto">
-                      <div className="mx-auto w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                        <AlertCircle className="h-6 w-6" />
-                      </div>
-                      <div className="space-y-1">
-                        <h4 className={`text-sm font-black ${darkMode ? "text-white" : "text-slate-900"}`}>Failed to load question</h4>
-                        <p className={`text-xs font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{quizError}</p>
-                      </div>
-                      <div className="flex items-center justify-center gap-3 pt-2">
-                        <button
-                          onClick={() => quizState && fetchNextQuestion(quizState)}
-                          className="px-4 py-2 font-extrabold text-xs rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all cursor-pointer"
-                        >
-                          Try Again
-                        </button>
-                        <button
-                          onClick={handleRestartQuiz}
-                          className={`px-4 py-2 font-extrabold text-xs rounded-xl border transition-all cursor-pointer ${darkMode ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                            }`}
-                        >
-                          Exit Quiz
-                        </button>
-                      </div>
-                    </div>
-                  ) : currentQuestion ? (
-                    <div ref={quizCardRef} className={`p-5 rounded-2xl border space-y-4 ${darkMode ? "bg-slate-950/40 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-                      {/* Question */}
-                      <div className={`text-sm font-bold leading-relaxed select-text ${darkMode ? "text-white" : "text-slate-900"}`}>
-                        {parseMarkdownAndMath(currentQuestion.question)}
-                      </div>
 
-                      {/* Options */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        {currentQuestion.options.map((opt: string, optIdx: number) => {
-                          const isSelected = selectedAnswer === optIdx;
-                          const isCorrect = optIdx === currentQuestion.answerIndex;
+                    {quizLoading ? (
+                      <div className="flex flex-col items-center justify-center py-12 gap-4">
+                        <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                        <p className={`text-sm font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Generating next question...</p>
+                      </div>
+                    ) : quizError ? (
+                      <div className="space-y-4 py-8 text-center max-w-md mx-auto">
+                        <div className="mx-auto w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                          <AlertCircle className="h-6 w-6" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className={`text-sm font-black ${darkMode ? "text-white" : "text-slate-900"}`}>Failed to load question</h4>
+                          <p className={`text-xs font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{quizError}</p>
+                        </div>
+                        <div className="flex items-center justify-center gap-3 pt-2">
+                          <button
+                            onClick={() => quizState && fetchNextQuestion(quizState)}
+                            className="px-4 py-2 font-extrabold text-xs rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all cursor-pointer"
+                          >
+                            Try Again
+                          </button>
+                          <button
+                            onClick={handleRestartQuiz}
+                            className={`px-4 py-2 font-extrabold text-xs rounded-xl border transition-all cursor-pointer ${darkMode ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                              }`}
+                          >
+                            Exit Quiz
+                          </button>
+                        </div>
+                      </div>
+                    ) : currentQuestion ? (
+                      <div ref={quizCardRef} className={`p-5 rounded-2xl border space-y-4 ${darkMode ? "bg-slate-950/40 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
+                        {/* Question */}
+                        <div className={`text-sm font-bold leading-relaxed select-text ${darkMode ? "text-white" : "text-slate-900"}`}>
+                          {parseMarkdownAndMath(currentQuestion.question)}
+                        </div>
 
-                          let style = "";
-                          if (showFeedback) {
-                            if (isCorrect) style = darkMode ? "bg-emerald-600 border-emerald-400 text-white" : "bg-emerald-50 border-emerald-300 text-emerald-700 font-extrabold";
-                            else if (isSelected) style = darkMode ? "bg-rose-600 border-rose-400 text-white" : "bg-rose-50 border-rose-200 text-rose-600";
-                            else style = "opacity-40 " + (darkMode ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-white border-slate-200 text-slate-500");
-                          } else {
-                            style = isSelected
-                              ? darkMode ? "bg-indigo-600 border-indigo-400 text-white" : "bg-indigo-50 border-indigo-300 text-indigo-700 font-extrabold"
-                              : darkMode ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750 hover:border-indigo-700" : "bg-white border-slate-200 text-slate-800 hover:bg-indigo-50 hover:border-indigo-200";
-                          }
+                        {/* Options */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {currentQuestion.options.map((opt: string, optIdx: number) => {
+                            const isSelected = selectedAnswer === optIdx;
+                            const isCorrect = optIdx === currentQuestion.answerIndex;
 
-                          return (
+                            let style = "";
+                            if (showFeedback) {
+                              if (isCorrect) style = darkMode ? "bg-emerald-600 border-emerald-400 text-white" : "bg-emerald-50 border-emerald-300 text-emerald-700 font-extrabold";
+                              else if (isSelected) style = darkMode ? "bg-rose-600 border-rose-400 text-white" : "bg-rose-50 border-rose-200 text-rose-600";
+                              else style = "opacity-40 " + (darkMode ? "bg-slate-800 border-slate-700 text-slate-400" : "bg-white border-slate-200 text-slate-500");
+                            } else {
+                              style = isSelected
+                                ? darkMode ? "bg-indigo-600 border-indigo-400 text-white" : "bg-indigo-50 border-indigo-300 text-indigo-700 font-extrabold"
+                                : darkMode ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-750 hover:border-indigo-700" : "bg-white border-slate-200 text-slate-800 hover:bg-indigo-50 hover:border-indigo-200";
+                            }
+
+                            return (
+                              <button
+                                key={optIdx}
+                                onClick={() => handleSelectAnswer(optIdx)}
+                                disabled={showFeedback}
+                                className={`p-3.5 rounded-xl border text-left text-xs font-semibold transition-all ${style} ${!showFeedback ? "cursor-pointer" : "cursor-default"}`}
+                              >
+                                <span className="font-black text-[10px] opacity-60 mr-1.5">{["A", "B", "C", "D"][optIdx]}.</span>
+                                <span>{parseBoldAndMathInline(opt)}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Feedback area */}
+                        {showFeedback && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                            className={`p-3.5 rounded-xl border ${selectedAnswer === currentQuestion.answerIndex
+                              ? (darkMode ? "bg-emerald-950/40 border-emerald-800/40" : "bg-emerald-50 border-emerald-200")
+                              : (darkMode ? "bg-rose-950/40 border-rose-800/40" : "bg-rose-50 border-rose-200")}`}
+                          >
+                            <p className={`text-xs font-extrabold mb-1 ${selectedAnswer === currentQuestion.answerIndex ? (darkMode ? "text-emerald-400" : "text-emerald-700") : (darkMode ? "text-rose-400" : "text-rose-600")}`}>
+                              {selectedAnswer === currentQuestion.answerIndex ? "✓ Correct!" : "✗ Incorrect"}
+                            </p>
+                            <p className={`text-xs leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+                              {parseMarkdownAndMath(currentQuestion.explanation)}
+                            </p>
+                          </motion.div>
+                        )}
+
+                        {/* Action row */}
+                        <div className="flex items-center justify-between gap-3">
+                          {!showFeedback ? (
                             <button
-                              key={optIdx}
-                              onClick={() => handleSelectAnswer(optIdx)}
-                              disabled={showFeedback}
-                              className={`p-3.5 rounded-xl border text-left text-xs font-semibold transition-all ${style} ${!showFeedback ? "cursor-pointer" : "cursor-default"}`}
+                              onClick={handleConfirmAnswer}
+                              disabled={selectedAnswer === null}
+                              className="flex-1 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
                             >
-                              <span className="font-black text-[10px] opacity-60 mr-1.5">{["A", "B", "C", "D"][optIdx]}.</span>
-                              <span>{parseBoldAndMathInline(opt)}</span>
+                              Confirm Answer
                             </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Feedback area */}
-                      {showFeedback && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                          className={`p-3.5 rounded-xl border ${selectedAnswer === currentQuestion.answerIndex
-                            ? (darkMode ? "bg-emerald-950/40 border-emerald-800/40" : "bg-emerald-50 border-emerald-200")
-                            : (darkMode ? "bg-rose-950/40 border-rose-800/40" : "bg-rose-50 border-rose-200")}`}
-                        >
-                          <p className={`text-xs font-extrabold mb-1 ${selectedAnswer === currentQuestion.answerIndex ? (darkMode ? "text-emerald-400" : "text-emerald-700") : (darkMode ? "text-rose-400" : "text-rose-600")}`}>
-                            {selectedAnswer === currentQuestion.answerIndex ? "✓ Correct!" : "✗ Incorrect"}
-                          </p>
-                          <p className={`text-xs leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
-                            {parseMarkdownAndMath(currentQuestion.explanation)}
-                          </p>
-                        </motion.div>
-                      )}
-
-                      {/* Action row */}
-                      <div className="flex items-center justify-between gap-3">
-                        {!showFeedback ? (
+                          ) : (quizState?.roundsCompleted || 0) < 5 ? (
+                            <button
+                              onClick={handleNextQuestion}
+                              className="flex-1 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center justify-center gap-2"
+                            >
+                              Next Question <ChevronRight className="h-4 w-4" />
+                            </button>
+                          ) : null}
                           <button
-                            onClick={handleConfirmAnswer}
-                            disabled={selectedAnswer === null}
-                            className="flex-1 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
+                            onClick={handleRestartQuiz}
+                            className={`px-4 py-3 text-xs font-bold rounded-xl transition-all ${darkMode ? "bg-slate-800 text-slate-400 hover:text-slate-200" : "bg-slate-100 text-slate-500 hover:text-slate-700"}`}
                           >
-                            Confirm Answer
+                            Exit
                           </button>
-                        ) : (quizState?.roundsCompleted || 0) < 5 ? (
-                          <button
-                            onClick={handleNextQuestion}
-                            className="flex-1 py-3 font-extrabold text-sm rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all flex items-center justify-center gap-2"
-                          >
-                            Next Question <ChevronRight className="h-4 w-4" />
-                          </button>
-                        ) : null}
-                        <button
-                          onClick={handleRestartQuiz}
-                          className={`px-4 py-3 text-xs font-bold rounded-xl transition-all ${darkMode ? "bg-slate-800 text-slate-400 hover:text-slate-200" : "bg-slate-100 text-slate-500 hover:text-slate-700"}`}
-                        >
-                          Exit
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  ) : null}
-                </div>
-              )}
+                    ) : null}
+                  </div>
+                )}
               </AnimatePresence>
             </div>
           </section>
@@ -2422,104 +2423,104 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
             />
             {/* Absolute centering layer anchored to the visible window */}
             <div className="absolute inset-0 flex items-center justify-center p-4">
-            {/* Modal Card */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              transition={{ type: "spring", duration: 0.4 }}
-              className={`relative w-[90%] max-w-xs sm:max-w-md rounded-[2rem] sm:rounded-[2.5rem] p-4 sm:p-6 border shadow-2xl z-10 overflow-hidden font-sans ${darkMode ? "bg-slate-900 border-slate-800 text-slate-100 shadow-slate-950/90" : "bg-white border-slate-200 text-slate-800 shadow-indigo-950/10"
-                }`}
-            >
-              {/* Header */}
-              <div className="flex justify-between items-center mb-3 sm:mb-4">
-                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[#3b6b95] dark:text-[#88b0d6] font-display">
-                  SAMS Student Profile
-                </span>
+              {/* Modal Card */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 15 }}
+                transition={{ type: "spring", duration: 0.4 }}
+                className={`relative w-[90%] max-w-xs sm:max-w-md rounded-[2rem] sm:rounded-[2.5rem] p-4 sm:p-6 border shadow-2xl z-10 overflow-hidden font-sans ${darkMode ? "bg-slate-900 border-slate-800 text-slate-100 shadow-slate-950/90" : "bg-white border-slate-200 text-slate-800 shadow-indigo-950/10"
+                  }`}
+              >
+                {/* Header */}
+                <div className="flex justify-between items-center mb-3 sm:mb-4">
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[#3b6b95] dark:text-[#88b0d6] font-display">
+                    SAMS Student Profile
+                  </span>
+                  <button
+                    onClick={() => setShowProfilePopup(false)}
+                    className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <X className="h-4 w-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" />
+                  </button>
+                </div>
+
+                {/* Avatar circle */}
+                <div className="flex flex-col items-center text-center pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-800 mb-3 sm:mb-4">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-[#3b6b95] text-white font-black text-base sm:text-xl tracking-tight shadow-lg shadow-[#3b6b95]/15 flex items-center justify-center uppercase mb-2 sm:mb-3">
+                    {getInitials(student.name)}
+                  </div>
+                  <h3 className="text-base sm:text-xl font-black text-slate-900 dark:text-white font-display tracking-tight leading-none mb-1">
+                    {student.name}
+                  </h3>
+                  <span className="text-[9px] sm:text-[10px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-widest">
+                    Class XII Student Portal
+                  </span>
+                </div>
+
+                {/* Details grid */}
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="grid grid-cols-3 text-[11px] sm:text-xs py-1 border-b border-slate-50 dark:border-slate-800/40">
+                    <span className="text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider">Roll Number</span>
+                    <span className="col-span-2 font-mono font-black text-right">{student.rollNo}</span>
+                  </div>
+                  <div className="grid grid-cols-3 text-[11px] sm:text-xs py-1 border-b border-slate-50 dark:border-slate-800/40">
+                    <span className="text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider">Class ID</span>
+                    <span className="col-span-2 font-black text-right uppercase">{(student.classId || "xii-a")}</span>
+                  </div>
+                  <div className="grid grid-cols-3 text-[11px] sm:text-xs py-1 border-b border-slate-50 dark:border-slate-800/40">
+                    <span className="text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider">Mobile No</span>
+                    <span className="col-span-2 font-mono font-bold text-right">{student.phone || "Not Registered"}</span>
+                  </div>
+                  {student.email && (
+                    <div className="grid grid-cols-3 text-[11px] sm:text-xs py-1 border-b border-slate-50 dark:border-slate-800/40">
+                      <span className="text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider">Email Address</span>
+                      <span className="col-span-2 font-mono font-semibold text-right text-slate-600 dark:text-slate-300 break-all">{student.email}</span>
+                    </div>
+                  )}
+
+                  {/* Faculty Allocation */}
+                  <div className="pt-1.5 sm:pt-2">
+                    <span className="text-[9px] sm:text-[10px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2">
+                      Class Faculty Members
+                    </span>
+                    <div className="bg-slate-50 dark:bg-slate-950 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1.5 font-sans">
+                      {studentSubjects.includes("Chemistry") && (
+                        <div className="flex justify-between items-center text-[11px] sm:text-xs">
+                          <span className="font-bold text-slate-500 dark:text-slate-400">Chemistry</span>
+                          <span className="font-extrabold text-[#3b6b95]">Dr. Pradeep Gusain</span>
+                        </div>
+                      )}
+                      {studentSubjects.includes("Physics") && (
+                        <div className="flex justify-between items-center text-[11px] sm:text-xs">
+                          <span className="font-bold text-slate-500 dark:text-slate-400">Physics</span>
+                          <span className="font-extrabold text-[#3b6b95]">Narendra Kumar</span>
+                        </div>
+                      )}
+                      {studentSubjects.includes("Mathematics") && (
+                        <div className="flex justify-between items-center text-[11px] sm:text-xs">
+                          <span className="font-bold text-slate-500 dark:text-slate-400">Mathematics</span>
+                          <span className="font-extrabold text-[#3b6b95]">Tarun Makkar</span>
+                        </div>
+                      )}
+                      {studentSubjects.includes("Biology") && (
+                        <div className="flex justify-between items-center text-[11px] sm:text-xs">
+                          <span className="font-bold text-slate-500 dark:text-slate-400">Biology</span>
+                          <span className="font-extrabold text-[#3b6b95]">Manishi Chawla</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Close Button */}
                 <button
                   onClick={() => setShowProfilePopup(false)}
-                  className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="w-full mt-4 sm:mt-6 py-2.5 sm:py-3 bg-[#3b6b95] hover:bg-[#2c5375] text-white rounded-xl sm:rounded-2xl text-sm font-bold shadow-md shadow-[#3b6b95]/15 transition-all cursor-pointer text-center font-sans"
                 >
-                  <X className="h-4 w-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" />
+                  Close Profile
                 </button>
-              </div>
-
-              {/* Avatar circle */}
-              <div className="flex flex-col items-center text-center pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-800 mb-3 sm:mb-4">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-[#3b6b95] text-white font-black text-base sm:text-xl tracking-tight shadow-lg shadow-[#3b6b95]/15 flex items-center justify-center uppercase mb-2 sm:mb-3">
-                  {getInitials(student.name)}
-                </div>
-                <h3 className="text-base sm:text-xl font-black text-slate-900 dark:text-white font-display tracking-tight leading-none mb-1">
-                  {student.name}
-                </h3>
-                <span className="text-[9px] sm:text-[10px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-widest">
-                  Class XII Student Portal
-                </span>
-              </div>
-
-              {/* Details grid */}
-              <div className="space-y-2 sm:space-y-3">
-                <div className="grid grid-cols-3 text-[11px] sm:text-xs py-1 border-b border-slate-50 dark:border-slate-800/40">
-                  <span className="text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider">Roll Number</span>
-                  <span className="col-span-2 font-mono font-black text-right">{student.rollNo}</span>
-                </div>
-                <div className="grid grid-cols-3 text-[11px] sm:text-xs py-1 border-b border-slate-50 dark:border-slate-800/40">
-                  <span className="text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider">Class ID</span>
-                  <span className="col-span-2 font-black text-right uppercase">{(student.classId || "xii-a")}</span>
-                </div>
-                <div className="grid grid-cols-3 text-[11px] sm:text-xs py-1 border-b border-slate-50 dark:border-slate-800/40">
-                  <span className="text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider">Mobile No</span>
-                  <span className="col-span-2 font-mono font-bold text-right">{student.phone || "Not Registered"}</span>
-                </div>
-                {student.email && (
-                  <div className="grid grid-cols-3 text-[11px] sm:text-xs py-1 border-b border-slate-50 dark:border-slate-800/40">
-                    <span className="text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider">Email Address</span>
-                    <span className="col-span-2 font-mono font-semibold text-right text-slate-600 dark:text-slate-300 break-all">{student.email}</span>
-                  </div>
-                )}
-
-                {/* Faculty Allocation */}
-                <div className="pt-1.5 sm:pt-2">
-                  <span className="text-[9px] sm:text-[10px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2">
-                    Class Faculty Members
-                  </span>
-                  <div className="bg-slate-50 dark:bg-slate-950 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1.5 font-sans">
-                    {studentSubjects.includes("Chemistry") && (
-                      <div className="flex justify-between items-center text-[11px] sm:text-xs">
-                        <span className="font-bold text-slate-500 dark:text-slate-400">Chemistry</span>
-                        <span className="font-extrabold text-[#3b6b95]">Dr. Pradeep Gusain</span>
-                      </div>
-                    )}
-                    {studentSubjects.includes("Physics") && (
-                      <div className="flex justify-between items-center text-[11px] sm:text-xs">
-                        <span className="font-bold text-slate-500 dark:text-slate-400">Physics</span>
-                        <span className="font-extrabold text-[#3b6b95]">Narendra Kumar</span>
-                      </div>
-                    )}
-                    {studentSubjects.includes("Mathematics") && (
-                      <div className="flex justify-between items-center text-[11px] sm:text-xs">
-                        <span className="font-bold text-slate-500 dark:text-slate-400">Mathematics</span>
-                        <span className="font-extrabold text-[#3b6b95]">Tarun Makkar</span>
-                      </div>
-                    )}
-                    {studentSubjects.includes("Biology") && (
-                      <div className="flex justify-between items-center text-[11px] sm:text-xs">
-                        <span className="font-bold text-slate-500 dark:text-slate-400">Biology</span>
-                        <span className="font-extrabold text-[#3b6b95]">Manishi Chawla</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Close Button */}
-              <button
-                onClick={() => setShowProfilePopup(false)}
-                className="w-full mt-4 sm:mt-6 py-2.5 sm:py-3 bg-[#3b6b95] hover:bg-[#2c5375] text-white rounded-xl sm:rounded-2xl text-sm font-bold shadow-md shadow-[#3b6b95]/15 transition-all cursor-pointer text-center font-sans"
-              >
-                Close Profile
-              </button>
-            </motion.div>
+              </motion.div>
             </div>
           </div>
         )}
