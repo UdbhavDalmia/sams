@@ -1154,6 +1154,7 @@ FORMATTING RULES (critical — do NOT break these):
 - Provide EXACTLY 4 plausible options. The correct answer MUST be undeniably correct and scientifically unambiguous.
 - Do NOT use tricky wording like "None of the above" or "All of the above". Make every distractor option a specific, distinct concept or value.
 - Do NOT generate questions with imperfect matches or debatable answers. 
+- CRITICALLY IMPORTANT: Ensure HIGH DIVERSITY and NOVELTY. Do not generate standard/generic textbook questions. Generate unique scenarios, numericals, or combinations that require deep thought.
 - Return ONLY a single valid JSON object (no markdown formatting around it, no explanation outside JSON, no outer wrapper).
 
 JSON Schema:
@@ -1219,7 +1220,46 @@ ${JSON.stringify(previousQuestions)}`;
   });
 });
 
-// 9.6 Streaming AI Chatbot (SSE) (using gemini-2.0-flash)
+// 9.6 AI Chatbot JSON Endpoint (for StudentChatbot component)
+app.post("/api/ai/tutor", async (req, res) => {
+  const { query, history } = req.body;
+
+  if (!query) {
+    return res.status(400).json({ error: "Query is required" });
+  }
+
+  const systemInstruction = `You are the SAMS AI Study Assistant — a specialized, friendly academic companion for Class XII students preparing for board exams and JEE/NEET.
+
+STRICT POLICY: Only answer questions directly related to XII standard Chemistry, Physics, Mathematics, or study strategies/schedules. Decline anything outside this scope politely.
+
+FORMATTING RULES (critical — do NOT break these):
+- Use $...$ for ALL inline math, variables, constants, and short formulas. Example: $E = mc^2$, $\\Delta T_f$, $K_b$.
+- Use $$...$$ ONLY for important standalone equations that deserve their own line. Do NOT use block math for every formula.
+- NEVER use raw unicode math symbols like ², ³, ₀, Δ, π outside LaTeX. Always wrap them.
+- Keep responses CONCISE and structured. Use bullet points for lists. Avoid excessive blank lines.
+- Each bullet point or explanation should be SHORT — max 2 sentences. Prioritize clarity over length.`;
+
+  try {
+    const contents = (history || []).map((m: any) => ({
+      role: m.role === "ai" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
+    contents.push({ role: "user", parts: [{ text: query }] });
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents,
+      config: { systemInstruction, temperature: 0.6 },
+    });
+
+    res.json({ reply: response.text });
+  } catch (err: any) {
+    console.error("Gemini AI Tutor Error:", err);
+    res.status(500).json({ error: "The AI Assistant is temporarily busy. Please try again." });
+  }
+});
+
+// 9.7 Streaming AI Chatbot (SSE) (using gemini-2.0-flash)
 app.post("/api/gemini/chatbot-stream", async (req, res) => {
   const { messages } = req.body;
 

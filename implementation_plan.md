@@ -1,147 +1,53 @@
-# SAMS Feature Implementation Plan
-
-## Overview
-Five major features to implement across the SAMS codebase.
-
----
-
-## 1. Achievements System
-
-### Design
-Pre-defined achievement list computed from the student's live data (scores, milestones, quiz performance). No new backend storage needed — achievements are derived client-side from existing `student.scores` and `student.milestones`.
-
-**Achievement Categories:**
-| Badge | Name | Condition |
-|---|---|---|
-| 🥉 Bronze | First Steps | Any chapter > 0% |
-| 🥉 Bronze | Quiz Warrior | Complete first quiz session |
-| 🥉 Bronze | Subject Starter | Any subject avg ≥ 10% |
-| 🥈 Silver | On Track | Overall avg ≥ 25% |
-| 🥈 Silver | Half Way There | Overall avg ≥ 50% |
-| 🥈 Silver | Chemistry Star | Chem avg ≥ 60% |
-| 🥈 Silver | Physics Pro | Physics avg ≥ 60% |
-| 🥈 Silver | Maths Maestro | Maths avg ≥ 60% |
-| 🥇 Gold | Triple Threat | All 3 subjects avg ≥ 60% |
-| 🥇 Gold | Milestone Master | Any topic 100% milestone check |
-| 🥇 Gold | Excellence | Overall avg ≥ 75% |
-| 🏆 Platinum | SAMS Scholar | Overall avg ≥ 90% |
-| 🏆 Platinum | JEE Ready | All subjects avg ≥ 80% |
-
-### Layout
-- **Desktop (≥ lg):** Sticky left sidebar column, always visible
-- **Mobile:** Horizontal scrollable strip pinned just below the student info bar, before main content
-
----
-
-## 2. Adaptive Quiz (1 Question at a Time)
-
-### Changes to quiz logic:
-- **Remove** the "5 questions at once" batch generation
-- **Instead:** Generate 1 question at a time via `/api/gemini/generate-quiz-question`
-- Track the difficulty level (easy / medium / hard) as state; start at medium
-- After each answer: correct → bump difficulty; wrong → lower difficulty
-- Show immediate feedback after each answer (correct/wrong highlight + brief explanation)
-- Run for **5 rounds**, then show a full performance report
-
-### Performance Report at End:
-- Score (X/5)
-- Topic-wise difficulty progression chart (was it going up or down?)
-- Weakest concept identified (from which question got wrong)
-- Study recommendation
-
-### API Change:
-Add `/api/gemini/generate-quiz-question` endpoint in `server.ts` that accepts `{ topic, difficulty: "easy" | "medium" | "hard" }` and returns **1 question**.
-
-> [!NOTE]
-> This also solves the **AI speed** issue — generating 1 question instead of 5 is ~5× faster.
-
----
-
-## 3. AI Speed Optimization
-
-### For Quiz:
-- Switching to single-question generation (as above) dramatically reduces wait time
-
-### For SAMS AI Chatbot:
-- Enable **streaming responses** on the server: use `ai.models.generateContentStream()` instead of `generateContent()`
-- Add a new `/api/gemini/chat-stream` endpoint that streams tokens
-- On the client, use a `ReadableStream` reader to render text incrementally as it arrives — user sees response building word-by-word instead of waiting for the full response
-
----
-
-## 4. Logo Consistency
-
-- Replace `FlaskConical` with the **bar chart SVG** (already used in TeacherView header) in:
-  - `StudentView.tsx` header (line 707)
-  - `LoginPortal.tsx` logo (line 156)
-- Extract the bar chart SVG into a shared `<SAMSLogo />` component used everywhere
-
----
-
-## 5. Login UX Screens
-
-### Unauthorized Screen
-When a student's Google email isn't in the registry (currently shows a generic modal), replace with a full-screen beautiful **"Access Denied"** screen:
-- SAMS logo + red/rose color scheme
-- "This email is not registered in SAMS" message
-- Note: "SAMS is exclusively for pre-registered XII-A students"
-- Option to try a different account or use Roll/Phone login instead
-
-### Login Success / Redirecting Screen
-After successful login (both Google and manual), show a brief **"Login Successful"** overlay:
-- Green check animation
-- "Welcome, [Name]!" text
-- "Redirecting to your dashboard in 2 seconds..."
-- Disable all login form inputs while showing this
-- Auto-redirect after 2s
-
----
+# Goal
+1. Refactor `StudentView.tsx` into multiple smaller, maintainable component files.
+2. Fix a bug where the active quiz state persists in the database even after the user exits or restarts the quiz, causing it to resume on the next load.
 
 ## Proposed Changes
 
-### Frontend
+### 1. Fix Quiz State Persistence Bug
 
-#### [MODIFY] StudentView.tsx
-- Add achievements computation logic
-- Add left sidebar column with achievements panel (lg+ screens)  
-- Add horizontal achievements strip (mobile, below info bar)
-- Replace quiz flow with 1-question adaptive flow + report
+The issue occurs because `handleRestartQuiz` clears the local state but doesn't notify the backend to clear the saved `activeQuiz` for the student.
 
-#### [MODIFY] LoginPortal.tsx
-- Replace `FlaskConical` with bar chart logo
-- Add `loginSuccess` state with redirecting overlay
-- Add `unauthorized` full-screen state
+- **Action**: Update `handleRestartQuiz` in the quiz logic to call `await persistQuizState(null, false)`. This will remove the quiz state from the database so it doesn't automatically resume on reload.
 
-#### [MODIFY] TeacherView.tsx
-- No logo change needed (already bar chart)
+### 2. Refactor `StudentView.tsx` into Components
 
-#### [NEW] src/components/SAMSLogo.tsx
-- Shared bar-chart logo component used in all three components
+I will create a new directory `src/components/student/` and extract sections of `StudentView.tsx` into separate files. The main `StudentView.tsx` will become a container that manages the high-level state (like the `student` object) and passes props to these sub-components.
 
-### Backend
+#### [NEW] `src/components/student/StudentNavbar.tsx`
+- Extracts the top header (SAMS Logo, Dark Mode Toggle, Profile Badge).
+- Handles opening the profile popup and logout.
 
-#### [MODIFY] server.ts
-- Add `/api/gemini/generate-quiz-question` endpoint (single question, with difficulty param)
-- Add `/api/gemini/chat-stream` SSE endpoint for streaming chatbot responses
+#### [NEW] `src/components/student/StudentAchievements.tsx`
+- Extracts the logic for computing achievements and rendering both the mobile achievements strip and the desktop sidebar.
 
----
+#### [NEW] `src/components/student/StudentSummaries.tsx`
+- Extracts the "Curriculum Coverage Summary" and "Preparation Rating" gauge.
+- Calculates and displays `overallAvg` and syllabus completion counts.
 
-## Open Questions
+#### [NEW] `src/components/student/StudentChapters.tsx`
+- Extracts the dynamic subject navigation tabs (Chemistry, Physics, etc.).
+- Extracts the grid of topic/chapter cards.
+- Manages the "Academic Companion" slide panel (Cheat sheet and Milestones tracker).
 
-> [!IMPORTANT]
-> **Achievement data persistence:** Should quiz-based achievements (e.g. "Quiz Warrior") be stored in Firestore so they persist across sessions? Or computed fresh each time from scores? My plan is to compute from scores only (no extra storage), but quiz-specific achievements would need a `quizCount` field added to the Student type.
+#### [NEW] `src/components/student/StudentQuiz.tsx`
+- Extracts the entire "Adaptive AI Quiz Panel".
+- Manages quiz fetching, progression, difficulty scaling, and the bug fix for clearing the quiz state.
 
-> [!IMPORTANT]
-> **Streaming chatbot:** Streaming requires the client to handle SSE (Server-Sent Events). This changes the chatbot significantly. Do you want this, or is the current wait-for-full-response style okay and only the quiz speed matters?
+#### [NEW] `src/components/student/StudentChatbot.tsx`
+- Extracts the "Always Visible SAMS AI Persistent Chatbot" component.
+
+#### [MODIFY] `src/components/StudentView.tsx`
+- Remove the extracted JSX and localized state/effects.
+- Import and render the new components from `src/components/student/`.
+- Keep shared global state (e.g., `student`, `darkMode`) and data fetching (`syncStudentData`) in this parent component to pass down via props.
+
+## User Review Required
+Refactoring a 2500+ line file is a significant architectural change. I will need to carefully pass state (like `student`, `darkMode`, and update functions) between the main `StudentView` and its child components. 
+
+> [!WARNING]
+> Since React state will be distributed across these new components, let me know if there are any specific state management tools (like React Context or Zustand) you'd prefer me to use, or if standard prop drilling is fine for now.
 
 ## Verification Plan
-
-### Automated
-- Restart dev server, check `/api/gemini/generate-quiz-question` responds in < 3 seconds
-
-### Manual
-- Trigger quiz and verify 1 question appears, feedback shows on answer, difficulty adjusts, report appears at round 5
-- Check achievements panel on desktop (left sidebar) and mobile (horizontal strip)
-- Verify logo is bar chart in all three pages
-- Test unauthorized Google email shows access denied screen
-- Test successful login shows redirecting overlay
+1. **Automated Tests**: I'll ensure there are no TypeScript or compilation errors after the refactor.
+2. **Manual Verification**: I will ask you to verify that all sections of the UI load correctly, the dark mode toggle works across all components, and clicking "Exit" on a quiz successfully clears it so it doesn't reappear on page refresh.
