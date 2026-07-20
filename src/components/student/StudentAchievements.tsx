@@ -380,16 +380,16 @@ export function StudentAchievementsDesktop({
         <div className={`${darkMode ? "bg-slate-800/60 border-slate-700" : "bg-indigo-50 border-indigo-100"} border rounded-2xl p-3`}>
           <div className="flex items-center gap-2 mb-2">
             <Trophy className="h-4 w-4 text-indigo-600" />
-            <span className={`text-xs font-black uppercase tracking-widest ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Achievements</span>
+            <span className={`text-xs font-black uppercase tracking-widest ${darkMode ? "text-slate-100" : "text-slate-700"}`}>Achievements</span>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-black text-emerald-500 dark:text-emerald-400">{earnedCount}</span>
-            <span className={`text-xs font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>/ {achievements.length} earned</span>
+            <span className="text-2xl font-black text-emerald-500 dark:text-emerald-300">{earnedCount}</span>
+            <span className={`text-xs font-bold ${darkMode ? "text-slate-300" : "text-slate-500"}`}>/ {achievements.length} earned</span>
           </div>
-          <div className={`h-2 rounded-full mt-2 border overflow-hidden ${darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-200 border-slate-300"}`}>
-            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${progressPercent}%`, ...progressFillStyle }} />
+          <div className={`h-2 rounded-full mt-2 border overflow-hidden ${darkMode ? "bg-slate-800/90 border-slate-700/80" : "bg-slate-200 border-slate-300"}`}>
+            <div className="h-full rounded-full transition-all duration-700 opacity-100" style={{ width: `${progressPercent}%`, ...progressFillStyle }} />
           </div>
-          <p className={`mt-2 text-[10px] font-bold ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+          <p className={`mt-2 text-[10px] font-bold ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
             {progressPercent >= 75 ? "Momentum is strong — you are nearly there!" : progressPercent >= 40 ? "Good pace — keep building streaks." : "Start small and keep unlocking more."}
           </p>
         </div>
