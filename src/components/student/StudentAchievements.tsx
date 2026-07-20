@@ -366,6 +366,13 @@ export function StudentAchievementsDesktop({
     platinum: darkMode ? "bg-indigo-950/40 border-indigo-800/40" : "bg-indigo-50 border-indigo-200",
   };
   const tierLabel: Record<string, string> = { bronze: "Bronze", silver: "Silver", gold: "Gold", platinum: "Platinum" };
+  const progressPercent = achievements.length > 0 ? Math.round((earnedCount / achievements.length) * 100) : 0;
+  const nextAchievement = achievements.find(a => !a.earned) || null;
+  const progressFillStyle = progressPercent >= 75
+    ? { background: "linear-gradient(90deg, #34d399 0%, #10b981 100%)" }
+    : progressPercent >= 40
+      ? { background: "linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)" }
+      : { background: "linear-gradient(90deg, #818cf8 0%, #38bdf8 100%)" };
 
   return (
     <aside className={`hidden lg:flex flex-col w-64 xl:w-72 shrink-0 border-r overflow-y-auto transition-colors duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200"}`}>
@@ -376,12 +383,15 @@ export function StudentAchievementsDesktop({
             <span className={`text-xs font-black uppercase tracking-widest ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Achievements</span>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-black text-indigo-600">{earnedCount}</span>
+            <span className="text-2xl font-black text-emerald-500 dark:text-emerald-400">{earnedCount}</span>
             <span className={`text-xs font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>/ {achievements.length} earned</span>
           </div>
-          <div className={`h-1.5 rounded-full mt-2 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}>
-            <div className="h-full bg-indigo-600 rounded-full transition-all duration-700" style={{ width: `${(earnedCount / achievements.length) * 100}%` }} />
+          <div className={`h-2 rounded-full mt-2 border overflow-hidden ${darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-200 border-slate-300"}`}>
+            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${progressPercent}%`, ...progressFillStyle }} />
           </div>
+          <p className={`mt-2 text-[10px] font-bold ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+            {progressPercent >= 75 ? "Momentum is strong — you are nearly there!" : progressPercent >= 40 ? "Good pace — keep building streaks." : "Start small and keep unlocking more."}
+          </p>
         </div>
       </div>
 
@@ -413,6 +423,18 @@ export function StudentAchievementsDesktop({
             </div>
           </div>
         ))}
+
+        <div className={`rounded-2xl border p-3 mt-2 ${darkMode ? "bg-slate-800/50 border-slate-700/70" : "bg-indigo-50 border-indigo-100"}`}>
+          <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+            Next target
+          </p>
+          <p className={`mt-1 text-sm font-extrabold ${darkMode ? "text-slate-100" : "text-slate-800"}`}>
+            {nextAchievement ? nextAchievement.title : "All achievements unlocked"}
+          </p>
+          <p className={`mt-1 text-[11px] leading-snug ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+            {nextAchievement ? nextAchievement.desc : "You have completed every milestone in this view."}
+          </p>
+        </div>
       </div>
     </aside>
   );
