@@ -53,6 +53,7 @@ export default function StudentQuiz({
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizState, setQuizState] = useState<ActiveQuizState | null>(initialQuizState || null);
   const [quizError, setQuizError] = useState<string | null>(null);
+  const [activeQuestionDifficulty, setActiveQuestionDifficulty] = useState<ActiveQuizState["difficulty"]>("medium");
 
   const quizCardRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -120,6 +121,7 @@ export default function StudentQuiz({
 
       if (!res.ok) throw new Error("Failed to generate question");
       const data = await res.json();
+      setActiveQuestionDifficulty(currentState.difficulty);
       setCurrentQuestion(data);
       setSelectedAnswer(null);
       setShowFeedback(false);
@@ -143,6 +145,7 @@ export default function StudentQuiz({
       startedAt: new Date().toISOString()
     };
     setQuizState(initialState);
+    setActiveQuestionDifficulty(initialState.difficulty);
     setQuizStarted(true);
     setQuizFinished(false);
     setCurrentQuestion(null);
@@ -187,6 +190,7 @@ export default function StudentQuiz({
       difficulty: newDifficulty
     };
 
+    setActiveQuestionDifficulty(quizState.difficulty);
     setQuizState(newState);
 
     if (newState.roundsCompleted >= 5) {
@@ -204,6 +208,7 @@ export default function StudentQuiz({
 
   const handleNextQuestion = () => {
     if (quizState && quizState.roundsCompleted < 5) {
+      setActiveQuestionDifficulty(quizState.difficulty);
       fetchNextQuestion(quizState);
     }
   };
@@ -219,9 +224,13 @@ export default function StudentQuiz({
     setSelectedAnswer(null);
     setShowFeedback(false);
     setQuizState(null);
+    setActiveQuestionDifficulty("medium");
     setQuizError(null);
     if (onQuizStateChange) onQuizStateChange(false);
   };
+
+  const displayedRoundNumber = quizState ? (showFeedback ? quizState.roundsCompleted : quizState.roundsCompleted + 1) : 1;
+  const displayedDifficulty = activeQuestionDifficulty || quizState?.difficulty || "medium";
 
   return (
     <div className={`p-5 sm:p-7 rounded-[2rem] border transition-all duration-300 relative overflow-hidden flex flex-col ${darkMode ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-200"}`}>
@@ -235,7 +244,7 @@ export default function StudentQuiz({
         </h3>
         {quizStarted && !quizFinished && (
           <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 rounded-lg text-xs font-bold text-indigo-600 dark:text-indigo-400">
-            Round {(quizState?.roundsCompleted || 0) + 1} of 5
+            Round {displayedRoundNumber} of 5
           </div>
         )}
       </div>
@@ -395,18 +404,18 @@ export default function StudentQuiz({
                   {/* Progress dots */}
                   <div className="flex gap-1">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className={`w-2 h-2 rounded-full ${i < (quizState?.roundsCompleted || 0)
+                      <div key={i} className={`w-2 h-2 rounded-full ${i < (displayedRoundNumber - 1)
                         ? (quizState?.history[i]?.correct ? "bg-emerald-500" : "bg-rose-500")
-                        : i === (quizState?.roundsCompleted || 0) ? "bg-indigo-500 animate-pulse" : (darkMode ? "bg-slate-700" : "bg-slate-200")}`} />
+                        : i === (displayedRoundNumber - 1) ? "bg-indigo-500 animate-pulse" : (darkMode ? "bg-slate-700" : "bg-slate-200")}`} />
                     ))}
                   </div>
                   <span className={`text-xs font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                    {(quizState?.roundsCompleted || 0) + 1}/5
+                    {displayedRoundNumber}/5
                   </span>
                   {/* Difficulty badge */}
                   {quizState && (
-                    <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${quizState.difficulty === "hard" ? "bg-rose-100 text-rose-700" : quizState.difficulty === "medium" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                      {quizState.difficulty}
+                    <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${displayedDifficulty === "hard" ? "bg-rose-100 text-rose-700" : displayedDifficulty === "medium" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                      {displayedDifficulty}
                     </span>
                   )}
                 </div>
