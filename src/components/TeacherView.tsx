@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { gsap } from "../lib/gsap";
+import { playChime } from "./student/shared";
 import {
   Users,
   FlaskConical,
@@ -20,7 +22,9 @@ import {
   Sparkles,
   BookOpen,
   Mail,
-  History
+  History,
+  Moon,
+  Sun
 } from "lucide-react";
 import { Student, TopicName, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS, ALL_TOPICS, getStudentSubjects } from "../types";
 import { fetchWithRetry } from "../lib/fetch";
@@ -74,6 +78,16 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   const [editEmail, setEditEmail] = useState("");
   const [savingScores, setSavingScores] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const darkToggleRef = useRef<HTMLButtonElement>(null);
+
+  const handleToggleDark = () => {
+    setDarkMode(!darkMode);
+    playChime(!darkMode);
+    if (darkToggleRef.current) {
+      gsap.fromTo(darkToggleRef.current, { rotate: -120, scale: 0.6 }, { rotate: 0, scale: 1, duration: 0.5, ease: "back.out(2)" });
+    }
+  };
 
   // Determine active topics list based on selected subject
   const activeTopics = activeSubject === "Physics"
@@ -326,23 +340,32 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   };
 
   return (
-    <div id="teacher-view-container" className="min-h-screen bg-[#eaf4fc] font-sans text-slate-900 flex flex-col">
+    <div id="teacher-view-container" className={`min-h-screen transition-colors duration-300 font-sans flex flex-col ${darkMode ? "bg-slate-950 text-slate-100 dark" : "bg-[#eaf4fc] text-slate-900"}`}>
       {/* Sleek Navigation Bar */}
-      <nav id="teacher-nav-bar" className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 z-10">
+      <nav id="teacher-nav-bar" className={`px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 z-10 transition-colors duration-300 ${darkMode ? "bg-slate-900/80 border-b border-slate-800" : "bg-white border-b border-slate-200"}`}>
         <div className="flex items-center gap-3">
           <SAMSLogo size={36} />
-          <span className="font-bold text-xl tracking-tight text-[#0f2d4a]">SAMS <span className="text-[#3b6b95]">Analytics</span></span>
+          <span className="font-bold text-xl tracking-tight text-[#0f2d4a] dark:text-white">SAMS <span className="text-[#3b6b95]">Analytics</span></span>
         </div>
 
         <div className="flex flex-wrap items-center gap-4 md:gap-6 justify-center sm:justify-end">
-          <div className="flex items-center gap-2 bg-blue-50/50 px-3 py-1.5 rounded-full border border-blue-200/40">
+          <button
+            ref={darkToggleRef}
+            onClick={handleToggleDark}
+            className={`p-2.5 rounded-xl border transition-all ${darkMode ? "bg-slate-800 border-slate-700 text-yellow-400" : "bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-800"}`}
+            title="Toggle Dark Canvas"
+          >
+            {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${darkMode ? "bg-blue-950/40 border-blue-800/40" : "bg-blue-50/50 border-blue-200/40"}`}>
             <span className="text-xs font-semibold text-[#3b6b95] uppercase tracking-wider">Teacher Terminal</span>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-xs font-medium text-slate-500 uppercase leading-none mb-1">{teacherDetails.role}</p>
-              <p className="text-sm font-bold text-slate-800 leading-none">{teacherDetails.name}</p>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase leading-none mb-1">{teacherDetails.role}</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-white leading-none">{teacherDetails.name}</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-blue-50/50 border-2 border-blue-200/40 shadow-sm flex items-center justify-center font-bold text-[#3b6b95] text-xs uppercase" title={teacherDetails.name}>
               {teacherDetails.initials}
@@ -350,7 +373,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
             <button
               id="teacher-logout-button"
               onClick={onLogout}
-              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+              className={`p-2 rounded-xl transition-all ${darkMode ? "text-slate-400 hover:text-rose-400 hover:bg-rose-950/30" : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"}`}
               title="Close Session"
             >
               <LogOut className="h-4 w-4" />
@@ -363,7 +386,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 space-y-8 overflow-y-auto">
 
         {/* Core Multi-Subject Switcher */}
-        <div className="bg-slate-200/50 p-1.5 rounded-2xl border border-slate-300/30 flex gap-3">
+        <div className={`p-1.5 rounded-2xl border flex gap-3 ${darkMode ? "bg-slate-800/50 border-slate-700/30" : "bg-slate-200/50 border-slate-300/30"}`}>
           {[
             { id: "Chemistry", color: "text-amber-800 bg-amber-500/15" },
             { id: "Physics", color: "text-blue-800 bg-blue-500/15" },
@@ -376,7 +399,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                 setActiveSubject(sub.id as any);
                 setSelectedStudent(null);
               }}
-              className="flex-1 py-3 px-4 rounded-xl font-extrabold text-sm tracking-tight transition-all flex items-center justify-center gap-2 bg-white text-indigo-700 shadow-md border border-slate-200/50"
+              className={`flex-1 py-3 px-4 rounded-xl font-extrabold text-sm tracking-tight transition-all flex items-center justify-center gap-2 shadow-md ${darkMode ? "bg-slate-800 text-indigo-300 border border-slate-700/50" : "bg-white text-indigo-700 border border-slate-200/50"}`}
             >
               <span>{sub.id} Monitor</span>
               <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded-full ${sub.color}`}>
@@ -389,69 +412,69 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
         {/* Core Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Card 1: Total Students */}
-          <div className="glass-panel p-6 rounded-[1.5rem] shadow-xl shadow-slate-100/40 flex items-center justify-between bg-white border border-slate-200/50">
+          <div className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
             <div>
               <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block font-display">
                 Total Class Size
               </span>
-              <span className="text-3xl font-black text-slate-900 block mt-1 font-display">{totalStudents}</span>
-              <span className="text-[11px] text-slate-500 font-medium mt-1 block">{teacherDetails.classLabel} Student List</span>
+              <span className="text-3xl font-black text-slate-900 dark:text-white block mt-1 font-display">{totalStudents}</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 block">{teacherDetails.classLabel} Student List</span>
             </div>
-            <div className="p-4 bg-indigo-50 text-indigo-500 rounded-2xl shrink-0">
+            <div className={`p-4 rounded-2xl shrink-0 ${darkMode ? "bg-indigo-950/60 text-indigo-400" : "bg-indigo-50 text-indigo-500"}`}>
               <Users className="h-6 w-6" />
             </div>
           </div>
 
           {/* Card 2: Class Average */}
-          <div className="glass-panel p-6 rounded-[1.5rem] shadow-xl shadow-slate-100/40 flex items-center justify-between bg-white border border-slate-200/50">
+          <div className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
             <div>
               <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block font-display">
                 {activeSubject} Average
               </span>
-              <span className="text-3xl font-black text-indigo-600 block mt-1 font-display">{classAvg}%</span>
-              <span className="text-[11px] text-slate-500 font-medium mt-1 block">Class Mean Mastery</span>
+              <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400 block mt-1 font-display">{classAvg}%</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 block">Class Mean Mastery</span>
             </div>
-            <div className="p-4 bg-indigo-50 text-indigo-500 rounded-2xl shrink-0">
+            <div className={`p-4 rounded-2xl shrink-0 ${darkMode ? "bg-indigo-950/60 text-indigo-400" : "bg-indigo-50 text-indigo-500"}`}>
               <GraduationCap className="h-6 w-6" />
             </div>
           </div>
 
           {/* Card 3: Perfect Chapters Completed */}
-          <div className="glass-panel p-6 rounded-[1.5rem] shadow-xl shadow-slate-100/40 flex items-center justify-between bg-white border border-slate-200/50">
+          <div className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
             <div>
               <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block font-display">
                 Perfect Completions (100%)
               </span>
-              <span className="text-3xl font-black text-emerald-600 block mt-1 font-display">{perfectChaptersCount}</span>
-              <span className="text-[11px] text-slate-500 font-medium mt-1 block">Total Mastered Chapters</span>
+              <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400 block mt-1 font-display">{perfectChaptersCount}</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 block">Total Mastered Chapters</span>
             </div>
-            <div className="p-4 bg-emerald-50 text-emerald-500 rounded-2xl shrink-0">
+            <div className={`p-4 rounded-2xl shrink-0 ${darkMode ? "bg-emerald-950/60 text-emerald-400" : "bg-emerald-50 text-emerald-500"}`}>
               <Sparkles className="h-6 w-6" />
             </div>
           </div>
 
           {/* Card 4: Most Challenging */}
-          <div className="glass-panel p-6 rounded-[1.5rem] shadow-xl shadow-slate-100/40 flex items-center justify-between bg-white border border-slate-200/50">
+          <div className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
             <div>
               <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block font-display">
                 Challenging {activeSubject} Chapter
               </span>
-              <span className="text-sm font-black text-slate-800 block mt-2 line-clamp-1 font-display" title={mostChallengingChapter}>
+              <span className="text-sm font-black text-slate-800 dark:text-white block mt-2 line-clamp-1 font-display" title={mostChallengingChapter}>
                 {mostChallengingChapter}
               </span>
-              <span className="text-[11px] text-slate-500 font-medium mt-1 block">Lowest Mean: {lowestAvg}%</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 block">Lowest Mean: {lowestAvg}%</span>
             </div>
-            <div className="p-4 bg-amber-50 text-amber-500 rounded-2xl shrink-0">
+            <div className={`p-4 rounded-2xl shrink-0 ${darkMode ? "bg-amber-950/60 text-amber-400" : "bg-amber-50 text-amber-500"}`}>
               <TrendingDown className="h-6 w-6" />
             </div>
           </div>
         </div>
 
         {/* Performance Analytics Section - Chapter Progress Bars */}
-        <section className="glass-panel p-6 rounded-[1.5rem] shadow-xl shadow-slate-100/40 space-y-4 bg-white">
+        <section className={`p-6 rounded-[1.5rem] shadow-xl space-y-4 ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white shadow-slate-100/40"}`}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2">
             <div>
-              <h3 className="text-lg font-black text-slate-900 font-display">{activeSubject} Class Performance Analytics</h3>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white font-display">{activeSubject} Class Performance Analytics</h3>
               <p className="text-xs text-slate-400 font-medium">Average completion % per chapter · {activeTopics.length} chapters</p>
             </div>
             <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">
@@ -466,10 +489,10 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
               const tone = getScoreStatus(pct);
               return (
                 <div key={t.name} className="flex items-center gap-3 group">
-                  <span className="text-[11px] font-semibold text-slate-600 w-52 shrink-0 truncate" title={t.name}>
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 w-52 shrink-0 truncate" title={t.name}>
                     {t.name}
                   </span>
-                  <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="flex-1 h-4 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500`}
                       style={{ width: `${pct}%`, backgroundColor: tone.color }}
@@ -485,10 +508,10 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
         </section>
 
         {/* Master Student Class & List Table */}
-        <section className="glass-panel p-6 rounded-[1.5rem] shadow-xl shadow-slate-100/40 space-y-4 bg-white border border-slate-200/50">
+        <section className={`p-6 rounded-[1.5rem] shadow-xl space-y-4 border ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h3 className="text-lg font-black text-slate-900 font-display">Student Progress List</h3>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white font-display">Student Progress List</h3>
               <p className="text-xs text-slate-400 font-medium">
                 {classFilter === "all" ? teacherDetails.classLabel : `Class ${classFilter.toUpperCase()}`} status reports for {activeSubject}
               </p>
@@ -500,7 +523,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                 <select
                   value={classFilter}
                   onChange={(e) => setClassFilter(e.target.value as any)}
-                  className="block w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-sm font-bold cursor-pointer"
+                  className={`block w-full px-3.5 py-2.5 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-sm font-bold cursor-pointer ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                 >
                   {teacherDetails.classes && teacherDetails.classes.length > 1 && (
                     <option value="all">All Classes</option>
@@ -526,7 +549,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                   placeholder="Roll No"
                   value={rollNoFilter}
                   onChange={(e) => setRollNoFilter(e.target.value)}
-                  className="block w-full pl-7 pr-2 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-base font-medium"
+                  className={`block w-full pl-7 pr-2 py-2.5 border rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-base font-medium ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                 />
               </div>
               {/* Name/Text Search */}
@@ -539,20 +562,20 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                   placeholder="Search name, phone, email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-base font-medium"
+                  className={`block w-full pl-9 pr-3 py-2.5 border rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 text-base font-medium ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-200 text-slate-800"}`}
                 />
               </div>
             </div>
           </div>
 
           {/* Student List Table */}
-          <div className="overflow-x-auto overflow-y-auto max-h-[520px] touch-auto border border-slate-100 rounded-2xl">
-            <table className="min-w-full divide-y divide-slate-100 font-sans">
-              <thead className="bg-slate-50 sticky top-0 z-10">
+          <div className={`overflow-x-auto overflow-y-auto max-h-[520px] touch-auto rounded-2xl border ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
+            <table className={`min-w-full divide-y font-sans ${darkMode ? "divide-slate-800" : "divide-slate-100"}`}>
+              <thead className={`sticky top-0 z-10 ${darkMode ? "bg-slate-800" : "bg-slate-50"}`}>
                 <tr>
                   <th
                     onClick={() => toggleSort("rollNo")}
-                    className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors"
+                    className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest cursor-pointer transition-colors ${darkMode ? "text-slate-400 hover:bg-slate-700" : "text-slate-500 hover:bg-slate-100"}`}
                   >
                     <div className="flex items-center gap-1">
                       Roll No <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
@@ -560,41 +583,41 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                   </th>
                   <th
                     onClick={() => toggleSort("name")}
-                    className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors"
+                    className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest cursor-pointer transition-colors ${darkMode ? "text-slate-400 hover:bg-slate-700" : "text-slate-500 hover:bg-slate-100"}`}
                   >
                     <div className="flex items-center gap-1">
                       Student Name <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  <th className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                     Contact Details
                   </th>
                   <th
                     onClick={() => toggleSort("average")}
-                    className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors"
+                    className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest cursor-pointer transition-colors ${darkMode ? "text-slate-400 hover:bg-slate-700" : "text-slate-500 hover:bg-slate-100"}`}
                   >
                     <div className="flex items-center gap-1">
                       {activeSubject} Completion <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-500 min-w-[160px]">
+                  <th className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest min-w-[160px] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                     SAMS State
                   </th>
-                  <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  <th className={`px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className={`divide-y ${darkMode ? "divide-slate-800 bg-slate-900" : "divide-slate-100 bg-white"}`}>
                 {filteredStudents.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-14 text-center">
-                      <div className="mx-auto flex max-w-sm flex-col items-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center">
-                        <div className="rounded-full bg-indigo-50 p-3 text-indigo-600">
+                      <div className={`mx-auto flex max-w-sm flex-col items-center gap-2 rounded-2xl border border-dashed px-6 py-8 text-center ${darkMode ? "border-slate-700 bg-slate-800/50" : "border-slate-200 bg-slate-50"}`}>
+                        <div className={`rounded-full p-3 ${darkMode ? "bg-indigo-950/60 text-indigo-400" : "bg-indigo-50 text-indigo-600"}`}>
                           <Users className="h-5 w-5" />
                         </div>
-                        <p className="text-sm font-black text-slate-700">No students match this view yet.</p>
-                        <p className="text-xs font-medium text-slate-500">Try a different name, roll number, or class filter to surface the right learners.</p>
+                        <p className={`text-sm font-black ${darkMode ? "text-slate-300" : "text-slate-700"}`}>No students match this view yet.</p>
+                        <p className={`text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Try a different name, roll number, or class filter to surface the right learners.</p>
                       </div>
                     </td>
                   </tr>
@@ -615,33 +638,33 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                     }
 
                     return (
-                      <tr key={`${s.classId || "unknown"}-${s.rollNo}`} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4 text-sm font-mono font-bold text-slate-500">
+                      <tr key={`${s.classId || "unknown"}-${s.rollNo}`} className={`transition-colors ${darkMode ? "hover:bg-slate-800/50" : "hover:bg-slate-50/50"}`}>
+                        <td className={`px-6 py-4 text-sm font-mono font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                           {s.rollNo}
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-sm font-extrabold text-slate-800 block">
+                          <span className={`text-sm font-extrabold block ${darkMode ? "text-slate-100" : "text-slate-800"}`}>
                             {s.name}
                             {classFilter === "all" && (
-                              <span className="ml-2 inline-block px-1.5 py-0.5 text-[9px] font-black uppercase bg-slate-100 text-slate-500 rounded border border-slate-200">
+                              <span className={`ml-2 inline-block px-1.5 py-0.5 text-[9px] font-black uppercase rounded border ${darkMode ? "bg-slate-800 text-slate-400 border-slate-700" : "bg-slate-100 text-slate-500 border-slate-200"}`}>
                                 {s.classId?.toUpperCase() || "XII-A"}
                               </span>
                             )}
                             {isInactive && (
-                              <span className="ml-2 inline-block px-1.5 py-0.5 text-[9px] font-black uppercase bg-rose-100 text-rose-600 rounded border border-rose-200" title="No study activity in the last 7 days">
+                              <span className={`ml-2 inline-block px-1.5 py-0.5 text-[9px] font-black uppercase rounded border ${darkMode ? "bg-rose-950/40 text-rose-400 border-rose-800/40" : "bg-rose-100 text-rose-600 border-rose-200"}`} title="No study activity in the last 7 days">
                                 Inactive 7d+
                               </span>
                             )}
                           </span>
                           <span className="text-xs font-mono text-slate-400">{s.email || "No Gmail Linked"}</span>
                         </td>
-                        <td className="px-6 py-4 text-sm font-mono text-slate-500">
+                        <td className={`px-6 py-4 text-sm font-mono ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                           {s.phone}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-black text-slate-900">{avg}%</span>
-                            <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0 hidden md:block">
+                            <span className={`text-sm font-black ${darkMode ? "text-slate-100" : "text-slate-900"}`}>{avg}%</span>
+                            <div className={`w-24 h-1.5 rounded-full overflow-hidden shrink-0 hidden md:block ${darkMode ? "bg-slate-700" : "bg-slate-100"}`}>
                               <div className={`h-full rounded-full`} style={{ width: `${avg}%`, backgroundColor: tone.color }} />
                             </div>
                           </div>
@@ -661,7 +684,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                               setEditScores({ ...s.scores });
                               setEditEmail(s.email || "");
                             }}
-                            className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl transition-colors inline-flex items-center gap-1 text-[10px] font-extrabold cursor-pointer"
+                            className={`p-1.5 rounded-xl transition-colors inline-flex items-center gap-1 text-[10px] font-extrabold cursor-pointer ${darkMode ? "bg-indigo-950/60 text-indigo-400 hover:bg-indigo-950/80" : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"}`}
                           >
                             <Edit className="h-3.5 w-3.5" /> Adjust Portfolio
                           </button>
@@ -694,7 +717,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-md bg-white shadow-2xl h-[100dvh] flex flex-col z-10"
+              className={`relative w-full max-w-md shadow-2xl h-[100dvh] flex flex-col z-10 ${darkMode ? "bg-slate-900" : "bg-white"}`}
             >
               {/* Drawer Header */}
               <div className="bg-slate-900 text-white p-6 shrink-0 relative">
@@ -719,29 +742,29 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
               <div className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-6">
 
                 {/* Registered Google Gmail Input Box */}
-                <div className="space-y-2 bg-indigo-50/40 p-4 rounded-2xl border border-indigo-100">
-                  <label className="flex items-center gap-1.5 text-sm font-black uppercase tracking-wider text-indigo-900">
-                    <Mail className="h-4 w-4 text-indigo-500" /> Registered Student Gmail
+                <div className={`space-y-2 p-4 rounded-2xl border ${darkMode ? "bg-indigo-950/30 border-indigo-900/50" : "bg-indigo-50/40 border-indigo-100"}`}>
+                  <label className={`flex items-center gap-1.5 text-sm font-black uppercase tracking-wider ${darkMode ? "text-indigo-300" : "text-indigo-900"}`}>
+                    <Mail className={`h-4 w-4 ${darkMode ? "text-indigo-400" : "text-indigo-500"}`} /> Registered Student Gmail
                   </label>
                   <input
                     type="email"
                     placeholder="e.g. mukul.sharma@gmail.com"
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white text-slate-800 font-medium"
+                    className={`w-full border rounded-xl p-3 text-base focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium ${darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-800"}`}
                   />
-                  <p className="text-xs text-indigo-500 font-medium">Used for secure Google Sign-In verification.</p>
+                  <p className={`text-xs font-medium ${darkMode ? "text-indigo-400" : "text-indigo-500"}`}>Used for secure Google Sign-In verification.</p>
                 </div>
 
                 {/* Recent Study Sessions (Last 3 logins activity logs) */}
                 <div className="space-y-3">
-                  <h4 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <History className="h-4.5 w-4.5 text-slate-400" /> Recent Study Sessions (Last 3)
+                  <h4 className={`text-sm font-black uppercase tracking-wider flex items-center gap-1.5 ${darkMode ? "text-slate-400" : "text-slate-400"}`}>
+                    <History className={`h-4.5 w-4.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`} /> Recent Study Sessions (Last 3)
                   </h4>
                   {(!selectedStudent.recentSessions || selectedStudent.recentSessions.length === 0) ? (
-                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
-                      <p className="text-sm font-black text-slate-700">No study sessions recorded yet.</p>
-                      <p className="mt-1 text-xs font-medium text-slate-500">A student’s first checklist update or quiz completion will appear here with a clear timeline.</p>
+                    <div className={`rounded-2xl border border-dashed p-4 text-center ${darkMode ? "border-slate-700 bg-slate-800/50" : "border-slate-200 bg-slate-50"}`}>
+                      <p className={`text-sm font-black ${darkMode ? "text-slate-300" : "text-slate-700"}`}>No study sessions recorded yet.</p>
+                      <p className={`mt-1 text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>A student's first checklist update or quiz completion will appear here with a clear timeline.</p>
                     </div>
                   ) : (() => {
                     const filteredSessions = selectedStudent.recentSessions
@@ -753,9 +776,9 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
 
                     if (filteredSessions.length === 0) {
                       return (
-                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
-                          <p className="text-sm font-black text-slate-700">No {activeSubject} study sessions recorded yet.</p>
-                          <p className="mt-1 text-xs font-medium text-slate-500">Updates for this subject will appear here.</p>
+                        <div className={`rounded-2xl border border-dashed p-4 text-center ${darkMode ? "border-slate-700 bg-slate-800/50" : "border-slate-200 bg-slate-50"}`}>
+                          <p className={`text-sm font-black ${darkMode ? "text-slate-300" : "text-slate-700"}`}>No {activeSubject} study sessions recorded yet.</p>
+                          <p className={`mt-1 text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Updates for this subject will appear here.</p>
                         </div>
                       );
                     }
@@ -772,7 +795,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                             hour12: true
                           });
                           return (
-                            <div key={sIdx} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2.5">
+                            <div key={sIdx} className={`p-4 rounded-2xl border space-y-2.5 ${darkMode ? "bg-slate-800/50 border-slate-700" : "bg-slate-50 border-slate-100"}`}>
                               <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">
                                   Session {sIdx + 1}
@@ -785,11 +808,13 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                                 {session.changes.map((ch, cIdx) => (
                                   <div key={cIdx} className="flex items-start gap-2 text-xs leading-relaxed">
                                     <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase shrink-0 ${
-                                      ch.type === "quiz" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-indigo-50 text-indigo-600 border border-indigo-100"
+                                      ch.type === "quiz" 
+                                        ? `${darkMode ? "bg-emerald-950/40 text-emerald-400 border border-emerald-800/40" : "bg-emerald-50 text-emerald-600 border border-emerald-100"}`
+                                        : `${darkMode ? "bg-indigo-950/40 text-indigo-400 border border-indigo-800/40" : "bg-indigo-50 text-indigo-600 border border-indigo-100"}`
                                     }`}>
                                       {ch.type}
                                     </span>
-                                    <span className="font-semibold text-slate-700">
+                                    <span className={`font-semibold ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
                                       <span className="text-slate-400 font-bold mr-1">[{ch.subject}]</span>
                                       {ch.detail}
                                     </span>
@@ -805,7 +830,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="text-sm font-black uppercase tracking-wider text-slate-400">
+                  <h4 className={`text-sm font-black uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-slate-400"}`}>
                     {activeSubject} Chapters Completion (%)
                   </h4>
 
@@ -813,10 +838,10 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                     {activeTopics.map((topic) => {
                       const currentScore = editScores[topic] !== undefined ? editScores[topic] : (selectedStudent.scores[topic] || 0);
                       return (
-                        <div key={topic} className="space-y-1 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-                          <div className="flex justify-between items-center text-sm font-bold text-slate-700">
+                        <div key={topic} className={`space-y-1 p-3.5 rounded-2xl border ${darkMode ? "bg-slate-800/50 border-slate-700" : "bg-slate-50 border-slate-100"}`}>
+                          <div className={`flex justify-between items-center text-sm font-bold ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
                             <span className="truncate pr-4" title={topic}>{topic}</span>
-                            <span className="font-mono text-indigo-600 text-sm">{currentScore}%</span>
+                            <span className={`font-mono text-sm ${darkMode ? "text-indigo-400" : "text-indigo-600"}`}>{currentScore}%</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <input
@@ -829,7 +854,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                                 setEditScores((prev) => ({ ...prev, [topic]: val }));
                               }}
                               disabled={true}
-                              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none opacity-50"
+                              className={`w-full h-2 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none opacity-50 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}
                             />
                             <input
                               type="number"
@@ -841,7 +866,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                                 setEditScores((prev) => ({ ...prev, [topic]: val }));
                               }}
                               disabled={true}
-                              className="w-14 border border-slate-200 rounded-lg p-1.5 text-center font-mono text-xs font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50 cursor-not-allowed"
+                              className={`w-14 border rounded-lg p-1.5 text-center font-mono text-xs font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-not-allowed ${darkMode ? "bg-slate-800 border-slate-700 text-slate-300" : "border-slate-200 bg-slate-50 text-slate-700"}`}
                             />
                           </div>
                         </div>
@@ -852,12 +877,12 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
               </div>
 
               {/* Drawer Action Bar */}
-              <div className="p-4 border-t border-slate-100 bg-slate-50 shrink-0 space-y-2">
+              <div className={`p-4 border-t shrink-0 space-y-2 ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-100 bg-slate-50"}`}>
                 {saveSuccess && (
                   <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-600 text-sm font-semibold"
+                    className={`p-3 border rounded-xl flex items-center gap-2 text-sm font-semibold ${darkMode ? "bg-emerald-950/40 border-emerald-800/40 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-600"}`}
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     Portfolio changes synced successfully.
@@ -867,14 +892,14 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setSelectedStudent(null)}
-                    className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                    className={`flex-1 py-3 border rounded-xl text-sm font-bold transition-colors ${darkMode ? "border-slate-700 text-slate-400 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-100"}`}
                   >
                     Discard Changes
                   </button>
                   <button
                     onClick={handleSaveScores}
                     disabled={savingScores}
-                    className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 disabled:bg-slate-300 transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/15"
+                    className={`flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 shadow-lg transition-colors ${savingScores ? "bg-slate-600 cursor-not-allowed" : "bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-600/15"}`}
                   >
                     <Save className="h-4 w-4" />
                     {savingScores ? "Syncing..." : "Sync Portfolio"}

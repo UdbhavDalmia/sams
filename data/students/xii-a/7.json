@@ -36,5 +36,13 @@
     "Probability and LPP": 0
   },
   "milestones": {},
-  "classId": "xii-a"
+  "classId": "xii-a",
+  "quizStats": {
+    "totalQuizzes": 0,
+    "bySubject": {
+      "chemistry": 0,
+      "physics": 0,
+      "maths": 0
+    }
+  }
 }

@@ -35,13 +35,14 @@
     "Vector Algebra and 3D Geometry": 0,
     "Probability and LPP": 0
   },
-  "milestones": {
-    "Electrochemistry": [
-      false,
-      false,
-      false,
-      false
-    ]
-  },
-  "classId": "xii-a"
+  "milestones": {},
+  "classId": "xii-a",
+  "quizStats": {
+    "totalQuizzes": 0,
+    "bySubject": {
+      "chemistry": 0,
+      "physics": 0,
+      "maths": 0
+    }
+  }
 }

@@ -139,6 +139,12 @@ export function StudentAchievementsMobile({
     platinum: darkMode ? "bg-indigo-950/40 border-indigo-800/40" : "bg-indigo-50 border-indigo-200",
   };
   const tierLabel: Record<string, string> = { bronze: "Bronze", silver: "Silver", gold: "Gold", platinum: "Platinum" };
+  const tierTxtColors: Record<string, string> = {
+    bronze: darkMode ? "text-amber-400" : "text-amber-600",
+    silver: darkMode ? "text-slate-300" : "text-slate-500",
+    gold: darkMode ? "text-yellow-300" : "text-yellow-600",
+    platinum: darkMode ? "text-indigo-300" : "text-indigo-600",
+  };
 
   return (
     <>
@@ -150,19 +156,33 @@ export function StudentAchievementsMobile({
             <span className={`text-[10px] font-extrabold uppercase tracking-widest shrink-0 mr-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
               🏅 Achievements ({earnedCount}/{achievements.length})
             </span>
-            {achievements.map((a) => (
-              <button
-                key={a.id}
-                onClick={() => setSelectedMobileAchievement(prev => prev === a.id ? null : a.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold shrink-0 transition-all cursor-pointer ${a.earned
-                  ? tierBg[a.tier]
-                  : darkMode ? "bg-slate-800/40 border-slate-700/30 opacity-35" : "bg-slate-100 border-slate-200 opacity-40"
-                  } ${selectedMobileAchievement === a.id ? "ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-slate-950" : ""}`}
-              >
-                <span>{getAchievementIcon(a.id, a.tier, a.earned, "h-3.5 w-3.5")}</span>
-                <span className={darkMode ? "text-slate-200" : "text-slate-700"}>{a.title}</span>
-              </button>
-            ))}
+            {(["bronze", "silver", "gold", "platinum"] as const).map((tier, tIdx) => {
+              const tierItems = achievements.filter(a => a.tier === tier);
+              if (tierItems.length === 0) return null;
+              return (
+                <React.Fragment key={tier}>
+                  {tIdx > 0 && (
+                    <div className={`w-px h-5 shrink-0 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`} />
+                  )}
+                  <span className={`text-[8px] font-black uppercase tracking-widest shrink-0 px-1 ${tierTxtColors[tier]}`}>
+                    {tierLabel[tier]}
+                  </span>
+                  {tierItems.map(a => (
+                    <button
+                      key={a.id}
+                      onClick={() => setSelectedMobileAchievement(prev => prev === a.id ? null : a.id)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold shrink-0 transition-all cursor-pointer ${a.earned
+                        ? tierBg[a.tier]
+                        : darkMode ? "bg-slate-800/40 border-slate-700/30 opacity-35" : "bg-slate-100 border-slate-200 opacity-40"
+                        } ${selectedMobileAchievement === a.id ? "ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-slate-950" : ""}`}
+                    >
+                      <span>{getAchievementIcon(a.id, a.tier, a.earned, "h-3.5 w-3.5")}</span>
+                      <span className={darkMode ? "text-slate-200" : "text-slate-700"}>{a.title}</span>
+                    </button>
+                  ))}
+                </React.Fragment>
+              );
+            })}
           </div>
         </div>
 
@@ -367,52 +387,97 @@ export function StudentAchievementsDesktop({
   };
   const tierLabel: Record<string, string> = { bronze: "Bronze", silver: "Silver", gold: "Gold", platinum: "Platinum" };
 
+  const tierAccent: Record<string, string> = {
+    bronze: darkMode ? "bg-amber-500" : "bg-amber-600",
+    silver: darkMode ? "bg-slate-400" : "bg-slate-500",
+    gold: darkMode ? "bg-yellow-400" : "bg-yellow-500",
+    platinum: darkMode ? "bg-indigo-400" : "bg-indigo-500",
+  };
+
   return (
     <aside className={`hidden lg:flex flex-col w-64 xl:w-72 shrink-0 border-r overflow-y-auto transition-colors duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200"}`}>
-      <div className="p-4 border-b sticky top-0 z-10 backdrop-blur-sm">
+      <div className="p-4 border-b sticky top-0 z-10 backdrop-blur-sm" style={{ backdropFilter: "blur(12px)" }}>
         <div className={`${darkMode ? "bg-slate-800/60 border-slate-700" : "bg-indigo-50 border-indigo-100"} border rounded-2xl p-3`}>
           <div className="flex items-center gap-2 mb-2">
             <Trophy className="h-4 w-4 text-indigo-600" />
             <span className={`text-xs font-black uppercase tracking-widest ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Achievements</span>
           </div>
-          <div className="flex items-baseline gap-1">
+          <div className="flex items-baseline gap-1.5">
             <span className="text-2xl font-black text-indigo-600">{earnedCount}</span>
-            <span className={`text-xs font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>/ {achievements.length} earned</span>
+            <span className={`text-[10px] font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>/ {achievements.length}</span>
+            <span className={`ml-auto text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${darkMode ? "bg-slate-700 text-slate-300" : "bg-indigo-100 text-indigo-700"}`}>
+              {Math.round((earnedCount / achievements.length) * 100)}%
+            </span>
           </div>
-          <div className={`h-1.5 rounded-full mt-2 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}>
-            <div className="h-full bg-indigo-600 rounded-full transition-all duration-700" style={{ width: `${(earnedCount / achievements.length) * 100}%` }} />
+          <div className={`h-1.5 rounded-full mt-2.5 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}>
+            <div className="h-full bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full transition-all duration-700" style={{ width: `${(earnedCount / achievements.length) * 100}%` }} />
           </div>
         </div>
       </div>
 
-      <div className="p-3 space-y-1.5 pb-8">
-        {achievements.map((a) => (
-          <div
-            key={a.id}
-            className={`flex items-start gap-3 p-3 rounded-2xl border transition-all ${a.earned
-              ? tierBg[a.tier]
-              : darkMode ? "bg-slate-800/20 border-slate-800/40 opacity-40" : "bg-slate-50 border-slate-100 opacity-50"
-              }`}
-          >
-            <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${a.earned
-              ? (darkMode ? "bg-indigo-500/15 border border-indigo-500/20" : "bg-indigo-50 border border-indigo-100")
-              : (darkMode ? "bg-slate-850 border border-slate-800" : "bg-slate-100 border border-slate-200/60")
-              }`}>
-              {getAchievementIcon(a.id, a.tier, a.earned, "h-4 w-4")}
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className={`text-xs font-extrabold leading-tight truncate ${darkMode ? "text-slate-100" : "text-slate-800"}`}>{a.title}</p>
-                {a.earned && (
-                  <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-gradient-to-r ${tierColors[a.tier]} text-white shrink-0`}>
-                    {tierLabel[a.tier]}
-                  </span>
-                )}
+      <div className="p-3 space-y-3 pb-8">
+        {(["bronze", "silver", "gold", "platinum"] as const).map((tier, tIdx) => {
+          const tierAchievements = achievements.filter(a => a.tier === tier);
+          if (tierAchievements.length === 0) return null;
+          const tierEarned = tierAchievements.filter(a => a.earned).length;
+          return (
+            <motion.div
+              key={tier}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: tIdx * 0.08, ease: "easeOut" }}
+              className="space-y-1"
+            >
+              <div className={`flex items-center gap-2 px-1 py-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                <div className={`h-px flex-1 ${darkMode ? "bg-slate-800" : "bg-slate-200"}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest">{tierLabel[tier]} <span className="opacity-60">({tierEarned}/{tierAchievements.length})</span></span>
+                <div className={`h-px flex-1 ${darkMode ? "bg-slate-800" : "bg-slate-200"}`} />
               </div>
-              <p className={`text-[10px] mt-0.5 leading-snug ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{a.desc}</p>
-            </div>
-          </div>
-        ))}
+              <div className="space-y-1">
+                {tierAchievements.map((a, aIdx) => (
+                  <motion.div
+                    key={a.id}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.25, delay: tIdx * 0.08 + aIdx * 0.04, ease: "easeOut" }}
+                    className={`relative flex items-start gap-2.5 p-2.5 rounded-xl border transition-all duration-200 group overflow-hidden ${a.earned
+                      ? tierBg[a.tier]
+                      : `${darkMode ? "bg-slate-800/20 border-slate-800/40" : "bg-slate-50 border-slate-100"} opacity-45 hover:opacity-70`
+                      }`}
+                  >
+                    {a.earned ? (
+                      <div className={`absolute left-0 top-2 bottom-2 w-0.5 rounded-r-full ${tierAccent[a.tier]}`} />
+                    ) : (
+                      <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
+                        style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 3px, currentColor 3px, currentColor 5px)" }} />
+                    )}
+                    <div className={`p-1.5 rounded-lg shrink-0 flex items-center justify-center transition-all ${a.earned
+                      ? (darkMode ? "bg-indigo-500/15 border border-indigo-500/20" : "bg-indigo-50 border border-indigo-100")
+                      : (darkMode ? "bg-slate-800/80 border border-slate-700/60" : "bg-slate-100/80 border border-slate-200/60")
+                      }`}>
+                      {getAchievementIcon(a.id, a.tier, a.earned, "h-3.5 w-3.5")}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className={`text-[11px] font-extrabold leading-tight truncate ${darkMode ? "text-slate-100" : "text-slate-800"}`}>{a.title}</p>
+                        {a.earned ? (
+                          <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-gradient-to-r ${tierColors[a.tier]} text-white shrink-0`}>
+                            {tierLabel[a.tier]}
+                          </span>
+                        ) : (
+                          <span className="text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-slate-400/10 text-slate-400 border border-slate-400/20 shrink-0">
+                            LOCKED
+                          </span>
+                        )}
+                      </div>
+                      <p className={`text-[9px] mt-0.5 leading-snug ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{a.desc}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
     </aside>
   );

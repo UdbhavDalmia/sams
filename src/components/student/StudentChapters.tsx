@@ -4,7 +4,7 @@ import { ChevronDown, X, CheckCircle, Circle } from "lucide-react";
 import { gsap } from "../../lib/gsap";
 import { Student } from "../../types";
 import { CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS } from "../../types";
-import { getTopicAbbreviation, getProgressColor, parseMarkdownAndMath, triggerConfetti, MathRenderer, parseBoldAndMathInline } from "./shared";
+import { getTopicAbbreviation, getProgressColor, parseMarkdownAndMath, MathRenderer, parseBoldAndMathInline } from "./shared";
 import { TOPIC_RESOURCES } from "../../types";
 import { BookOpen, CheckSquare, Sliders, CheckCircle2, AlertCircle, Award } from "lucide-react";
 import AnimatedCounter from "./AnimatedCounter";
@@ -46,6 +46,20 @@ export default function StudentChapters({
   const [saveProgressSuccess, setSaveProgressSuccess] = React.useState(false);
   const [progressSaveError, setProgressSaveError] = React.useState<string | null>(null);
 
+  const CONFETTI_COLORS = ["#6366f1", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"];
+  interface StoredParticle {
+    id: number;
+    x: number;
+    color: string;
+    size: number;
+    explodeX?: number;
+    explodeY?: number;
+    explodeRotate?: number;
+  }
+  const [storedParticles, setStoredParticles] = React.useState<StoredParticle[]>([]);
+  const [isExploding, setIsExploding] = React.useState(false);
+  const particleIdRef = React.useRef(0);
+
   React.useEffect(() => {
     if (selectedTopic) {
       const currentScore = student.scores?.[selectedTopic] || 0;
@@ -82,10 +96,50 @@ export default function StudentChapters({
       if (checkedCount === numConcepts) newScore = 100;
       setLocalScore(newScore);
     }
+
+    if (!previousState) {
+      const newParticles: StoredParticle[] = [];
+      const particlesPerCheck = 8;
+      for (let i = 0; i < particlesPerCheck; i++) {
+        newParticles.push({
+          id: particleIdRef.current++,
+          x: 5 + Math.random() * 90,
+          color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+          size: 4 + Math.random() * 5,
+        });
+      }
+      setStoredParticles(prev => [...prev, ...newParticles]);
+    }
   };
 
   const handleSliderChange = (value: number) => {
     setLocalScore(value);
+    if (selectedTopic) {
+      const concepts = (TOPIC_RESOURCES as any)[selectedTopic]?.concepts || [];
+      const numConcepts = concepts.length || 4;
+      const weight = numConcepts > 0 ? 100 / numConcepts : 25;
+      const newCheckedCount = Math.min(numConcepts, Math.round(value / weight));
+      const oldCheckedCount = localMilestones.filter(m => m).length;
+      const diff = newCheckedCount - oldCheckedCount;
+
+      const newMilestones = concepts.map((_: any, i: number) => i < newCheckedCount);
+      setLocalMilestones(newMilestones);
+
+      if (diff > 0) {
+        const newParticles: StoredParticle[] = [];
+        for (let i = 0; i < diff * 8; i++) {
+          newParticles.push({
+            id: particleIdRef.current++,
+            x: 5 + Math.random() * 90,
+            color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+            size: 4 + Math.random() * 5,
+          });
+        }
+        setStoredParticles(prev => [...prev, ...newParticles]);
+      } else if (diff < 0) {
+        setStoredParticles(prev => prev.slice(0, diff * 8));
+      }
+    }
   };
 
   const handleSaveProgress = async () => {
@@ -122,8 +176,18 @@ export default function StudentChapters({
         await syncStudentData(true);
       }
       
-      if (localScore === 100) {
-        triggerConfetti();
+      if (storedParticles.length > 0) {
+        setStoredParticles(prev => prev.map(p => ({
+          ...p,
+          explodeX: (Math.random() - 0.5) * window.innerWidth * 1.2,
+          explodeY: -(200 + Math.random() * 500) * (0.5 + (localMilestones.filter(m => m).length / (TOPIC_RESOURCES[selectedTopic]?.concepts?.length || 6)) * 0.5),
+          explodeRotate: Math.random() * 1080,
+        })));
+        setIsExploding(true);
+        setTimeout(() => {
+          setStoredParticles([]);
+          setIsExploding(false);
+        }, 2000);
       }
       
       setTimeout(() => {
@@ -137,29 +201,54 @@ export default function StudentChapters({
   };
   return (
     <>
-      <div className={`p-5 sm:p-7 rounded-[2rem] border transition-all duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white/80 border-slate-200"}`}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className={`p-5 sm:p-7 rounded-[2rem] border transition-all duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white/80 border-slate-200"}`}
+      >
         {/* Header and Subject Tabs */}
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end mb-6 gap-4 border-b pb-5 dark:border-slate-800/80">
-          <div className="w-full xl:w-auto flex-1">
-            <h3 className={`text-xl font-black font-display tracking-tight mb-3 ${darkMode ? "text-slate-100" : "text-slate-900"}`}>Academic Curriculum</h3>
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+            className="w-full xl:w-auto flex-1"
+          >
+            <motion.h3
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.15, ease: "easeOut" }}
+              className={`text-xl font-black font-display tracking-tight mb-3 ${darkMode ? "text-slate-100" : "text-slate-900"}`}
+            >
+              Academic Curriculum
+            </motion.h3>
             
             {/* Dynamic Subject Nav tabs - Segmented Control */}
-            <div className={`flex flex-col sm:flex-row p-1.5 sm:p-2 rounded-2xl sm:rounded-[2rem] border transition-colors duration-300 items-stretch sm:items-center justify-between gap-1.5 w-full ${darkMode ? "bg-slate-900 border-slate-800" : "bg-[#f1f5f9] border-slate-200/80"}`}>
-              {studentSubjects.map(sub => {
+            <motion.div
+              initial={{ opacity: 0, scaleX: 0.95 }}
+              animate={{ opacity: 1, scaleX: 1 }}
+              transition={{ duration: 0.3, delay: 0.2, ease: "easeOut" }}
+              className={`flex flex-col sm:flex-row p-1.5 sm:p-2 rounded-2xl sm:rounded-[2rem] border transition-colors duration-300 items-stretch sm:items-center justify-between gap-1.5 w-full bg-transparent ${darkMode ? "border-slate-800" : "border-slate-200/80"}`}
+            >
+              {studentSubjects.map((sub, idx) => {
                 const isSelected = activeSubject === sub;
                 const unitCount = sub === "Chemistry" ? CHEMISTRY_TOPICS.length : sub === "Physics" ? PHYSICS_TOPICS.length : sub === "Mathematics" ? MATHS_TOPICS.length : BIOLOGY_TOPICS.length;
 
                 return (
-                  <button
+                  <motion.button
                     key={sub}
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.25 + idx * 0.08, ease: "easeOut" }}
                     onClick={() => setActiveSubject(sub)}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition-all duration-200 cursor-pointer ${isSelected
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-3 sm:px-4 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition-all duration-200 cursor-pointer relative ${isSelected
                       ? darkMode
-                        ? "bg-slate-950 border border-slate-700 text-white shadow-md"
-                        : "bg-white border-2 border-slate-200 text-indigo-700 shadow-sm"
+                        ? "text-white"
+                        : "text-indigo-700"
                       : darkMode
-                        ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                        ? "text-slate-400 hover:text-slate-200"
+                        : "text-slate-500 hover:text-slate-700"
                       }`}
                   >
                     <span>{sub}</span>
@@ -168,38 +257,71 @@ export default function StudentChapters({
                       : darkMode ? "bg-slate-800/50 text-slate-500" : "bg-slate-200/50 text-slate-400"}`}>
                       {unitCount} Units
                     </span>
-                  </button>
+                    {isSelected && (
+                      <motion.div
+                        layoutId="active-subject"
+                        className={`absolute -bottom-[5px] left-1/2 -translate-x-1/2 h-[3px] w-8 rounded-full ${darkMode ? "bg-indigo-400" : "bg-indigo-600"}`}
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                  </motion.button>
                 );
               })}
-            </div>
-          </div>
-          <div className={`w-full xl:w-auto text-center xl:text-right ${darkMode ? "bg-indigo-950/40 border border-indigo-900/40" : "bg-indigo-50 border border-indigo-100"} px-5 py-3.5 rounded-2xl flex flex-row xl:flex-col items-center xl:items-end justify-between xl:justify-center mt-2 xl:mt-0 shrink-0`}>
+            </motion.div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.3, ease: "easeOut" }}
+            className={`w-full xl:w-auto text-center xl:text-right ${darkMode ? "bg-indigo-950/40 border border-indigo-900/40" : "bg-indigo-50 border border-indigo-100"} px-5 py-3.5 rounded-2xl flex flex-row xl:flex-col items-center xl:items-end justify-between xl:justify-center mt-2 xl:mt-0 shrink-0`}
+          >
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-500 mb-0 xl:mb-0.5">Subject Average</span>
             <span className="text-xl font-black font-mono text-indigo-600 dark:text-indigo-400">
               <AnimatedCounter value={activeSubjectAvg} suffix="%" />
             </span>
-          </div>
+          </motion.div>
         </div>
 
         {/* Chapter Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
-          {activeTopics.map((topic) => {
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            visible: { transition: { staggerChildren: 0.05 } }
+          }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4"
+        >
+          {activeTopics.map((topic, idx) => {
             const score = student.scores?.[topic] || 0;
             const { code, colorClass } = getTopicAbbreviation(topic);
+            const isOpen = selectedTopic === topic;
             return (
-              <button
+              <motion.div
                 key={topic}
+                className="w-full"
+                variants={{
+                  hidden: { opacity: 0, y: 16, scale: 0.95 },
+                  visible: { opacity: 1, y: 0, scale: 1 }
+                }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+              >
+              <button
                 onClick={() => {
                   setSelectedTopic(topic);
                   setActiveTab("cheat");
                 }}
                 onMouseEnter={(e) => gsap.to(e.currentTarget, { scale: 1.03, y: -4, duration: 0.25, ease: "power2.out" })}
                 onMouseLeave={(e) => gsap.to(e.currentTarget, { scale: 1, y: 0, duration: 0.3, ease: "power2.out" })}
-                className={`p-4 rounded-3xl border text-left cursor-pointer flex flex-col justify-between h-40 ${darkMode ? "bg-slate-900 border-slate-800 hover:border-slate-700" : "bg-white border-slate-200/60 hover:border-slate-300"
-                  }`}
-                style={{ boxShadow: `0 0 4px 2px ${getProgressColor(score, 0.2)}` }}
+                className={`relative overflow-hidden p-4 rounded-3xl border text-left cursor-pointer flex flex-col justify-between w-full h-40 transition-all duration-200 ${darkMode
+                  ? "bg-slate-900 border-slate-800 hover:border-slate-700"
+                  : "bg-white border-slate-200/60 hover:border-slate-300"
+                  } ${isOpen ? "ring-2 ring-indigo-500/60" : ""}`}
               >
-                <div className="space-y-3">
+                <div
+                  className="absolute inset-0 pointer-events-none rounded-3xl"
+                  style={{ background: `linear-gradient(135deg, ${getProgressColor(score, 0.12)} 0%, transparent 50%)` }}
+                />
+                <div className="space-y-3 relative z-0">
                   <div className="flex justify-between items-center">
                     <div className={`w-9 h-9 rounded-xl font-black flex items-center justify-center text-xs tracking-wider shadow-sm ${colorClass}`}>
                       {code}
@@ -223,10 +345,11 @@ export default function StudentChapters({
                   </div>
                 </div>
               </button>
+              </motion.div>
             );
           })}
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* SAMS Academic Chapter Companion Slide panel */}
       <AnimatePresence>
@@ -453,10 +576,12 @@ export default function StudentChapters({
                           onChange={(e) => handleSliderChange(Number(e.target.value))}
                           className="w-full h-2 bg-slate-200 dark:bg-slate-850 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                         />
-                        <div className="flex justify-between text-[9px] text-slate-900 dark:text-slate-400 font-mono font-bold uppercase">
+                        <div className="flex justify-between text-[8px] sm:text-[9px] text-slate-900 dark:text-slate-400 font-mono font-bold uppercase">
                           <span>Incomplete</span>
-                          <span>Intermediate (50%)</span>
-                          <span>Complete (100%)</span>
+                          <span>Emerging</span>
+                          <span>Intermediate</span>
+                          <span>Advanced</span>
+                          <span>Complete</span>
                         </div>
                       </div>
                     </div>
@@ -499,6 +624,55 @@ export default function StudentChapters({
                   </button>
                 </div>
               </div>
+
+              {storedParticles.length > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 h-52 pointer-events-none z-50 overflow-visible">
+                  {storedParticles.map(p => {
+                    const checkedCount = localMilestones.filter(m => m).length;
+                    const totalConcepts = (TOPIC_RESOURCES[selectedTopic || ""]?.concepts?.length) || 6;
+                    const intensity = Math.min(checkedCount / totalConcepts, 1);
+                    return (
+                      <motion.div
+                        key={p.id}
+                        className="absolute bottom-2"
+                        style={{
+                          left: `${p.x}%`,
+                          width: p.size,
+                          height: p.size * 1.6,
+                          backgroundColor: p.color,
+                          borderRadius: 1,
+                        }}
+                        animate={isExploding && p.explodeX !== undefined ? {
+                          x: p.explodeX,
+                          y: p.explodeY,
+                          rotate: p.explodeRotate,
+                          opacity: 0,
+                          transition: { duration: 1 + Math.random() * 0.5, ease: "easeOut" }
+                        } : {
+                          y: intensity > 0.8
+                            ? [0, -10 - intensity * 14, 3, -12 - intensity * 12, 0]
+                            : [0, -(2 + intensity * 8), 0],
+                          rotate: intensity > 0.6
+                            ? [0, 12, -12, 8, -8, 0]
+                            : intensity > 0.3
+                              ? [0, 6, -6, 0]
+                              : 0,
+                          scale: intensity > 0.8
+                            ? [1, 1.12, 0.95, 1.08, 1]
+                            : intensity > 0.5
+                              ? [1, 1.06, 0.98, 1]
+                              : 1,
+                          transition: {
+                            y: { duration: 0.5 + (1 - intensity) * 0.8, repeat: Infinity, ease: "easeInOut", delay: p.id * 0.02 },
+                            rotate: { duration: 0.4 + (1 - intensity) * 0.4, repeat: Infinity, ease: "linear" },
+                            scale: { duration: 0.3 + (1 - intensity) * 0.3, repeat: Infinity, ease: "easeInOut" },
+                          }
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </motion.div>
           </div>
         )}
