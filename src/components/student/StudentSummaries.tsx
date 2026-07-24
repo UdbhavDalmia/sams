@@ -1,7 +1,7 @@
 import React from "react";
 import { Student, getStudentSubjects } from "../../types";
 import { getProgressColor } from "./shared";
-import AnimatedCounter from "./AnimatedCounter"; // Will create or move this later, actually it's in StudentView.tsx currently. I should probably move it to shared.tsx or AnimatedCounter.tsx.
+import AnimatedCounter from "../animations/AnimatedCounter";
 
 interface StudentSummariesProps {
   student: Student;

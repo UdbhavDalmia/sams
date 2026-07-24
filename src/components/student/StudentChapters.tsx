@@ -7,7 +7,7 @@ import { CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS } from "
 import { getTopicAbbreviation, getProgressColor, parseMarkdownAndMath, MathRenderer, parseBoldAndMathInline } from "./shared";
 import { TOPIC_RESOURCES } from "../../types";
 import { BookOpen, CheckSquare, Sliders, CheckCircle2, AlertCircle, Award } from "lucide-react";
-import AnimatedCounter from "./AnimatedCounter";
+import AnimatedCounter from "../animations/AnimatedCounter";
 
 interface StudentChaptersProps {
   student: Student;

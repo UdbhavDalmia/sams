@@ -1,31 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { AlertCircle, ChevronDown, Zap, Loader, RefreshCw, ChevronRight } from "lucide-react";
-import { Student } from "../../types";
+import { Student, ActiveQuizState } from "../../types";
 import { parseMarkdownAndMath, parseBoldAndMathInline } from "./shared";
-import { ActiveQuizState } from "../../types"; // Assuming this is exported from types, or I might need to define it
-
-interface StudentQuizProps {
-  student: Student;
-  darkMode: boolean;
-  activeTopics: string[];
-  syncStudentData: (silent?: boolean) => Promise<void>;
-  initialQuizState?: ActiveQuizState | null; // Passed from parent if there's an active quiz
-  onQuizStateChange?: (isActive: boolean) => void;
-}
-
-const fetchWithRetry = async (url: string, options: RequestInit, retries = 2) => {
-  for (let i = 0; i <= retries; i++) {
-    try {
-      const res = await fetch(url, options);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (err) {
-      if (i === retries) throw err;
-      await new Promise(r => setTimeout(r, 1000 * (i + 1))); // exponential backoff
-    }
-  }
-};
+import { fetchWithRetry } from "../../lib/fetch";
 
 const getSubjectForTopic = (topic: string) => {
   // Rough categorization based on topic name for AI context
@@ -35,6 +13,15 @@ const getSubjectForTopic = (topic: string) => {
   if (t.includes("reproduction") || t.includes("genetics") || t.includes("evolution") || t.includes("disease") || t.includes("microbe") || t.includes("biotech") || t.includes("ecology") || t.includes("biodiversity")) return "Biology";
   return "Mathematics";
 };
+
+interface StudentQuizProps {
+  student: Student;
+  darkMode: boolean;
+  activeTopics: string[];
+  syncStudentData: (silent?: boolean) => Promise<void>;
+  initialQuizState?: ActiveQuizState | null;
+  onQuizStateChange?: (isActive: boolean) => void;
+}
 
 export default function StudentQuiz({
   student,
