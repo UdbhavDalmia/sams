@@ -4,16 +4,12 @@ import { gsap, useGSAP } from "../lib/gsap";
 import { playChime } from "./student/shared";
 import {
   Users,
-  FlaskConical,
   TrendingDown,
   Search,
   ArrowUpDown,
-  Download,
-  Upload,
   Save,
   CheckCircle2,
   AlertCircle,
-  FileSpreadsheet,
   X,
   Edit,
   ClipboardCheck,
@@ -26,7 +22,7 @@ import {
   Moon,
   Sun
 } from "lucide-react";
-import { Student, TopicName, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS, ALL_TOPICS, getStudentSubjects } from "../types";
+import { Student, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS, getStudentSubjects } from "../types";
 import { fetchWithRetry } from "../lib/fetch";
 import SAMSLogo from "./SAMSLogo";
 

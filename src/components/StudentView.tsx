@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { AlertCircle, BookOpen } from "lucide-react";
 import { Student, ActiveQuizState, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS, TopicName, TOPIC_RESOURCES, getStudentSubjects } from "../types";
 import { fetchWithRetry } from "../lib/fetch";
-import { gsap } from "../lib/gsap";
+import { gsap, useGSAP } from "../lib/gsap";
 
 import StudentNavbar from "./student/StudentNavbar";
 import { StudentAchievementsMobile, StudentAchievementsDesktop } from "./student/StudentAchievements";
@@ -27,6 +27,17 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
   const [darkMode, setDarkMode] = useState(false);
 
   const studentRootRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(
+    () => {
+      if (studentDataStatus !== "ready") return;
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      tl.fromTo("#student-nav-bar", { y: -24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 })
+        .fromTo("#student-achievements-panel", { x: -24, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 }, "-=0.25")
+        .fromTo("#student-main-content > section", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.15 }, "-=0.3");
+    },
+    { dependencies: [studentDataStatus], scope: studentRootRef }
+  );
 
   const studentSubjects = getStudentSubjects(student.scores);
   const [activeSubject, setActiveSubject] = useState<string>(
@@ -232,7 +243,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
           bioAvg={bioAvg}
         />
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-10 sm:space-y-12">
+        <main id="student-main-content" className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-10 sm:space-y-12">
           <section className="grid grid-cols-1 gap-6">
             <StudentSummaries
               student={student}

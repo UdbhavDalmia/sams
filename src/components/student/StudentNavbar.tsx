@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef } from "react";
 import { Sun, Moon, LogOut, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import SAMSLogo from "../SAMSLogo";
@@ -38,7 +38,7 @@ export default function StudentNavbar({
 
   return (
     <>
-      <header className={`px-6 py-4 flex justify-between items-center border-b shrink-0 z-10 transition-colors duration-300 ${darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"}`}>
+      <header id="student-nav-bar" className={`px-6 py-4 flex justify-between items-center border-b shrink-0 z-10 transition-colors duration-300 ${darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white/80 border-slate-200"}`}>
         <div className="flex items-center gap-3">
           <SAMSLogo size={32} />
           <span className="font-bold text-lg tracking-tight text-[#0f2d4a] dark:text-white">

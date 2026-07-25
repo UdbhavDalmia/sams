@@ -414,7 +414,7 @@ export function StudentAchievementsDesktop({
   };
 
   return (
-    <aside className={`hidden lg:flex flex-col w-64 xl:w-72 shrink-0 border-r overflow-y-auto transition-colors duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200"}`}>
+    <aside id="student-achievements-panel" className={`hidden lg:flex flex-col w-64 xl:w-72 shrink-0 border-r overflow-y-auto transition-colors duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200"}`}>
       <div className="p-4 border-b sticky top-0 z-10 backdrop-blur-sm" style={{ backdropFilter: "blur(12px)" }}>
         <div className={`${darkMode ? "bg-slate-800/60 border-slate-700" : "bg-indigo-50 border-indigo-100"} border rounded-2xl p-3`}>
           <div className="flex items-center gap-2 mb-2">
