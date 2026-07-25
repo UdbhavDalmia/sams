@@ -87,7 +87,7 @@ export function StudentAchievementsMobile({
     if (studentSubjects.includes("Biology")) defs.push({ id: "bio_star", title: "Biology Star", desc: "Biology average ≥ 60%", icon: "🧬", tier: "silver", earned: bioAvg >= 60 });
 
     defs.push(
-      { id: "quiz_addict", title: "Quiz Addict", desc: "Completed 5 or more quizzes", icon: "🧠", tier: "silver", earned: totalQuizzes >= 5 },
+      { id: "quiz_addict", title: "Quiz Specialist", desc: "Completed 5 or more quizzes", icon: "🧠", tier: "silver", earned: totalQuizzes >= 5 },
       {
         id: "triple_threat",
         title: "Multi-Subject Master",

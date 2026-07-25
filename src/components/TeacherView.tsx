@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { gsap } from "../lib/gsap";
+import { gsap, useGSAP } from "../lib/gsap";
 import { playChime } from "./student/shared";
 import {
   Users,
@@ -29,7 +29,7 @@ import {
 import { Student, TopicName, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS, ALL_TOPICS, getStudentSubjects } from "../types";
 import { fetchWithRetry } from "../lib/fetch";
 import SAMSLogo from "./SAMSLogo";
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
+
 
 const getProgressColor = (score: number, alpha = 1) => {
   const s = Math.max(0, Math.min(100, score));
@@ -160,8 +160,13 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   // Active Subject Selection State
   const [activeSubject, setActiveSubject] = useState<"Chemistry" | "Physics" | "Mathematics" | "Biology">(teacherDetails.subject);
 
-  // Analytics View Toggle State: "bars" (Static Averages), "trends" (Growth Velocity & Trendlines)
-  const [analyticsView, setAnalyticsView] = useState<"bars" | "trends">("bars");
+  // Chapter Summary Filter, Sort, & Selection State
+  const [chapterSearch, setChapterSearch] = useState("");
+  const [chapterSort, setChapterSort] = useState<"syllabus" | "lowest" | "highest">("syllabus");
+  const [chapterFilter, setChapterFilter] = useState<"all" | "attention" | "mastered">("all");
+  const [selectedChapterName, setSelectedChapterName] = useState<string | null>(null);
+
+
 
   // Score & Email editor states
   const [editScores, setEditScores] = useState<Record<string, number>>({});
@@ -170,6 +175,17 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const darkToggleRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+    tl.fromTo("#teacher-nav-bar", { y: -24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 })
+      .fromTo("#subject-switcher", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, "-=0.2")
+      .fromTo("#metric-cards > div", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.1 }, "-=0.15")
+      .fromTo("#analytics-section", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, "-=0.2")
+      .fromTo("#chapter-progress-list > div", { y: 20, opacity: 0, scale: 0.98 }, { y: 0, opacity: 1, scale: 1, duration: 0.4, stagger: 0.04 }, "-=0.2")
+      .fromTo("#student-table-section", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, "-=0.2");
+  }, { scope: containerRef });
 
   const handleToggleDark = () => {
     setDarkMode(!darkMode);
@@ -357,15 +373,52 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
     : 0;
 
 
-  // Calculate topic-specific averages for the class progress bar chart
-  const topicAverages = activeTopics.map((topic) => {
+  // Calculate topic-specific averages, top quartile benchmarks, and student counts for static summary
+  const topicAverages = activeTopics.map((topic, index) => {
     let sum = 0;
-    subjectStudents.forEach((s) => {
-      sum += s.scores[topic] || 0;
-    });
+    const scores = subjectStudents.map((s) => s.scores?.[topic] || 0);
+    scores.forEach((sc) => { sum += sc; });
     const avg = totalStudents > 0 ? Math.round(sum / totalStudents) : 0;
-    return { name: topic, avg };
+
+    // Top 25% Quartile average
+    const sorted = [...scores].sort((a, b) => b - a);
+    const topCutoff = Math.max(1, Math.ceil(totalStudents * 0.25));
+    const topQuartile = sorted.slice(0, topCutoff);
+    const topAvg = topQuartile.length > 0 ? Math.round(topQuartile.reduce((a, b) => a + b, 0) / topQuartile.length) : avg;
+
+    const highCount = scores.filter((sc) => sc >= 75).length;
+    const proficientCount = scores.filter((sc) => sc >= 60 && sc < 75).length;
+    const strugglingCount = scores.filter((sc) => sc < 50).length;
+
+    return {
+      index: index + 1,
+      name: topic,
+      avg,
+      topAvg,
+      highCount,
+      proficientCount,
+      strugglingCount,
+    };
   });
+
+  const masteredCount = topicAverages.filter((t) => t.avg >= 75).length;
+  const attentionCount = topicAverages.filter((t) => t.avg < 60).length;
+
+  const displayedTopics = topicAverages
+    .filter((t) => {
+      const matchesSearch = chapterSearch.trim() === "" || t.name.toLowerCase().includes(chapterSearch.toLowerCase());
+      if (!matchesSearch) return false;
+      if (chapterFilter === "attention") return t.avg < 60;
+      if (chapterFilter === "mastered") return t.avg >= 75;
+      return true;
+    })
+    .sort((a, b) => {
+      if (chapterSort === "lowest") return a.avg - b.avg;
+      if (chapterSort === "highest") return b.avg - a.avg;
+      return a.index - b.index;
+    });
+
+  const selectedChapterData = topicAverages.find((t) => t.name === selectedChapterName);
 
   // Find most challenging chapter in the current subject
   let mostChallengingChapter = "None";
@@ -421,7 +474,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
   };
 
   return (
-    <div id="teacher-view-container" className={`min-h-screen transition-colors duration-300 font-sans flex flex-col ${darkMode ? "bg-slate-950 text-slate-100 dark" : "bg-[#eaf4fc] text-slate-900"}`}>
+    <div ref={containerRef} id="teacher-view-container" className={`min-h-screen transition-colors duration-300 font-sans flex flex-col ${darkMode ? "bg-slate-950 text-slate-100 dark" : "bg-[#eaf4fc] text-slate-900"}`}>
       {/* Sleek Navigation Bar */}
       <nav id="teacher-nav-bar" className={`px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 z-10 transition-colors duration-300 ${darkMode ? "bg-slate-900/80 border-b border-slate-800" : "bg-white border-b border-slate-200"}`}>
         <div className="flex items-center gap-3">
@@ -451,49 +504,60 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
             <div className="w-10 h-10 rounded-full bg-blue-50/50 border-2 border-blue-200/40 shadow-sm flex items-center justify-center font-bold text-[#3b6b95] text-xs uppercase" title={teacherDetails.name}>
               {teacherDetails.initials}
             </div>
-            <button
+            <motion.button
               id="teacher-logout-button"
               onClick={onLogout}
-              className={`p-2 rounded-xl transition-all ${darkMode ? "text-slate-400 hover:text-rose-400 hover:bg-rose-950/30" : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"}`}
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.9 }}
+              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+              className={`p-2 rounded-xl transition-colors ${darkMode ? "text-slate-400 hover:text-rose-400 hover:bg-rose-950/30" : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"}`}
               title="Close Session"
             >
               <LogOut className="h-4 w-4" />
-            </button>
+            </motion.button>
           </div>
         </div>
       </nav>
 
       {/* Main Layout Grid */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 space-y-8 overflow-y-auto">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 space-y-10 sm:space-y-12 md:space-y-14 overflow-y-auto">
 
         {/* Core Multi-Subject Switcher */}
-        <div className={`p-1.5 rounded-2xl border flex gap-3 ${darkMode ? "bg-slate-800/50 border-slate-700/30" : "bg-slate-200/50 border-slate-300/30"}`}>
+        <div id="subject-switcher" className={`p-1.5 rounded-2xl border flex gap-3 ${darkMode ? "bg-slate-800/50 border-slate-700/30" : "bg-slate-200/50 border-slate-300/30"}`}>
           {[
             { id: "Chemistry", color: "text-amber-800 bg-amber-500/15" },
             { id: "Physics", color: "text-blue-800 bg-blue-500/15" },
             { id: "Mathematics", color: "text-violet-800 bg-violet-500/15" },
             { id: "Biology", color: "text-emerald-800 bg-emerald-500/15" }
           ].filter((sub) => sub.id === teacherDetails.subject).map((sub) => (
-            <button
+            <motion.button
               key={sub.id}
               onClick={() => {
                 setActiveSubject(sub.id as any);
                 setSelectedStudent(null);
               }}
-              className={`flex-1 py-3 px-4 rounded-xl font-extrabold text-sm tracking-tight transition-all flex items-center justify-center gap-2 shadow-md ${darkMode ? "bg-slate-800 text-indigo-300 border border-slate-700/50" : "bg-white text-indigo-700 border border-slate-200/50"}`}
+              whileHover={{ scale: 1.02, y: -1 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              className={`flex-1 py-3 px-4 rounded-xl font-extrabold text-sm tracking-tight transition-shadow flex items-center justify-center gap-2 shadow-md cursor-pointer ${darkMode ? "bg-slate-800 text-indigo-300 border border-slate-700/50" : "bg-white text-indigo-700 border border-slate-200/50"}`}
             >
               <span>{sub.id} Monitor</span>
               <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded-full ${sub.color}`}>
                 Active
               </span>
-            </button>
+            </motion.button>
           ))}
         </div>
 
         {/* Core Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div id="metric-cards" className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
           {/* Card 1: Total Students */}
-          <div className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
+          <motion.div
+            whileHover={{ scale: 1.02, boxShadow: "0 20px 40px rgba(0,0,0,0.08)" }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}
+          >
             <div>
               <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block font-display">
                 Total Class Size
@@ -501,13 +565,22 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
               <span className="text-3xl font-black text-slate-900 dark:text-white block mt-1 font-display">{totalStudents}</span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 block">{teacherDetails.classLabel} Student List</span>
             </div>
-            <div className={`p-4 rounded-2xl shrink-0 ${darkMode ? "bg-indigo-950/60 text-indigo-400" : "bg-indigo-50 text-indigo-500"}`}>
+            <motion.div
+              whileHover={{ rotate: [0, -10, 10, -5, 0] }}
+              transition={{ duration: 0.5 }}
+              className={`p-4 rounded-2xl shrink-0 ${darkMode ? "bg-indigo-950/60 text-indigo-400" : "bg-indigo-50 text-indigo-500"}`}
+            >
               <Users className="h-6 w-6" />
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           {/* Card 2: Class Average */}
-          <div className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
+          <motion.div
+            whileHover={{ scale: 1.02, boxShadow: "0 20px 40px rgba(0,0,0,0.08)" }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}
+          >
             <div>
               <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block font-display">
                 {activeSubject} Average
@@ -515,13 +588,22 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
               <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400 block mt-1 font-display">{classAvg}%</span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 block">Class Mean Mastery</span>
             </div>
-            <div className={`p-4 rounded-2xl shrink-0 ${darkMode ? "bg-indigo-950/60 text-indigo-400" : "bg-indigo-50 text-indigo-500"}`}>
+            <motion.div
+              whileHover={{ rotate: [0, -10, 10, -5, 0] }}
+              transition={{ duration: 0.5 }}
+              className={`p-4 rounded-2xl shrink-0 ${darkMode ? "bg-indigo-950/60 text-indigo-400" : "bg-indigo-50 text-indigo-500"}`}
+            >
               <GraduationCap className="h-6 w-6" />
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           {/* Card 3: Most Challenging */}
-          <div className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
+          <motion.div
+            whileHover={{ scale: 1.02, boxShadow: "0 20px 40px rgba(0,0,0,0.08)" }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}
+          >
             <div>
               <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block font-display">
                 Challenging {activeSubject} Chapter
@@ -531,221 +613,260 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
               </span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 block">Lowest Mean: {lowestAvg}%</span>
             </div>
-            <div className={`p-4 rounded-2xl shrink-0 ${darkMode ? "bg-amber-950/60 text-amber-400" : "bg-amber-50 text-amber-500"}`}>
+            <motion.div
+              whileHover={{ rotate: [0, -10, 10, -5, 0] }}
+              transition={{ duration: 0.5 }}
+              className={`p-4 rounded-2xl shrink-0 ${darkMode ? "bg-amber-950/60 text-amber-400" : "bg-amber-50 text-amber-500"}`}
+            >
               <TrendingDown className="h-6 w-6" />
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
 
-        {/* Performance Analytics Section - Toggleable (Static Averages | Growth Velocity) */}
-        <section className={`p-6 rounded-[1.5rem] shadow-xl space-y-4 ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white shadow-slate-100/40"}`}>
-          {/* Header & View Toggle */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 dark:border-slate-800">
+        {/* Performance Analytics Section - Enhanced Static Summary */}
+        <section id="analytics-section" className={`p-6 rounded-[1.5rem] shadow-xl space-y-5 ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white shadow-slate-100/40"}`}>
+          {/* Header & Quick Summary Badges */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4 dark:border-slate-800">
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black text-slate-900 dark:text-white font-display">{activeSubject} Class Performance Analytics</h3>
-                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                  {analyticsView === "bars" ? "Static View" : "Velocity Mode"}
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white font-display">
+                  {activeSubject} Class Performance Analytics
+                </h3>
+                <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                  Chapter Overview
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">
-                {analyticsView === "bars" && `Average completion % per chapter · ${activeTopics.length} chapters`}
-                {analyticsView === "trends" && `Growth velocity & chapter progression curves across ${subjectStudents.length} students`}
+              <p className="text-xs text-slate-400 font-medium mt-1">
+                Class average mastery score per chapter across {subjectStudents.length} enrolled learners
               </p>
             </div>
 
-            {/* Segmented View Toggle Switch */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/70 dark:border-slate-700/60 shrink-0">
-              <button
-                onClick={() => setAnalyticsView("bars")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  analyticsView === "bars"
-                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
-                    : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                }`}
-              >
-                Static Averages
-              </button>
-              <button
-                onClick={() => setAnalyticsView("trends")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  analyticsView === "trends"
-                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
-                    : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                }`}
-              >
-                Growth & Trends
-              </button>
+            {/* Quick Summary Pill Counters */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 ${darkMode ? "bg-slate-800/80 border-slate-700 text-slate-300" : "bg-slate-100 text-slate-700 border-slate-200"}`}>
+                <span className="text-slate-400">Total:</span>
+                <span className="font-black text-indigo-600 dark:text-indigo-400">{activeTopics.length}</span>
+              </div>
+              <div className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 ${darkMode ? "bg-emerald-950/40 border-emerald-800/60 text-emerald-300" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Mastered (≥75%):</span>
+                <span className="font-black">{masteredCount}</span>
+              </div>
+              <div className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 ${darkMode ? "bg-rose-950/40 border-rose-800/60 text-rose-300" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                <span>Needs Focus (&lt;60%):</span>
+                <span className="font-black">{attentionCount}</span>
+              </div>
             </div>
           </div>
 
-          {/* Mode 1: Static Chapter Progress Bars */}
-          {analyticsView === "bars" && (
-            <div className="overflow-y-auto max-h-[360px] pr-1 space-y-2.5 scrollbar-none pt-1">
-              {topicAverages.map((t) => {
-                const pct = t.avg;
-                const tone = getScoreStatus(pct);
-                return (
-                  <div key={t.name} className="flex items-center gap-3 group">
-                    <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 w-52 shrink-0 truncate" title={t.name}>
-                      {t.name}
-                    </span>
-                    <div className="flex-1 h-4 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%`, backgroundColor: tone.color }}
-                      />
-                    </div>
-                    <span className="text-[11px] font-black w-10 text-right shrink-0" style={{ color: tone.color }}>
-                      {pct}%
-                    </span>
-                  </div>
-                );
-              })}
+          {/* Search, Filter & Sort Toolbar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            {/* Chapter Search Input */}
+            <div className="relative flex-1 min-w-[200px]">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <Search className="h-4 w-4" />
+              </div>
+              <input
+                type="text"
+                placeholder="Filter chapter by name..."
+                value={chapterSearch}
+                onChange={(e) => setChapterSearch(e.target.value)}
+                className={`w-full pl-9 pr-3 py-2 text-xs font-bold rounded-xl border focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all ${
+                  darkMode ? "bg-slate-800/70 border-slate-700 text-white placeholder-slate-500" : "bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400"
+                }`}
+              />
             </div>
-          )}
 
-          {/* Mode 2: Growth Velocity & Trendlines */}
-          {analyticsView === "trends" && (() => {
-            const studentCount = subjectStudents.length;
+            <div className="flex items-center gap-2.5 shrink-0 overflow-x-auto pb-1 sm:pb-0">
+              {/* Category Filter Pills */}
+              <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
+                <motion.button
+                  onClick={() => setChapterFilter("all")}
+                  whileTap={{ scale: 0.92 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                    chapterFilter === "all"
+                      ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                  }`}
+                >
+                  All
+                </motion.button>
+                <motion.button
+                  onClick={() => setChapterFilter("attention")}
+                  whileTap={{ scale: 0.92 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                    chapterFilter === "attention"
+                      ? "bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-xs"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                  }`}
+                >
+                  Needs Focus
+                </motion.button>
+                <motion.button
+                  onClick={() => setChapterFilter("mastered")}
+                  whileTap={{ scale: 0.92 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                    chapterFilter === "mastered"
+                      ? "bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                  }`}
+                >
+                  Mastered
+                </motion.button>
+              </div>
 
-            const trendChartData = activeTopics.map((topic, idx) => {
-              const topicScores = subjectStudents.map((s) => s.scores?.[topic] || 0);
-              const totalScore = topicScores.reduce((sum, v) => sum + v, 0);
+              {/* Sort Selector */}
+              <select
+                value={chapterSort}
+                onChange={(e) => setChapterSort(e.target.value as any)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border focus:outline-none focus:ring-2 focus:ring-indigo-500/25 cursor-pointer ${
+                  darkMode ? "bg-slate-800 border-slate-700 text-slate-200" : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}
+              >
+                <option value="syllabus">Syllabus Order</option>
+                <option value="lowest">Lowest Mean First</option>
+                <option value="highest">Highest Mean First</option>
+              </select>
+            </div>
+          </div>
 
-              const classAvg = studentCount > 0 ? Math.round(totalScore / studentCount) : 0;
-
-              // Top quartile (top 25% students) real mean score
-              const sortedScores = [...topicScores].sort((a, b) => b - a);
-              const topCutoff = Math.max(1, Math.ceil(studentCount * 0.25));
-              const topQuartileScores = sortedScores.slice(0, topCutoff);
-              const topAvg = topQuartileScores.length > 0
-                ? Math.round(topQuartileScores.reduce((sum, v) => sum + v, 0) / topQuartileScores.length)
-                : classAvg;
-
-              // Real milestone completion count (% of students with all milestones checked)
-              let completedMilestoneCount = 0;
-              subjectStudents.forEach((s) => {
-                const ms = s.milestones?.[topic];
-                if (ms && ms.length > 0 && ms.every(Boolean)) {
-                  completedMilestoneCount++;
-                }
-              });
-              const milestoneCompletionPct = studentCount > 0 ? Math.round((completedMilestoneCount / studentCount) * 100) : 0;
-
-              // Growth velocity: difference in class mean score vs preceding chapter
-              const prevTopic = activeTopics[idx - 1];
-              let prevAvg = classAvg;
-              if (prevTopic) {
-                const prevScores = subjectStudents.map((s) => s.scores?.[prevTopic] || 0);
-                prevAvg = studentCount > 0 ? Math.round(prevScores.reduce((sum, v) => sum + v, 0) / studentCount) : classAvg;
-              }
-              const growthVelocity = classAvg - prevAvg;
-
-              return {
-                topicShort: topic.length > 12 ? topic.substring(0, 12) + "…" : topic,
-                topicName: topic,
-                classAvg,
-                topAvg,
-                milestoneCompletionPct,
-                velocity: growthVelocity,
-              };
-            });
-
-            const overallTopAvg = trendChartData.length > 0
-              ? Math.round(trendChartData.reduce((acc, c) => acc + c.topAvg, 0) / trendChartData.length)
-              : 0;
-
-            const highestMasteryTopic = topicAverages.reduce(
-              (max, t) => (t.avg > max.avg ? t : max),
-              topicAverages[0] || { name: "N/A", avg: 0 }
-            );
-
-            return (
-              <div className="space-y-4 pt-1">
-                {/* Summary Metrics Cards - Mobile Responsive Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
-                  <div className={`p-3 rounded-xl border text-xs ${darkMode ? "bg-slate-800/50 border-slate-700/60 text-slate-200" : "bg-indigo-50/60 border-indigo-100 text-slate-800"}`}>
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-500 block">Class Mean Mastery</span>
-                    <span className="text-lg sm:text-xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5 block">{classAvg}%</span>
-                    <span className="text-[10px] font-medium text-slate-400 mt-0.5 block">{studentCount} enrolled learners</span>
-                  </div>
-                  <div className={`p-3 rounded-xl border text-xs ${darkMode ? "bg-slate-800/50 border-slate-700/60 text-slate-200" : "bg-emerald-50/60 border-emerald-100 text-slate-800"}`}>
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-500 block">Top Quartile (25%) Mean</span>
-                    <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">
-                      {overallTopAvg}%
-                    </span>
-                    <span className="text-[10px] font-medium text-slate-400 mt-0.5 block">High achievement benchmark</span>
-                  </div>
-                  <div className={`p-3 rounded-xl border text-xs ${darkMode ? "bg-slate-800/50 border-slate-700/60 text-slate-200" : "bg-amber-50/60 border-amber-100 text-slate-800"}`}>
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-500 block">Strongest Chapter</span>
-                    <span className="text-xs font-extrabold truncate block mt-1" title={highestMasteryTopic.name}>
-                      {highestMasteryTopic.name}
-                    </span>
-                    <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 mt-0.5 block">Highest mean: {highestMasteryTopic.avg}%</span>
-                  </div>
+          {/* Selected Chapter Quick Inspection Panel */}
+          <AnimatePresence>
+            {selectedChapterData && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: "auto", marginTop: 0 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className={`overflow-hidden p-4 rounded-2xl border ${
+                  darkMode ? "bg-slate-800/80 border-indigo-500/40 text-slate-100" : "bg-indigo-50/80 border-indigo-200 text-slate-900"
+                }`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
+                    Selected Chapter Breakdown
+                  </span>
+                  <h4 className="text-sm sm:text-base font-black truncate mt-0.5">
+                    {selectedChapterData.name}
+                  </h4>
                 </div>
+                <motion.button
+                  onClick={() => setSelectedChapterName(null)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.92 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 cursor-pointer"
+                >
+                  Close
+                </motion.button>
+              </div>
 
-                {/* Recharts Area Chart - Touch Accessible Scrollable Container on Mobile */}
-                <div className="w-full overflow-x-auto scrollbar-thin pt-1 pb-2">
-                  <div className="h-64 sm:h-72 min-w-[540px] sm:min-w-0 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={trendChartData} margin={{ top: 10, right: 20, left: -20, bottom: 5 }}>
-                        <defs>
-                          <linearGradient id="classAvgGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
-                          </linearGradient>
-                          <linearGradient id="topAvgGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" opacity={darkMode ? 0.15 : 0.4} />
-                        <XAxis
-                          dataKey="topicShort"
-                          tick={{ fontSize: 10, fill: darkMode ? "#94a3b8" : "#64748b" }}
-                          interval={0}
-                          angle={-15}
-                          textAnchor="end"
-                          height={45}
-                        />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: darkMode ? "#94a3b8" : "#64748b" }} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: darkMode ? "#0f172a" : "#ffffff",
-                            borderColor: darkMode ? "#334155" : "#e2e8f0",
-                            borderRadius: "12px",
-                            fontSize: "11px",
-                            boxShadow: "0 10px 25px -5px rgba(0,0,0,0.25)",
-                            padding: "10px",
-                          }}
-                          formatter={(val: any, name: any) => {
-                            if (name === "Class Mean") return [`${val}%`, "Class Mean"];
-                            if (name === "Top 25% Quartile") return [`${val}%`, "Top 25% Quartile"];
-                            return [`${val}%`, name];
-                          }}
-                          labelFormatter={(label, items) => {
-                            const payload = items?.[0]?.payload;
-                            if (!payload) return label;
-                            const velStr = payload.velocity >= 0 ? `+${payload.velocity}%` : `${payload.velocity}%`;
-                            return `${payload.topicName} (Velocity: ${velStr})`;
-                          }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "6px" }} />
-                        <Area type="monotone" dataKey="classAvg" name="Class Mean" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#classAvgGrad)" />
-                        <Area type="monotone" dataKey="topAvg" name="Top 25% Quartile" stroke="#10b981" strokeWidth={2} strokeDasharray="4 4" fillOpacity={1} fill="url(#topAvgGrad)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3 pt-3 border-t border-slate-200/70 dark:border-slate-700/60 text-xs">
+                <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Class Mean</span>
+                  <span className="text-base font-black text-indigo-600 dark:text-indigo-400 mt-0.5 block">{selectedChapterData.avg}%</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Top 25% Benchmark</span>
+                  <span className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">{selectedChapterData.topAvg}%</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">High Achievers (≥75%)</span>
+                  <span className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">{selectedChapterData.highCount} learners</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Struggling (&lt;50%)</span>
+                  <span className="text-base font-black text-rose-600 dark:text-rose-400 mt-0.5 block">{selectedChapterData.strugglingCount} learners</span>
                 </div>
               </div>
-            );
-          })()}
+            </motion.div>
+          )}
+          </AnimatePresence>
+
+          {/* Chapter Progress Bars List */}
+          <div id="chapter-progress-list" className="overflow-y-auto max-h-[420px] pr-1 space-y-2.5 scrollbar-thin pt-1">
+            {displayedTopics.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400 font-medium">
+                No chapters match your search filter criteria.
+              </div>
+            ) : (
+              displayedTopics.map((t) => {
+                const pct = t.avg;
+                const tone = getScoreStatus(pct);
+                const isSelected = selectedChapterName === t.name;
+
+                // Custom status badge label
+                let badgeLabel = "On Track";
+                let badgeStyle = "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20";
+                if (pct >= 75) {
+                  badgeLabel = "Mastered";
+                  badgeStyle = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
+                } else if (pct < 45) {
+                  badgeLabel = "Critical Focus";
+                  badgeStyle = "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20";
+                } else if (pct < 60) {
+                  badgeLabel = "Needs Focus";
+                  badgeStyle = "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
+                }
+
+                return (
+                  <motion.div
+                    layout
+                    key={t.name}
+                    onClick={() => setSelectedChapterName(isSelected ? null : t.name)}
+                    whileHover={{ y: -2 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                    className={`p-3 rounded-xl border transition-shadow cursor-pointer ${
+                      isSelected
+                        ? "bg-indigo-50/90 dark:bg-slate-800 border-indigo-500/50 shadow-md ring-2 ring-indigo-500/20"
+                        : darkMode
+                        ? "bg-slate-800/40 border-slate-800 hover:border-slate-700 hover:bg-slate-800/70"
+                        : "bg-slate-50/60 border-slate-200/70 hover:border-indigo-200 hover:bg-indigo-50/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[10px] font-black text-slate-400 w-5 shrink-0">
+                          #{t.index}
+                        </span>
+                        <span className="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 truncate" title={t.name}>
+                          {t.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider border ${badgeStyle}`}>
+                          {badgeLabel}
+                        </span>
+                        <span className="text-xs sm:text-sm font-black w-12 text-right" style={{ color: tone.color }}>
+                          {pct}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Gradient Filled Progress Bar */}
+                    <div className="w-full h-3 bg-slate-200/80 dark:bg-slate-700/80 rounded-full overflow-hidden p-0.5">
+                      <motion.div
+                        layout
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
+                        className="h-full rounded-full shadow-xs"
+                        style={{ backgroundColor: tone.color, boxShadow: `0 0 8px ${tone.color}44` }}
+                      />
+                    </div>
+                    </motion.div>
+                  );
+                })
+            )}
+          </div>
         </section>
 
         {/* Master Student Class & List Table */}
-        <section className={`p-6 rounded-[1.5rem] shadow-xl space-y-4 border ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
+        <section id="student-table-section" className={`p-6 rounded-[1.5rem] shadow-xl space-y-4 border ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h3 className="text-lg font-black text-slate-900 dark:text-white font-display">Student Progress List</h3>
@@ -859,7 +980,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                     </td>
                   </tr>
                 ) : (
-                  filteredStudents.map((s) => {
+                  filteredStudents.map((s, idx) => {
                     const avg = calculateStudentAvg(s);
                     const tone = getScoreStatus(avg);
                     const diag = getStudentDiagnostic(s, activeSubject, activeTopics);
@@ -874,7 +995,13 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                     }
 
                     return (
-                      <tr key={`${s.classId || "unknown"}-${s.rollNo}`} className={`transition-colors ${darkMode ? "hover:bg-slate-800/50" : "hover:bg-slate-50/50"}`}>
+                      <motion.tr
+                        layout
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.35, delay: idx * 0.03, ease: "easeOut" }}
+                        key={`${s.classId || "unknown"}-${s.rollNo}`}
+                        className={`transition-colors ${darkMode ? "hover:bg-slate-800/50" : "hover:bg-slate-50/50"}`}>
                         <td className={`px-6 py-4 text-sm font-mono font-bold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                           {s.rollNo}
                         </td>
@@ -928,18 +1055,21 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button
+                          <motion.button
                             onClick={() => {
                               setSelectedStudent(s);
                               setEditScores({ ...s.scores });
                               setEditEmail(s.email || "");
                             }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.92 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 20 }}
                             className={`p-1.5 rounded-xl transition-colors inline-flex items-center gap-1 text-[10px] font-extrabold cursor-pointer ${darkMode ? "bg-indigo-950/60 text-indigo-400 hover:bg-indigo-950/80" : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"}`}
                           >
                             <Edit className="h-3.5 w-3.5" /> Adjust Portfolio
-                          </button>
+                          </motion.button>
                         </td>
-                      </tr>
+                      </motion.tr>
                     );
                   })
                 )}
@@ -995,7 +1125,11 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                 {(() => {
                   const diag = getStudentDiagnostic(selectedStudent, activeSubject, activeTopics);
                   return (
-                    <div className={`p-4 rounded-2xl border space-y-2.5 shadow-sm ${
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                      className={`p-4 rounded-2xl border space-y-2.5 shadow-sm ${
                       diag.priority === "critical" ? (darkMode ? "bg-rose-950/30 border-rose-900/50" : "bg-rose-50/70 border-rose-200/80") :
                       diag.priority === "warning" ? (darkMode ? "bg-amber-950/30 border-amber-900/50" : "bg-amber-50/70 border-amber-200/80") :
                       diag.priority === "success" ? (darkMode ? "bg-emerald-950/30 border-emerald-900/50" : "bg-emerald-50/70 border-emerald-200/80") :
@@ -1027,7 +1161,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                         <span>•</span>
                         <span>Activity: <strong>{diag.daysInactiveStr}</strong></span>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })()}
 
@@ -1180,20 +1314,26 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                 )}
 
                 <div className="flex gap-3">
-                  <button
+                  <motion.button
                     onClick={() => setSelectedStudent(null)}
-                    className={`flex-1 py-3 border rounded-xl text-sm font-bold transition-colors ${darkMode ? "border-slate-700 text-slate-400 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-100"}`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.96 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                    className={`flex-1 py-3 border rounded-xl text-sm font-bold transition-colors cursor-pointer ${darkMode ? "border-slate-700 text-slate-400 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-100"}`}
                   >
                     Discard Changes
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
                     onClick={handleSaveScores}
                     disabled={savingScores}
-                    className={`flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 shadow-lg transition-colors ${savingScores ? "bg-slate-600 cursor-not-allowed" : "bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-600/15"}`}
+                    whileHover={savingScores ? {} : { scale: 1.02 }}
+                    whileTap={savingScores ? {} : { scale: 0.96 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                    className={`flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 shadow-lg transition-colors cursor-pointer ${savingScores ? "bg-slate-600 cursor-not-allowed" : "bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-600/15"}`}
                   >
                     <Save className="h-4 w-4" />
                     {savingScores ? "Syncing..." : "Sync Portfolio"}
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             </motion.div>

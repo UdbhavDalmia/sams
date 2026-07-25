@@ -208,7 +208,7 @@ export default function StudentChapters({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className={`p-5 sm:p-7 rounded-[2rem] border transition-all duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white/80 border-slate-200"}`}
+        className={`p-6 sm:p-8 rounded-[2rem] border transition-all duration-300 ${darkMode ? "bg-slate-900/60 border-slate-800" : "bg-white/80 border-slate-200"}`}
       >
         {/* Header and Subject Tabs */}
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end mb-6 gap-4 border-b pb-5 dark:border-slate-800/80">

@@ -220,7 +220,7 @@ export default function StudentQuiz({
   const displayedDifficulty = activeQuestionDifficulty || quizState?.difficulty || "medium";
 
   return (
-    <div className={`p-5 sm:p-7 rounded-[2rem] border transition-all duration-300 relative overflow-hidden flex flex-col ${darkMode ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-200"}`}>
+    <div className={`p-6 sm:p-8 rounded-[2rem] border transition-all duration-300 relative overflow-hidden flex flex-col ${darkMode ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-200"}`}>
       {/* Quiz UI Header and Content */}
       <div className="flex items-center justify-between mb-6 z-10 relative">
         <h3 className={`text-sm font-black font-display tracking-tight flex items-center gap-2 ${darkMode ? "text-slate-100" : "text-slate-900"}`}>

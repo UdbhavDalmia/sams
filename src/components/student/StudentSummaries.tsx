@@ -35,7 +35,7 @@ export default function StudentSummaries({
   const currentTargetIndex = targets.findIndex(t => overallAvg < t.threshold);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 w-full">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-7 w-full">
       {/* Overview Card */}
       <div className={`p-3 sm:p-4 lg:p-6 rounded-2xl sm:rounded-[2rem] border transition-all duration-300 ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
         <h3 className={`text-[10px] sm:text-xs font-black uppercase tracking-widest mb-2 sm:mb-3 lg:mb-4 flex items-center gap-2 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>

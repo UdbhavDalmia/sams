@@ -16,7 +16,7 @@ export default function StudentChatbot({ student, darkMode, disabled }: StudentC
   const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "ai"; content: string; time: string }>>([
     {
       role: "ai",
-      content: "Hello! I'm your SAMS Academic AI. Ask me to explain a concept, quiz you, or help you debug your thinking.",
+      content: "Welcome. I am the SAMS Academic Assistant. You may inquire about core concepts, request practice evaluations, or seek academic guidance for Class XII subjects.",
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -65,7 +65,7 @@ export default function StudentChatbot({ student, darkMode, disabled }: StudentC
     } catch {
       setChatMessages(prev => [
         ...prev,
-        { role: "ai", content: "I'm having trouble connecting to my neural net right now. Could you try again in a moment?", time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+        { role: "ai", content: "Unable to establish a connection with the academic assistance server. Please attempt your query again shortly.", time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
       ]);
     } finally {
       setChatLoading(false);

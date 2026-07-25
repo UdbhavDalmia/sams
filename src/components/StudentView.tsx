@@ -232,7 +232,7 @@ export default function StudentView({ student: initialStudent, onLogout }: Stude
           bioAvg={bioAvg}
         />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-10 sm:space-y-12">
           <section className="grid grid-cols-1 gap-6">
             <StudentSummaries
               student={student}
