@@ -168,50 +168,55 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
   // ─── UNAUTHORIZED SCREEN ─────────────────────────────────────────────────
   if (unauthorized) {
     return (
-      <div className="min-h-screen bg-gradient-to-tr from-slate-900 via-rose-950/40 to-slate-900 flex flex-col items-center justify-center font-sans text-white p-6">
+      <div className="min-h-screen bg-slate-950 bg-gradient-to-br from-slate-950 via-rose-950/60 to-slate-900 flex flex-col items-center justify-center font-sans text-white p-6 relative overflow-hidden">
+        {/* Glow ambient background */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-600/15 rounded-full blur-[120px] pointer-events-none" />
+
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
+          initial={{ scale: 0.94, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 220 }}
-          className="flex flex-col items-center gap-6 text-center max-w-sm"
+          transition={{ type: "spring", stiffness: 220, damping: 20 }}
+          className="relative z-10 flex flex-col items-center gap-6 text-center max-w-md w-full bg-slate-900/90 border border-slate-800 p-8 rounded-3xl shadow-2xl shadow-rose-950/40 backdrop-blur-xl"
         >
           {/* Access Denied Icon */}
-          <div className="w-24 h-24 rounded-full bg-rose-500/20 border-2 border-rose-500/40 flex items-center justify-center">
-            <AlertOctagon className="h-12 w-12 text-rose-400" />
+          <div className="w-20 h-20 rounded-2xl bg-rose-500/15 border-2 border-rose-500/30 flex items-center justify-center shadow-lg shadow-rose-900/30">
+            <AlertOctagon className="h-10 w-10 text-rose-400" />
           </div>
 
           {/* SAMS branding */}
           <div className="flex items-center gap-2">
-            <SAMSLogo size={32} />
-            <span className="text-sm font-bold tracking-widest text-[#3b6b95] uppercase">SAMS Analytics</span>
+            <SAMSLogo size={28} />
+            <span className="text-xs font-black tracking-widest text-sky-400 uppercase font-display">SAMS Analytics</span>
           </div>
 
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-rose-400">Access Denied</h1>
-            <p className="text-slate-300 mt-3 font-medium leading-relaxed">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-rose-400 font-display">Access Denied</h1>
+            <p className="text-slate-200 mt-2.5 text-sm font-medium leading-relaxed">
               The Google account{" "}
-              <span className="font-mono text-rose-300 font-bold">{unauthorized.email}</span>{" "}
-              is not registered in the SAMS system.
+              <span className="inline-block mt-1 px-2.5 py-1 bg-rose-950/80 border border-rose-800/60 rounded-lg font-mono text-rose-200 text-xs font-bold break-all">{unauthorized.email}</span>{" "}
+              is not registered in SAMS.
             </p>
           </div>
 
           {/* Info box */}
-          <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 text-left space-y-2 w-full">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Why am I seeing this?</p>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              SAMS is an <strong>exclusive system</strong> for pre-registered students only. Only students whose email has been registered by their faculty can sign in with Google.
+          <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 text-left space-y-2.5 w-full shadow-inner">
+            <p className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" /> Why am I seeing this?
             </p>
-            <p className="text-sm text-slate-400">
-              Contact your teacher to link your email, then try again.
+            <p className="text-xs text-slate-200 leading-relaxed font-normal">
+              SAMS is an <strong className="text-white font-bold">exclusive portal</strong> for pre-registered students only. Only emails linked by faculty can sign in.
+            </p>
+            <p className="text-xs text-slate-300 font-medium">
+              Please contact your teacher to link your Google email address, then try again.
             </p>
           </div>
 
-          <div className="flex flex-col w-full gap-3">
+          <div className="flex flex-col w-full gap-3 pt-1">
             <button
               onClick={handleRealGoogleLogin}
-              className="w-full py-3 bg-white text-slate-800 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-slate-100 transition-all"
+              className="w-full py-3.5 bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 shadow-lg transition-all cursor-pointer active:scale-[0.98]"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path fill="#EA4335" d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.2-3.2C17.52 1.57 14.97 1 12 1 7.24 1 3.17 3.74 1.23 7.78l3.85 2.99C6.01 7.42 8.78 5.04 12 5.04z" />
                 <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.46c-.28 1.48-1.11 2.73-2.36 3.58l3.66 2.84c2.14-1.98 3.39-4.88 3.39-8.57z" />
                 <path fill="#FBBC05" d="M5.08 14.21c-.24-.71-.38-1.47-.38-2.21s.14-1.5.38-2.21L1.23 6.8c-.81 1.62-1.27 3.44-1.27 5.4s.46 3.78 1.27 5.4l3.85-2.99z" />
@@ -221,7 +226,7 @@ export default function LoginPortal({ onLoginSuccess }: LoginPortalProps) {
             </button>
             <button
               onClick={() => setUnauthorized(null)}
-              className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl font-bold text-sm transition-all"
+              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-600/20 border border-indigo-500/30 transition-all cursor-pointer active:scale-[0.98]"
             >
               Use Roll Number Instead
             </button>

@@ -29,6 +29,7 @@ import {
 import { Student, TopicName, CHEMISTRY_TOPICS, PHYSICS_TOPICS, MATHS_TOPICS, BIOLOGY_TOPICS, ALL_TOPICS, getStudentSubjects } from "../types";
 import { fetchWithRetry } from "../lib/fetch";
 import SAMSLogo from "./SAMSLogo";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from "recharts";
 
 const getProgressColor = (score: number, alpha = 1) => {
   const s = Math.max(0, Math.min(100, score));
@@ -36,6 +37,92 @@ const getProgressColor = (score: number, alpha = 1) => {
   // 50-100: Amber (45) to Emerald (140)
   const hue = s <= 50 ? (s / 50) * 45 : 45 + ((s - 50) / 50) * 95;
   return `hsla(${Math.round(hue)}, 85%, 45%, ${alpha})`;
+};
+
+const getStudentDiagnostic = (s: Student, subject: string, topics: readonly string[]) => {
+  const scores = topics.map(t => s.scores?.[t] || 0);
+  const avg = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+
+  let lowestScore = 101;
+  let weakestTopic = topics[0] || "General";
+  let highestScore = -1;
+  let strongestTopic = topics[0] || "General";
+  let zeroCount = 0;
+  let masteredCount = 0;
+
+  topics.forEach(t => {
+    const sc = s.scores?.[t] || 0;
+    if (sc === 0) zeroCount++;
+    if (sc >= 80) masteredCount++;
+    if (sc < lowestScore) {
+      lowestScore = sc;
+      weakestTopic = t;
+    }
+    if (sc > highestScore) {
+      highestScore = sc;
+      strongestTopic = t;
+    }
+  });
+
+  const totalQuizzes = s.quizStats?.totalQuizzes || 0;
+
+  let isInactive = true;
+  let daysInactiveStr = "No activity recorded";
+  if (s.recentSessions && s.recentSessions.length > 0) {
+    const latestSessionTime = new Date(s.recentSessions[0].timestamp).getTime();
+    const days = Math.floor((Date.now() - latestSessionTime) / (1000 * 60 * 60 * 24));
+    daysInactiveStr = days === 0 ? "Active today" : `${days}d ago`;
+    if (days <= 7) isInactive = false;
+  }
+
+  let priority: "critical" | "warning" | "success" | "info" = "info";
+  let actionTitle = "";
+  let suggestion = "";
+  let badgeLabel = "";
+
+  if (isInactive) {
+    priority = "critical";
+    badgeLabel = "Inactivity Alert";
+    actionTitle = "Schedule Direct Check-in";
+    suggestion = `No activity recorded recently. Recommend following up with Roll #${s.rollNo} (${s.name}) to ensure syllabus alignment.`;
+  } else if (avg < 35 || zeroCount >= Math.ceil(topics.length / 2)) {
+    priority = "critical";
+    badgeLabel = "Needs Remediation";
+    actionTitle = `Focus on ${weakestTopic}`;
+    suggestion = `Current ${subject} average is ${avg}%. Recommend starting with fundamental concept checkpoints in ${weakestTopic} (${lowestScore}%).`;
+  } else if (totalQuizzes === 0 && avg > 30) {
+    priority = "warning";
+    badgeLabel = "Quiz Check Needed";
+    actionTitle = "Assign AI Practice Quiz";
+    suggestion = `Checklist progress logged, but 0 quizzes completed. Suggest triggering a 5-question AI practice quiz to test retention.`;
+  } else if (avg >= 85 && masteredCount >= Math.floor(topics.length * 0.6)) {
+    priority = "success";
+    badgeLabel = "Exam Ready";
+    actionTitle = "Exemplary Momentum";
+    suggestion = `Outstanding ${subject} performance (${avg}% mean across ${masteredCount} topics). Ready for advanced level problem sets.`;
+  } else {
+    priority = "info";
+    badgeLabel = "Steady Progress";
+    actionTitle = `Target ${weakestTopic}`;
+    suggestion = `Progressing steadily at ${avg}%. Focus next on boosting ${weakestTopic} (${lowestScore}%) to push overall score above 80%.`;
+  }
+
+  return {
+    avg,
+    weakestTopic,
+    lowestScore,
+    strongestTopic,
+    highestScore,
+    masteredCount,
+    zeroCount,
+    totalQuizzes,
+    isInactive,
+    daysInactiveStr,
+    priority,
+    badgeLabel,
+    actionTitle,
+    suggestion,
+  };
 };
 
 interface TeacherViewProps {
@@ -72,6 +159,9 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
 
   // Active Subject Selection State
   const [activeSubject, setActiveSubject] = useState<"Chemistry" | "Physics" | "Mathematics" | "Biology">(teacherDetails.subject);
+
+  // Analytics View Toggle State: "bars" (Static Averages), "trends" (Growth Velocity & Trendlines)
+  const [analyticsView, setAnalyticsView] = useState<"bars" | "trends">("bars");
 
   // Score & Email editor states
   const [editScores, setEditScores] = useState<Record<string, number>>({});
@@ -266,15 +356,6 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
     ? Math.round(subjectStudents.reduce((sum, s) => sum + calculateStudentAvg(s), 0) / totalStudents)
     : 0;
 
-  // Calculate perfect 100% chapters completed across the class for active subject
-  let perfectChaptersCount = 0;
-  subjectStudents.forEach((s) => {
-    activeTopics.forEach((t) => {
-      if ((s.scores[t] || 0) === 100) {
-        perfectChaptersCount++;
-      }
-    });
-  });
 
   // Calculate topic-specific averages for the class progress bar chart
   const topicAverages = activeTopics.map((topic) => {
@@ -410,7 +491,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
         </div>
 
         {/* Core Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {/* Card 1: Total Students */}
           <div className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
             <div>
@@ -439,21 +520,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
             </div>
           </div>
 
-          {/* Card 3: Perfect Chapters Completed */}
-          <div className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
-            <div>
-              <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block font-display">
-                Perfect Completions (100%)
-              </span>
-              <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400 block mt-1 font-display">{perfectChaptersCount}</span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1 block">Total Mastered Chapters</span>
-            </div>
-            <div className={`p-4 rounded-2xl shrink-0 ${darkMode ? "bg-emerald-950/60 text-emerald-400" : "bg-emerald-50 text-emerald-500"}`}>
-              <Sparkles className="h-6 w-6" />
-            </div>
-          </div>
-
-          {/* Card 4: Most Challenging */}
+          {/* Card 3: Most Challenging */}
           <div className={`p-6 rounded-[1.5rem] shadow-xl flex items-center justify-between ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white border-slate-200/50 shadow-slate-100/40"}`}>
             <div>
               <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block font-display">
@@ -470,41 +537,211 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
           </div>
         </div>
 
-        {/* Performance Analytics Section - Chapter Progress Bars */}
+        {/* Performance Analytics Section - Toggleable (Static Averages | Growth Velocity) */}
         <section className={`p-6 rounded-[1.5rem] shadow-xl space-y-4 ${darkMode ? "glass-panel-dark bg-slate-900/50 border-slate-800 shadow-slate-950/90" : "glass-panel bg-white shadow-slate-100/40"}`}>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2">
+          {/* Header & View Toggle */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 dark:border-slate-800">
             <div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-white font-display">{activeSubject} Class Performance Analytics</h3>
-              <p className="text-xs text-slate-400 font-medium">Average completion % per chapter · {activeTopics.length} chapters</p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white font-display">{activeSubject} Class Performance Analytics</h3>
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                  {analyticsView === "bars" ? "Static View" : "Velocity Mode"}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">
+                {analyticsView === "bars" && `Average completion % per chapter · ${activeTopics.length} chapters`}
+                {analyticsView === "trends" && `Growth velocity & chapter progression curves across ${subjectStudents.length} students`}
+              </p>
             </div>
-            <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">
-              <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-indigo-500"/> Class Avg</span>
+
+            {/* Segmented View Toggle Switch */}
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/70 dark:border-slate-700/60 shrink-0">
+              <button
+                onClick={() => setAnalyticsView("bars")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  analyticsView === "bars"
+                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
+              >
+                Static Averages
+              </button>
+              <button
+                onClick={() => setAnalyticsView("trends")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  analyticsView === "trends"
+                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
+              >
+                Growth & Trends
+              </button>
             </div>
           </div>
 
-          {/* Scrollable chapter rows */}
-          <div className="overflow-y-auto max-h-[360px] pr-1 space-y-2 scrollbar-none">
-            {topicAverages.map((t) => {
-              const pct = t.avg;
-              const tone = getScoreStatus(pct);
-              return (
-                <div key={t.name} className="flex items-center gap-3 group">
-                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 w-52 shrink-0 truncate" title={t.name}>
-                    {t.name}
-                  </span>
-                  <div className="flex-1 h-4 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500`}
-                      style={{ width: `${pct}%`, backgroundColor: tone.color }}
-                    />
+          {/* Mode 1: Static Chapter Progress Bars */}
+          {analyticsView === "bars" && (
+            <div className="overflow-y-auto max-h-[360px] pr-1 space-y-2.5 scrollbar-none pt-1">
+              {topicAverages.map((t) => {
+                const pct = t.avg;
+                const tone = getScoreStatus(pct);
+                return (
+                  <div key={t.name} className="flex items-center gap-3 group">
+                    <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 w-52 shrink-0 truncate" title={t.name}>
+                      {t.name}
+                    </span>
+                    <div className="flex-1 h-4 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, backgroundColor: tone.color }}
+                      />
+                    </div>
+                    <span className="text-[11px] font-black w-10 text-right shrink-0" style={{ color: tone.color }}>
+                      {pct}%
+                    </span>
                   </div>
-                  <span className={`text-[11px] font-black w-10 text-right shrink-0`} style={{ color: tone.color }}>
-                    {pct}%
-                  </span>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Mode 2: Growth Velocity & Trendlines */}
+          {analyticsView === "trends" && (() => {
+            const studentCount = subjectStudents.length;
+
+            const trendChartData = activeTopics.map((topic, idx) => {
+              const topicScores = subjectStudents.map((s) => s.scores?.[topic] || 0);
+              const totalScore = topicScores.reduce((sum, v) => sum + v, 0);
+
+              const classAvg = studentCount > 0 ? Math.round(totalScore / studentCount) : 0;
+
+              // Top quartile (top 25% students) real mean score
+              const sortedScores = [...topicScores].sort((a, b) => b - a);
+              const topCutoff = Math.max(1, Math.ceil(studentCount * 0.25));
+              const topQuartileScores = sortedScores.slice(0, topCutoff);
+              const topAvg = topQuartileScores.length > 0
+                ? Math.round(topQuartileScores.reduce((sum, v) => sum + v, 0) / topQuartileScores.length)
+                : classAvg;
+
+              // Real milestone completion count (% of students with all milestones checked)
+              let completedMilestoneCount = 0;
+              subjectStudents.forEach((s) => {
+                const ms = s.milestones?.[topic];
+                if (ms && ms.length > 0 && ms.every(Boolean)) {
+                  completedMilestoneCount++;
+                }
+              });
+              const milestoneCompletionPct = studentCount > 0 ? Math.round((completedMilestoneCount / studentCount) * 100) : 0;
+
+              // Growth velocity: difference in class mean score vs preceding chapter
+              const prevTopic = activeTopics[idx - 1];
+              let prevAvg = classAvg;
+              if (prevTopic) {
+                const prevScores = subjectStudents.map((s) => s.scores?.[prevTopic] || 0);
+                prevAvg = studentCount > 0 ? Math.round(prevScores.reduce((sum, v) => sum + v, 0) / studentCount) : classAvg;
+              }
+              const growthVelocity = classAvg - prevAvg;
+
+              return {
+                topicShort: topic.length > 12 ? topic.substring(0, 12) + "…" : topic,
+                topicName: topic,
+                classAvg,
+                topAvg,
+                milestoneCompletionPct,
+                velocity: growthVelocity,
+              };
+            });
+
+            const overallTopAvg = trendChartData.length > 0
+              ? Math.round(trendChartData.reduce((acc, c) => acc + c.topAvg, 0) / trendChartData.length)
+              : 0;
+
+            const highestMasteryTopic = topicAverages.reduce(
+              (max, t) => (t.avg > max.avg ? t : max),
+              topicAverages[0] || { name: "N/A", avg: 0 }
+            );
+
+            return (
+              <div className="space-y-4 pt-1">
+                {/* Summary Metrics Cards - Mobile Responsive Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                  <div className={`p-3 rounded-xl border text-xs ${darkMode ? "bg-slate-800/50 border-slate-700/60 text-slate-200" : "bg-indigo-50/60 border-indigo-100 text-slate-800"}`}>
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-500 block">Class Mean Mastery</span>
+                    <span className="text-lg sm:text-xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5 block">{classAvg}%</span>
+                    <span className="text-[10px] font-medium text-slate-400 mt-0.5 block">{studentCount} enrolled learners</span>
+                  </div>
+                  <div className={`p-3 rounded-xl border text-xs ${darkMode ? "bg-slate-800/50 border-slate-700/60 text-slate-200" : "bg-emerald-50/60 border-emerald-100 text-slate-800"}`}>
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-500 block">Top Quartile (25%) Mean</span>
+                    <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">
+                      {overallTopAvg}%
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-400 mt-0.5 block">High achievement benchmark</span>
+                  </div>
+                  <div className={`p-3 rounded-xl border text-xs ${darkMode ? "bg-slate-800/50 border-slate-700/60 text-slate-200" : "bg-amber-50/60 border-amber-100 text-slate-800"}`}>
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-500 block">Strongest Chapter</span>
+                    <span className="text-xs font-extrabold truncate block mt-1" title={highestMasteryTopic.name}>
+                      {highestMasteryTopic.name}
+                    </span>
+                    <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 mt-0.5 block">Highest mean: {highestMasteryTopic.avg}%</span>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Recharts Area Chart - Touch Accessible Scrollable Container on Mobile */}
+                <div className="w-full overflow-x-auto scrollbar-thin pt-1 pb-2">
+                  <div className="h-64 sm:h-72 min-w-[540px] sm:min-w-0 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={trendChartData} margin={{ top: 10, right: 20, left: -20, bottom: 5 }}>
+                        <defs>
+                          <linearGradient id="classAvgGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
+                          </linearGradient>
+                          <linearGradient id="topAvgGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" opacity={darkMode ? 0.15 : 0.4} />
+                        <XAxis
+                          dataKey="topicShort"
+                          tick={{ fontSize: 10, fill: darkMode ? "#94a3b8" : "#64748b" }}
+                          interval={0}
+                          angle={-15}
+                          textAnchor="end"
+                          height={45}
+                        />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: darkMode ? "#94a3b8" : "#64748b" }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: darkMode ? "#0f172a" : "#ffffff",
+                            borderColor: darkMode ? "#334155" : "#e2e8f0",
+                            borderRadius: "12px",
+                            fontSize: "11px",
+                            boxShadow: "0 10px 25px -5px rgba(0,0,0,0.25)",
+                            padding: "10px",
+                          }}
+                          formatter={(val: any, name: any) => {
+                            if (name === "Class Mean") return [`${val}%`, "Class Mean"];
+                            if (name === "Top 25% Quartile") return [`${val}%`, "Top 25% Quartile"];
+                            return [`${val}%`, name];
+                          }}
+                          labelFormatter={(label, items) => {
+                            const payload = items?.[0]?.payload;
+                            if (!payload) return label;
+                            const velStr = payload.velocity >= 0 ? `+${payload.velocity}%` : `${payload.velocity}%`;
+                            return `${payload.topicName} (Velocity: ${velStr})`;
+                          }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "6px" }} />
+                        <Area type="monotone" dataKey="classAvg" name="Class Mean" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#classAvgGrad)" />
+                        <Area type="monotone" dataKey="topAvg" name="Top 25% Quartile" stroke="#10b981" strokeWidth={2} strokeDasharray="4 4" fillOpacity={1} fill="url(#topAvgGrad)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </section>
 
         {/* Master Student Class & List Table */}
@@ -600,8 +837,8 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                       {activeSubject} Completion <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
                     </div>
                   </th>
-                  <th className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest min-w-[160px] ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                    SAMS State
+                  <th className={`px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest min-w-[170px] lg:min-w-[210px] hidden md:table-cell ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                    Teacher Insight
                   </th>
                   <th className={`px-6 py-4 text-right text-[10px] font-black uppercase tracking-widest ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                     Actions
@@ -625,8 +862,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                   filteredStudents.map((s) => {
                     const avg = calculateStudentAvg(s);
                     const tone = getScoreStatus(avg);
-                    let stateLabel = tone.label;
-                    if (avg === 0) stateLabel = "Not Commenced";
+                    const diag = getStudentDiagnostic(s, activeSubject, activeTopics);
 
                     let isInactive = true;
                     if (s.recentSessions && s.recentSessions.length > 0) {
@@ -656,7 +892,14 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                               </span>
                             )}
                           </span>
-                          <span className="text-xs font-mono text-slate-400">{s.email || "No Gmail Linked"}</span>
+                          <span className="text-xs font-mono text-slate-400 block">{s.email || "No Gmail Linked"}</span>
+                          <span className={`text-[10px] font-extrabold mt-1 inline-block md:hidden ${
+                            diag.priority === "critical" ? "text-rose-500" :
+                            diag.priority === "warning" ? "text-amber-500" :
+                            diag.priority === "success" ? "text-emerald-500" : "text-indigo-500"
+                          }`}>
+                            💡 {diag.actionTitle}
+                          </span>
                         </td>
                         <td className={`px-6 py-4 text-sm font-mono ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                           {s.phone}
@@ -669,13 +912,20 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <span 
-                            className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap`}
-                            style={{ color: tone.color, backgroundColor: tone.bg, borderColor: tone.bg }}
-                          >
-                            {stateLabel}
-                          </span>
+                        <td className="px-6 py-4 hidden md:table-cell min-w-[170px] lg:min-w-[210px]">
+                          <div className="flex flex-col gap-0.5 w-full max-w-[210px]">
+                            <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border w-fit whitespace-nowrap ${
+                              diag.priority === "critical" ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20" :
+                              diag.priority === "warning" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" :
+                              diag.priority === "success" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
+                              "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20"
+                            }`}>
+                              {diag.badgeLabel}
+                            </span>
+                            <span className={`text-[11px] font-semibold leading-tight truncate ${darkMode ? "text-slate-200" : "text-slate-700"}`} title={diag.suggestion}>
+                              {diag.actionTitle}
+                            </span>
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <button
@@ -740,6 +990,46 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
 
               {/* Slider Grid */}
               <div className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-6">
+
+                {/* Featured Personalized Teacher Insight Card */}
+                {(() => {
+                  const diag = getStudentDiagnostic(selectedStudent, activeSubject, activeTopics);
+                  return (
+                    <div className={`p-4 rounded-2xl border space-y-2.5 shadow-sm ${
+                      diag.priority === "critical" ? (darkMode ? "bg-rose-950/30 border-rose-900/50" : "bg-rose-50/70 border-rose-200/80") :
+                      diag.priority === "warning" ? (darkMode ? "bg-amber-950/30 border-amber-900/50" : "bg-amber-50/70 border-amber-200/80") :
+                      diag.priority === "success" ? (darkMode ? "bg-emerald-950/30 border-emerald-900/50" : "bg-emerald-50/70 border-emerald-200/80") :
+                      (darkMode ? "bg-indigo-950/30 border-indigo-900/50" : "bg-indigo-50/70 border-indigo-200/80")
+                    }`}>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5 text-slate-800 dark:text-slate-100">
+                          <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" /> Personalized Teacher Insight
+                        </span>
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                          diag.priority === "critical" ? "bg-rose-500/20 text-rose-600 dark:text-rose-300 border-rose-500/30" :
+                          diag.priority === "warning" ? "bg-amber-500/20 text-amber-600 dark:text-amber-300 border-amber-500/30" :
+                          diag.priority === "success" ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border-emerald-500/30" :
+                          "bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border-indigo-500/30"
+                        }`}>
+                          {diag.badgeLabel}
+                        </span>
+                      </div>
+                      <p className={`text-xs font-extrabold ${darkMode ? "text-slate-100" : "text-slate-800"}`}>
+                        Recommended Action: {diag.actionTitle}
+                      </p>
+                      <p className={`text-xs font-medium leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
+                        {diag.suggestion}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px] font-bold text-slate-400 border-t border-slate-200/60 dark:border-slate-800">
+                        <span>Weakest: <strong className="text-rose-500">{diag.weakestTopic} ({diag.lowestScore}%)</strong></span>
+                        <span>•</span>
+                        <span>Quizzes: <strong>{diag.totalQuizzes} taken</strong></span>
+                        <span>•</span>
+                        <span>Activity: <strong>{diag.daysInactiveStr}</strong></span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Registered Google Gmail Input Box */}
                 <div className={`space-y-2 p-4 rounded-2xl border ${darkMode ? "bg-indigo-950/30 border-indigo-900/50" : "bg-indigo-50/40 border-indigo-100"}`}>

@@ -78,6 +78,7 @@ export default function StudentChapters({
       }
       setSaveProgressSuccess(false);
       setProgressSaveError(null);
+      setStoredParticles([]);
     }
   }, [selectedTopic, student.scores, student.milestones]);
 
@@ -109,6 +110,8 @@ export default function StudentChapters({
         });
       }
       setStoredParticles(prev => [...prev, ...newParticles]);
+    } else {
+      setStoredParticles(prev => prev.slice(0, Math.max(0, prev.length - 8)));
     }
   };
 
@@ -137,7 +140,7 @@ export default function StudentChapters({
         }
         setStoredParticles(prev => [...prev, ...newParticles]);
       } else if (diff < 0) {
-        setStoredParticles(prev => prev.slice(0, diff * 8));
+        setStoredParticles(prev => prev.slice(0, Math.max(0, prev.length + diff * 8)));
       }
     }
   };

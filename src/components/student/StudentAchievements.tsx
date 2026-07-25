@@ -171,11 +171,17 @@ export function StudentAchievementsMobile({
                     <button
                       key={a.id}
                       onClick={() => setSelectedMobileAchievement(prev => prev === a.id ? null : a.id)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold shrink-0 transition-all cursor-pointer ${a.earned
+                      className={`relative overflow-hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-[11px] font-bold shrink-0 transition-all cursor-pointer ${a.earned
                         ? tierBg[a.tier]
-                        : darkMode ? "bg-slate-800/40 border-slate-700/30 opacity-35" : "bg-slate-100 border-slate-200 opacity-40"
+                        : darkMode ? "bg-slate-800/40 border-slate-700/30 opacity-40 hover:opacity-70" : "bg-slate-100 border-slate-200 opacity-45 hover:opacity-70"
                         } ${selectedMobileAchievement === a.id ? "ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-slate-950" : ""}`}
                     >
+                      {!a.earned && (
+                        <div
+                          className="absolute inset-0 opacity-[0.08] pointer-events-none"
+                          style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 3px, currentColor 3px, currentColor 5px)" }}
+                        />
+                      )}
                       <span>{getAchievementIcon(a.id, a.tier, a.earned, "h-3.5 w-3.5")}</span>
                       <span className={darkMode ? "text-slate-200" : "text-slate-700"}>{a.title}</span>
                     </button>
@@ -219,10 +225,16 @@ export function StudentAchievementsMobile({
                   }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${activeAch.earned
+                  <div className={`relative overflow-hidden p-2 rounded-xl shrink-0 flex items-center justify-center ${activeAch.earned
                     ? (darkMode ? "bg-indigo-500/15 border border-indigo-500/20" : "bg-indigo-50 border border-indigo-100")
                     : (darkMode ? "bg-slate-800/60 border-slate-700/40" : "bg-slate-100 border border-slate-200")
                     }`}>
+                    {!activeAch.earned && (
+                      <div
+                        className="absolute inset-0 opacity-[0.08] pointer-events-none"
+                        style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 3px, currentColor 3px, currentColor 5px)" }}
+                      />
+                    )}
                     {getAchievementIcon(activeAch.id, activeAch.tier, activeAch.earned, "h-5 w-5")}
                   </div>
                   <div className="flex-1 min-w-0">
