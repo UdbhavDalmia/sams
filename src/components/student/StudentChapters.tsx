@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronDown, X, CheckCircle, Circle } from "lucide-react";
 import { gsap } from "../../lib/gsap";
@@ -354,279 +355,300 @@ export default function StudentChapters({
         </motion.div>
       </motion.div>
 
-      {/* SAMS Academic Chapter Companion Slide panel */}
-      <AnimatePresence>
-        {selectedTopic && (
-          <div className="fixed inset-0 z-50 flex justify-end">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedTopic(null)}
-              className="absolute inset-0 bg-slate-900"
-            />
+      {/* SAMS Academic Chapter Companion Slide panel - Portal to document.body for true full-page overlay */}
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {selectedTopic && (
+            <>
+              {/* Backdrop - direct fixed child of body, no clipping ancestor */}
+              <motion.div
+                key="companion-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedTopic(null)}
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 99998,
+                  backgroundColor: "rgba(2,6,23,0.75)",
+                  backdropFilter: "blur(2px)",
+                  WebkitBackdropFilter: "blur(2px)",
+                  cursor: "pointer",
+                }}
+              />
 
-            {/* Panel */}
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className={`relative w-full max-w-2xl shadow-2xl h-[100dvh] flex flex-col z-10 transition-colors duration-300 ${darkMode ? "bg-slate-900 text-white" : "bg-white text-slate-900"
+              {/* Slide Panel - direct fixed child of body, covers full viewport height from top: 0 */}
+              <motion.div
+                key="companion-panel"
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: "100%",
+                  maxWidth: "56rem",
+                  height: "100dvh",
+                  zIndex: 99999,
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                }}
+                className={`font-sans shadow-2xl ${
+                  darkMode ? "bg-slate-900 text-slate-100" : "bg-white text-slate-900"
                 }`}
-            >
-              {/* Drawer Header */}
-              <div className={`p-6 shrink-0 relative border-b ${darkMode ? "bg-slate-950 text-white border-slate-850" : "bg-slate-50 text-slate-900 border-slate-200"
-                }`}>
-                <span className={`text-[10px] font-mono font-extrabold uppercase tracking-widest ${darkMode ? "text-indigo-400" : "text-indigo-600"
-                  }`}>
-                  {activeSubject} Academic Companion
-                </span>
-                <h3 className={`text-xl font-extrabold leading-tight mt-1 pr-8 ${darkMode ? "text-white" : "text-slate-900"
-                  }`}>
-                  {selectedTopic}
-                </h3>
-                <p className={`text-xs mt-1 ${darkMode ? "text-slate-400" : "text-slate-900"
-                  }`}>
-                  Current Completion Status: <span className="text-emerald-500 font-extrabold">{student.scores[selectedTopic] || 0}%</span>
-                </p>
-                <button
-                  onClick={() => setSelectedTopic(null)}
-                  className={`absolute top-6 right-6 text-lg font-black cursor-pointer transition-all ${darkMode ? "text-slate-400 hover:text-white" : "text-slate-900 hover:text-black"
-                    }`}
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* Drawer Tabs (Only Resources & Milestones) */}
-              <div className="flex border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 shrink-0 overflow-x-auto scrollbar-none touch-pan-y">
-                <button
-                  onClick={() => setActiveTab("cheat")}
-                  className={`flex-1 min-w-[120px] shrink-0 flex items-center justify-center gap-2 py-3 text-sm font-black border-b-2 transition-all cursor-pointer ${activeTab === "cheat"
-                    ? "border-indigo-600 text-indigo-700 bg-white dark:bg-slate-900"
-                    : "border-transparent text-slate-900 hover:text-black dark:text-slate-400 dark:hover:text-slate-100"
-                    }`}
-                >
-                  <BookOpen className="h-4 w-4 text-indigo-500" /> Academic Resources
-                </button>
-                <button
-                  onClick={() => setActiveTab("milestones")}
-                  className={`flex-1 min-w-[120px] shrink-0 flex items-center justify-center gap-2 py-3 text-sm font-black border-b-2 transition-all cursor-pointer ${activeTab === "milestones"
-                    ? "border-indigo-600 text-indigo-700 bg-white dark:bg-slate-900"
-                    : "border-transparent text-slate-900 hover:text-black dark:text-slate-400 dark:hover:text-slate-100"
-                    }`}
-                >
-                  <CheckSquare className="h-4 w-4 text-emerald-500" /> Prep Milestones
-                </button>
-              </div>
-
-              {/* Drawer Content */}
-              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 space-y-6">
-
-                {/* 1. Academic Resources Tab */}
-                {activeTab === "cheat" && (
-                  <div className="space-y-6 animate-fadeIn">
-                    {/* Formulas */}
-                    {TOPIC_RESOURCES[selectedTopic]?.formulas?.length > 0 && (
-                      <div className="space-y-2.5">
-                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-slate-300">
-                          Essential Formulas
-                        </h4>
-                        <div className="grid grid-cols-1 gap-2.5">
-                          {TOPIC_RESOURCES[selectedTopic]?.formulas?.map((item) => (
-                            <div
-                              key={item.label}
-                              className={`p-4 rounded-2xl border flex flex-col gap-2 ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-100"
-                                }`}
-                            >
-                              <span className="text-[10px] font-extrabold text-indigo-700 dark:text-indigo-400 uppercase block">
-                                {parseBoldAndMathInline(item.label)}
-                              </span>
-                              <div className={`px-3.5 py-3 rounded-xl flex items-center justify-center select-all border overflow-x-auto ${darkMode
-                                ? "bg-slate-800 border-slate-700 text-indigo-200"
-                                : "bg-indigo-600/5 border-indigo-100/50 text-indigo-700"
-                                }`}>
-                                <MathRenderer math={item.formula} block={false} />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Core Concepts */}
-                    <div className="space-y-2.5">
-                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-slate-300">
-                        Critical Syllabus Concepts
-                      </h4>
-                      <ul className="space-y-2">
-                        {TOPIC_RESOURCES[selectedTopic]?.concepts?.map((c) => (
-                          <li key={c} className="flex gap-2.5 text-xs text-slate-950 dark:text-slate-200 font-bold leading-relaxed">
-                            <span className="text-indigo-600 dark:text-indigo-400 font-bold shrink-0">✓</span>
-                            {parseBoldAndMathInline(c)}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Study Tips */}
-                    <div className="space-y-2.5 bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/20 p-4 rounded-2xl">
-                      <h4 className="text-xs font-extrabold text-indigo-900 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <Award className="h-4 w-4 text-indigo-600" /> Examiner's Study Tip
-                      </h4>
-                      <ul className="space-y-2">
-                        {TOPIC_RESOURCES[selectedTopic]?.tips?.map((t, idx) => (
-                          <li key={idx} className="text-xs text-slate-950 dark:text-slate-300 leading-relaxed font-bold">
-                            {t}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-
-                {/* 2. Prep Milestones Tab */}
-                {activeTab === "milestones" && (
-                  <div className="space-y-6 animate-fadeIn pb-2">
-                    <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/30 p-4 rounded-2xl">
-                      <h4 className="text-xs font-extrabold text-emerald-900 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                        <CheckSquare className="h-4 w-4 text-emerald-600" /> Academic Milestones Tracker
-                      </h4>
-                      <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed font-medium">
-                        Toggle your completed syllabus concepts below! Toggling plays pleasant academic chimes and increases prep score dynamically. Complete all topics to master the chapter!
-                      </p>
-                    </div>
-
-                    {/* Checkbook List */}
-                    <div className="space-y-3">
-                      <h5 className="text-xs font-black text-slate-900 dark:text-slate-300 uppercase tracking-wider">
-                        NCERT Core Topics Checklist
-                      </h5>
-                      <div className="space-y-2">
-                        {(TOPIC_RESOURCES[selectedTopic]?.concepts || []).map((concept, cIdx) => {
-                          const isChecked = localMilestones[cIdx] || false;
-                          const weight = Math.round(100 / (TOPIC_RESOURCES[selectedTopic]?.concepts?.length || 4));
-                          return (
-                            <button
-                              key={cIdx}
-                              onClick={() => handleToggleMilestone(cIdx)}
-                              className={`w-full text-left rounded-xl border transition-all flex items-stretch cursor-pointer overflow-hidden ${isChecked
-                                ? "border-indigo-200 dark:border-indigo-800/60"
-                                : "border-slate-200 dark:border-slate-700/60 hover:border-indigo-200 dark:hover:border-indigo-800/40"
-                                }`}
-                            >
-                              {/* Left accent stripe */}
-                              <div className={`w-1 shrink-0 rounded-l-xl transition-colors ${isChecked ? "bg-indigo-500" : "bg-slate-200 dark:bg-slate-700"
-                                }`} />
-
-                              <div className={`flex items-center gap-3 px-3.5 py-3 flex-1 min-w-0 transition-colors ${isChecked
-                                ? "bg-indigo-50/50 dark:bg-indigo-950/20"
-                                : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-900/60"
-                                }`}>
-                                {/* Custom checkbox circle */}
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${isChecked
-                                  ? "bg-indigo-500 border-indigo-500"
-                                  : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
-                                  }`}>
-                                  {isChecked && (
-                                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12">
-                                      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                  )}
-                                </div>
-
-                                <span className={`flex-1 text-xs leading-snug transition-colors ${isChecked
-                                  ? "font-bold text-indigo-900 dark:text-indigo-200 line-through decoration-indigo-300 dark:decoration-indigo-700 decoration-1"
-                                  : "font-semibold text-slate-700 dark:text-slate-300"
-                                  }`}>
-                                  {parseBoldAndMathInline(concept)}
-                                </span>
-
-                                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${isChecked
-                                  ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"
-                                  : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                                  }`}>
-                                  +{weight}%
-                                </span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Slider overrides */}
-                    <div className="border-t border-slate-100 dark:border-slate-800 pt-6 space-y-3">
-                      <h5 className="text-xs font-black text-slate-900 dark:text-slate-300 uppercase tracking-wider">
-                        Fine-Tune Mastery Score
-                      </h5>
-                      <div className="space-y-3 bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/40">
-                        <div className="flex justify-between items-center text-xs font-bold text-slate-900 dark:text-slate-300">
-                          <span className="flex items-center gap-1.5">
-                            <Sliders className="h-4 w-4 text-slate-900 dark:text-slate-400" /> Manual Progress Adjustment
-                          </span>
-                          <span className="text-indigo-600 bg-indigo-50 border border-indigo-100/30 px-2.5 py-0.5 rounded font-mono font-black text-sm">
-                            {localScore}%
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={localScore}
-                          onChange={(e) => handleSliderChange(Number(e.target.value))}
-                          className="w-full h-2 bg-slate-200 dark:bg-slate-850 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                        />
-                        <div className="flex justify-between text-[8px] sm:text-[9px] text-slate-900 dark:text-slate-400 font-mono font-bold uppercase">
-                          <span>Incomplete</span>
-                          <span>Emerging</span>
-                          <span>Intermediate</span>
-                          <span>Advanced</span>
-                          <span>Complete</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Action Bar */}
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 shrink-0 space-y-2">
-                {saveProgressSuccess && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-xl text-xs font-semibold flex items-center gap-2"
-                  >
-                    <CheckCircle2 className="h-4 w-4 shrink-0" /> Progress Portfolio synchronized successfully.
-                  </motion.div>
-                )}
-
-                {progressSaveError && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-semibold flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    {progressSaveError}
-                  </div>
-                )}
-
-                <div className="flex gap-3">
+              >
+                {/* Drawer Header - Matching Student Portfolio Manager */}
+                <div className="bg-slate-900 text-white p-6 shrink-0 relative border-b border-slate-800">
+                  <span className="text-xs font-mono text-cyan-400 font-black uppercase tracking-wider block">
+                    {activeSubject} ACADEMIC COMPANION
+                  </span>
+                  <h3 className="text-xl font-extrabold text-white mt-1 pr-8 truncate">
+                    {selectedTopic}
+                  </h3>
+                  <p className="text-slate-400 text-xs mt-1 font-medium">
+                    Current Completion Status: <span className="text-emerald-400 font-extrabold">{student.scores[selectedTopic] || 0}%</span>
+                  </p>
                   <button
                     onClick={() => setSelectedTopic(null)}
-                    className="flex-1 py-3 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors cursor-pointer"
+                    className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors cursor-pointer"
                   >
-                    Discard Changes
-                  </button>
-                  <button
-                    onClick={handleSaveProgress}
-                    disabled={savingProgress}
-                    className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-500 disabled:bg-slate-300 transition-colors flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/10 cursor-pointer"
-                  >
-                    {savingProgress ? "Syncing..." : "Sync Progress"}
+                    <X className="h-5 w-5" />
                   </button>
                 </div>
-              </div>
+
+                {/* Sub-Tabs Bar */}
+                <div className={`flex border-b shrink-0 overflow-x-auto scrollbar-none ${darkMode ? "border-slate-800 bg-slate-950/80" : "border-slate-100 bg-slate-50"}`}>
+                  <button
+                    onClick={() => setActiveTab("cheat")}
+                    className={`flex-1 min-w-[120px] shrink-0 flex items-center justify-center gap-2 py-3 text-sm font-black border-b-2 transition-all cursor-pointer ${
+                      activeTab === "cheat"
+                        ? "border-indigo-500 text-indigo-500 bg-white dark:bg-slate-900"
+                        : "border-transparent text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <BookOpen className="h-4 w-4 text-indigo-500" /> Academic Resources
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("milestones")}
+                    className={`flex-1 min-w-[120px] shrink-0 flex items-center justify-center gap-2 py-3 text-sm font-black border-b-2 transition-all cursor-pointer ${
+                      activeTab === "milestones"
+                        ? "border-indigo-500 text-indigo-500 bg-white dark:bg-slate-900"
+                        : "border-transparent text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <CheckSquare className="h-4 w-4 text-emerald-500" /> Prep Milestones
+                  </button>
+                </div>
+
+                {/* Drawer Content */}
+                <div className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-6">
+                  {/* 1. Academic Resources Tab */}
+                  {activeTab === "cheat" && (
+                    <div className="space-y-6 animate-fadeIn">
+                      {/* Formulas */}
+                      {TOPIC_RESOURCES[selectedTopic]?.formulas?.length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                            Essential Formulas
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {TOPIC_RESOURCES[selectedTopic]?.formulas?.map((item) => (
+                              <div
+                                key={item.label}
+                                className={`p-4 rounded-2xl border flex flex-col gap-2 ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-100"
+                                  }`}
+                              >
+                                <span className="text-[10px] font-extrabold text-indigo-700 dark:text-indigo-400 uppercase block">
+                                  {parseBoldAndMathInline(item.label)}
+                                </span>
+                                <div className={`px-3.5 py-3 rounded-xl flex items-center justify-center select-all border overflow-x-auto ${darkMode
+                                  ? "bg-slate-800 border-slate-700 text-indigo-200"
+                                  : "bg-indigo-600/5 border-indigo-100/50 text-indigo-700"
+                                  }`}>
+                                  <MathRenderer math={item.formula} block={false} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Core Concepts */}
+                      <div className="space-y-2.5">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                          Critical Syllabus Concepts
+                        </h4>
+                        <ul className="space-y-2">
+                          {TOPIC_RESOURCES[selectedTopic]?.concepts?.map((c) => (
+                            <li key={c} className="flex gap-2.5 text-xs text-slate-950 dark:text-slate-200 font-bold leading-relaxed">
+                              <span className="text-indigo-600 dark:text-indigo-400 font-bold shrink-0">✓</span>
+                              {parseBoldAndMathInline(c)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Study Tips */}
+                      <div className="space-y-2.5 bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/20 p-4 rounded-2xl">
+                        <h4 className="text-xs font-extrabold text-indigo-900 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Award className="h-4 w-4 text-indigo-600" /> Examiner's Study Tip
+                        </h4>
+                        <ul className="space-y-2">
+                          {TOPIC_RESOURCES[selectedTopic]?.tips?.map((t, idx) => (
+                            <li key={idx} className="text-xs text-slate-950 dark:text-slate-300 leading-relaxed font-bold">
+                              {t}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Prep Milestones Tab */}
+                  {activeTab === "milestones" && (
+                    <div className="space-y-6 animate-fadeIn pb-2">
+                      <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/30 p-4 rounded-2xl">
+                        <h4 className="text-xs font-extrabold text-emerald-900 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                          <CheckSquare className="h-4 w-4 text-emerald-600" /> Academic Milestones Tracker
+                        </h4>
+                        <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed font-medium">
+                          Toggle your completed syllabus concepts below! Toggling plays pleasant academic chimes and increases prep score dynamically. Complete all topics to master the chapter!
+                        </p>
+                      </div>
+
+                      {/* Checkbook List */}
+                      <div className="space-y-3">
+                        <h5 className="text-xs font-black text-slate-900 dark:text-slate-300 uppercase tracking-wider">
+                          NCERT Core Topics Checklist
+                        </h5>
+                        <div className="space-y-2">
+                          {(TOPIC_RESOURCES[selectedTopic]?.concepts || []).map((concept, cIdx) => {
+                            const isChecked = localMilestones[cIdx] || false;
+                            const weight = Math.round(100 / (TOPIC_RESOURCES[selectedTopic]?.concepts?.length || 4));
+                            return (
+                              <button
+                                key={cIdx}
+                                onClick={() => handleToggleMilestone(cIdx)}
+                                className={`w-full text-left rounded-xl border transition-all flex items-stretch cursor-pointer overflow-hidden ${isChecked
+                                  ? "border-indigo-200 dark:border-indigo-800/60"
+                                  : "border-slate-200 dark:border-slate-700/60 hover:border-indigo-200 dark:hover:border-indigo-800/40"
+                                  }`}
+                              >
+                                {/* Left accent stripe */}
+                                <div className={`w-1 shrink-0 rounded-l-xl transition-colors ${isChecked ? "bg-indigo-500" : "bg-slate-200 dark:bg-slate-700"
+                                  }`} />
+
+                                <div className={`flex items-center gap-3 px-3.5 py-3 flex-1 min-w-0 transition-colors ${isChecked
+                                  ? "bg-indigo-50/50 dark:bg-indigo-950/20"
+                                  : "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                                  }`}>
+                                  {/* Custom checkbox circle */}
+                                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${isChecked
+                                    ? "bg-indigo-500 border-indigo-500"
+                                    : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                                    }`}>
+                                    {isChecked && (
+                                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12">
+                                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    )}
+                                  </div>
+
+                                  <span className={`flex-1 text-xs leading-snug transition-colors ${isChecked
+                                    ? "font-bold text-indigo-900 dark:text-indigo-200 line-through decoration-indigo-300 dark:decoration-indigo-700 decoration-1"
+                                    : "font-semibold text-slate-700 dark:text-slate-300"
+                                    }`}>
+                                    {parseBoldAndMathInline(concept)}
+                                  </span>
+
+                                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0 ${isChecked
+                                    ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
+                                    }`}>
+                                    +{weight}%
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Slider overrides */}
+                      <div className="border-t border-slate-100 dark:border-slate-800 pt-6 space-y-3">
+                        <h5 className="text-xs font-black text-slate-900 dark:text-slate-300 uppercase tracking-wider">
+                          Fine-Tune Mastery Score
+                        </h5>
+                        <div className="space-y-3 bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/40">
+                          <div className="flex justify-between items-center text-xs font-bold text-slate-900 dark:text-slate-300">
+                            <span className="flex items-center gap-1.5">
+                              <Sliders className="h-4 w-4 text-slate-900 dark:text-slate-400" /> Manual Progress Adjustment
+                            </span>
+                            <span className="text-indigo-600 bg-indigo-50 border border-indigo-100/30 px-2.5 py-0.5 rounded font-mono font-black text-sm">
+                              {localScore}%
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={localScore}
+                            onChange={(e) => handleSliderChange(Number(e.target.value))}
+                            className="w-full h-2 bg-slate-200 dark:bg-slate-850 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                          />
+                          <div className="flex justify-between text-[8px] sm:text-[9px] text-slate-900 dark:text-slate-400 font-mono font-bold uppercase">
+                            <span>Incomplete</span>
+                            <span>Emerging</span>
+                            <span>Intermediate</span>
+                            <span>Advanced</span>
+                            <span>Complete</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Drawer Action Bar - Matching Student Portfolio Manager */}
+                <div className={`p-4 border-t shrink-0 space-y-2 ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-100 bg-slate-50"}`}>
+                  {saveProgressSuccess && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`p-3 border rounded-xl flex items-center gap-2 text-xs font-semibold ${darkMode ? "bg-emerald-950/40 border-emerald-800/40 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-600"}`}
+                    >
+                      <CheckCircle2 className="h-4 w-4 shrink-0" /> Progress Portfolio synchronized successfully.
+                    </motion.div>
+                  )}
+
+                  {progressSaveError && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-semibold flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      {progressSaveError}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setSelectedTopic(null)}
+                      className={`flex-1 py-3 border rounded-xl text-xs font-bold transition-colors cursor-pointer ${darkMode ? "border-slate-700 text-slate-400 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-100"}`}
+                    >
+                      Discard Changes
+                    </button>
+                    <button
+                      onClick={handleSaveProgress}
+                      disabled={savingProgress}
+                      className={`flex-1 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg transition-colors cursor-pointer ${savingProgress ? "bg-slate-600 cursor-not-allowed" : "bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-600/15"}`}
+                    >
+                      {savingProgress ? "Syncing..." : "Sync Progress"}
+                    </button>
+                  </div>
+                </div>
 
               {storedParticles.length > 0 && (
                 <div className="absolute bottom-0 left-0 right-0 h-52 pointer-events-none z-50 overflow-visible">
@@ -677,9 +699,11 @@ export default function StudentChapters({
                 </div>
               )}
             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { gsap, useGSAP } from "../lib/gsap";
 import { playChime } from "./student/shared";
@@ -730,58 +731,7 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
             </div>
           </div>
 
-          {/* Selected Chapter Quick Inspection Panel */}
-          <AnimatePresence>
-            {selectedChapterData && (
-              <motion.div
-                initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                animate={{ opacity: 1, height: "auto", marginTop: 0 }}
-                exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                className={`overflow-hidden p-4 rounded-2xl border ${
-                  darkMode ? "bg-slate-800/80 border-indigo-500/40 text-slate-100" : "bg-indigo-50/80 border-indigo-200 text-slate-900"
-                }`}>
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
-                    Selected Chapter Breakdown
-                  </span>
-                  <h4 className="text-sm sm:text-base font-black truncate mt-0.5">
-                    {selectedChapterData.name}
-                  </h4>
-                </div>
-                <motion.button
-                  onClick={() => setSelectedChapterName(null)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.92 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                  className="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 cursor-pointer"
-                >
-                  Close
-                </motion.button>
-              </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3 pt-3 border-t border-slate-200/70 dark:border-slate-700/60 text-xs">
-                <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Class Mean</span>
-                  <span className="text-base font-black text-indigo-600 dark:text-indigo-400 mt-0.5 block">{selectedChapterData.avg}%</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Top 25% Benchmark</span>
-                  <span className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">{selectedChapterData.topAvg}%</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">High Achievers (≥75%)</span>
-                  <span className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">{selectedChapterData.highCount} learners</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800">
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Struggling (&lt;50%)</span>
-                  <span className="text-base font-black text-rose-600 dark:text-rose-400 mt-0.5 block">{selectedChapterData.strugglingCount} learners</span>
-                </div>
-              </div>
-            </motion.div>
-          )}
-          </AnimatePresence>
 
           {/* Chapter Progress Bars List */}
           <div id="chapter-progress-list" className="overflow-y-auto max-h-[420px] pr-1 space-y-2.5 scrollbar-thin pt-1">
@@ -1077,24 +1027,30 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
       </main>
 
       {/* Dynamic Student Score Adjuster Panel */}
-      <AnimatePresence>
-        {selectedStudent && (
-          <div className="fixed inset-0 z-50 overflow-hidden flex justify-end font-sans">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedStudent(null)}
-              className="absolute inset-0 bg-slate-900"
-            />
-
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className={`relative w-full max-w-md shadow-2xl h-[100dvh] flex flex-col z-10 ${darkMode ? "bg-slate-900" : "bg-white"}`}
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {selectedStudent && (
+            <div
+              style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, width: "100vw", height: "100vh", zIndex: 999999 }}
+              className="overflow-hidden flex justify-end font-sans pointer-events-auto"
             >
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.5 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedStudent(null)}
+                style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, width: "100vw", height: "100vh", zIndex: 999999 }}
+                className="bg-slate-950/80 backdrop-blur-xs cursor-pointer"
+              />
+
+              <motion.div
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                style={{ position: "fixed", top: 0, right: 0, bottom: 0, height: "100vh", zIndex: 1000000 }}
+                className={`w-full max-w-md shadow-2xl flex flex-col overflow-hidden ${darkMode ? "bg-slate-900" : "bg-white"}`}
+              >
               {/* Drawer Header */}
               <div className="bg-slate-900 text-white p-6 shrink-0 relative">
                 <span className="text-xs font-mono text-cyan-400 font-black uppercase tracking-wider">
@@ -1335,7 +1291,137 @@ export default function TeacherView({ passcode, onLogout }: TeacherViewProps) {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
+
+      {/* Selected Chapter Detail Drawer (Full Page Height Block Overlay) */}
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {selectedChapterData && (
+            <div
+              style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, width: "100vw", height: "100vh", zIndex: 999999 }}
+              className="overflow-hidden flex justify-end font-sans pointer-events-auto"
+            >
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.5 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedChapterName(null)}
+                style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, width: "100vw", height: "100vh", zIndex: 999999 }}
+                className="bg-slate-950/80 backdrop-blur-xs cursor-pointer"
+              />
+
+              <motion.div
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                style={{ position: "fixed", top: 0, right: 0, bottom: 0, height: "100vh", zIndex: 1000000 }}
+                className={`w-full max-w-lg md:max-w-xl shadow-2xl flex flex-col overflow-hidden block ${
+                  darkMode ? "bg-slate-900 text-slate-100" : "bg-white text-slate-900"
+                }`}
+              >
+                {/* Drawer Header */}
+                <div className={`p-6 shrink-0 relative border-b ${
+                  darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                }`}>
+                  <span className="text-xs font-mono text-indigo-500 dark:text-indigo-400 font-black uppercase tracking-wider block">
+                    {activeSubject} CHAPTER ANALYTICS & BREAKDOWN
+                  </span>
+                  <h3 className="text-xl font-extrabold mt-1 pr-8 truncate">
+                    {selectedChapterData.name}
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium mt-1">
+                    Class Average: <span className="font-extrabold text-indigo-600 dark:text-indigo-400">{selectedChapterData.avg}%</span> • Chapter #{selectedChapterData.index}
+                  </p>
+                  <button
+                    onClick={() => setSelectedChapterName(null)}
+                    className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Drawer Content */}
+                <div className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-6">
+                  {/* Benchmark Metrics Grid */}
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className={`p-3.5 rounded-2xl border ${darkMode ? "bg-slate-800/60 border-slate-750" : "bg-slate-50 border-slate-200"}`}>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Class Mean</span>
+                      <span className="text-lg font-black text-indigo-600 dark:text-indigo-400 mt-1 block">{selectedChapterData.avg}%</span>
+                    </div>
+                    <div className={`p-3.5 rounded-2xl border ${darkMode ? "bg-slate-800/60 border-slate-750" : "bg-slate-50 border-slate-200"}`}>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Top 25% Benchmark</span>
+                      <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1 block">{selectedChapterData.topAvg}%</span>
+                    </div>
+                    <div className={`p-3.5 rounded-2xl border ${darkMode ? "bg-slate-800/60 border-slate-750" : "bg-slate-50 border-slate-200"}`}>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">High Achievers (≥75%)</span>
+                      <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1 block">{selectedChapterData.highCount} learners</span>
+                    </div>
+                    <div className={`p-3.5 rounded-2xl border ${darkMode ? "bg-slate-800/60 border-slate-750" : "bg-slate-50 border-slate-200"}`}>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Struggling (&lt;50%)</span>
+                      <span className="text-lg font-black text-rose-600 dark:text-rose-400 mt-1 block">{selectedChapterData.strugglingCount} learners</span>
+                    </div>
+                  </div>
+
+                  {/* Performance Roster for this chapter */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                        Learner Scores in {selectedChapterData.name}
+                      </h4>
+                      <span className="text-[10px] font-extrabold text-slate-400">
+                        {subjectStudents.length} Students
+                      </span>
+                    </div>
+                    <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                      {subjectStudents.map((st) => {
+                        const score = st.scores?.[selectedChapterData.name] || 0;
+                        let scoreColor = "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
+                        if (score < 50) scoreColor = "text-rose-500 bg-rose-500/10 border-rose-500/20";
+                        else if (score < 75) scoreColor = "text-amber-500 bg-amber-500/10 border-amber-500/20";
+
+                        return (
+                          <div
+                            key={st.rollNo}
+                            onClick={() => {
+                              setSelectedStudent(st);
+                              setSelectedChapterName(null);
+                            }}
+                            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                              darkMode ? "bg-slate-800/40 border-slate-800 hover:bg-slate-800" : "bg-slate-50 border-slate-200/80 hover:bg-slate-100"
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <span className="text-xs font-extrabold block truncate">{st.name}</span>
+                              <span className="text-[10px] text-slate-400 font-bold">Roll #{st.rollNo} • Click to edit portfolio</span>
+                            </div>
+                            <span className={`text-xs font-black px-2.5 py-1 rounded-lg border ${scoreColor}`}>
+                              {score}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Drawer Footer */}
+                <div className={`p-4 border-t shrink-0 ${darkMode ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-slate-50"}`}>
+                  <button
+                    onClick={() => setSelectedChapterName(null)}
+                    className="w-full py-3 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer"
+                  >
+                    Close Chapter Analytics
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
